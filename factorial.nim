@@ -1,11 +1,11 @@
-proc factorial(n: int64) :int64 =
-  if n > 1:
-    n * factorial(n-1)
-  else:
-    1
+# Trivial example of embedded Ni factorial
+import ni
 
-var x: int64
-for i in 1 .. 10000000000:
-  x = factorial(15)
-
-echo($x)
+discard newInterpreter().eval """
+  f: 1 n: 20
+  factorial: [ifelse (n > 1) [f: (f * n) n: (n - 1) do factorial] [f]]
+  loop 100000 [
+    f: 1 n: 20
+    do factorial]
+  echo f
+  """

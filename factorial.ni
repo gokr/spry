@@ -1,3 +1,5 @@
+# Run with: ./ni factorial.ni
+
 # These need to be here actually, not sure why yet, its not enough to call reset...
 n: 20
 f: 1
