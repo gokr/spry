@@ -135,26 +135,26 @@ proc `$`*(self: Context): string =
   result = "{"
   for k,v in self.bindings:
     result.add($v & " ")
-  result = result & "}"
+  return result & "}"
 
 proc `$`*(self: Value): string =
   case self.kind
   of niInt:
-    result = $self.intVal
+    $self.intVal
   of niFloat:
-    result = $self.floatVal
+    $self.floatVal
   of niString:
-    result = "\"" & self.stringVal & "\""
+    "\"" & self.stringVal & "\""
   of niBool:
-    result = $self.boolVal
+    $self.boolVal
   of niNil:
-    result = "nil"
+    "nil"
   of niContext:
-    result = $self.contextVal
+    $self.contextVal
   of niProc:
-    result = "proc(" & $self.procVal.arity & ")"
+    "proc(" & $self.procVal.arity & ")"
   of niClosure:
-    result = "closure(" & $self.closureVal.node & ")"
+    "closure(" & $self.closureVal.node & ")"
 
 proc `$`*(self: seq[Node]): string =
   self.map(proc(n: Node): string = $n).join(" ")
@@ -164,25 +164,25 @@ proc `$`*(self: seq[Node]): string =
 proc `$`*(self: Node): string =
   case self.kind
   of niWord:
-    result = self.word
+    self.word
   of niSetWord:
-    result = self.word & ":"
+    self.word & ":"
   of niGetWord:
-    result = ":" & self.word
+    ":" & self.word
   of niSymbolWord:
-    result = "'" & self.word
+    "'" & self.word
   of niValue:
-    result = $self.value
+    $self.value
   of niBlock:
-    result = "[" & $self.nodes & "]"
+    "[" & $self.nodes & "]"
   of niParen:
-    result = "(" & $self.nodes & ")"
+    "(" & $self.nodes & ")"
   of niCurly:
-    result = "{" & $self.nodes & "}"
+    "{" & $self.nodes & "}"
   of niBinding:
-    result = "%" & $self.binding & "%"
+    "%" & $self.binding & "%"
   of niSetBinding:
-    result = ":%" & $self.binding & "%"
+    ":%" & $self.binding & "%"
 
 # Nifties
 template add(self: Node, n: Node) =
@@ -193,11 +193,11 @@ proc isFunction(self: Node): bool =
   of niValue:
     case self.value.kind
     of niProc, niClosure:
-      result = true
+      true
     else:
-      result = false
+      false
   else:
-    result = false
+    false
 
 # Constructor procs
 proc raiseRuntimeException(msg: string) =
@@ -280,8 +280,7 @@ proc lookup(self: Context, key: string): Binding =
   self.bindings[key]
 
 proc bindit(self: Context, key: string, val: Node): Binding =
-  result = Binding(key: key, val: val)
-  self.bindings[key] = result
+  self.bindings[key] = Binding(key: key, val: val)
 
 # Methods for the base value parsers
 method parseValue(self: ValueParser, s: string): Node {.procvar.} =
@@ -359,7 +358,7 @@ proc resolveBlock(ni: Interpreter, self: Node): Node =
   self.resolve(ni)
   self.resolved = true
   debug "RESOLVED: " & $self
-  result = self
+  self
 
 proc dump(ni: Interpreter) =
   echo "ROOT: " & $ni.root
@@ -368,7 +367,7 @@ proc dump(ni: Interpreter) =
       echo "CONTEXT: " & $a.context
 
 # Primitives written in Nim
-proc `+`(ni: Interpreter, a: varargs[Node]): Node =
+proc primAdd(ni: Interpreter, a: varargs[Node]): Node =
   newValue(a[0].value.intVal + a[1].value.intVal)
 proc primSub(ni: Interpreter, a: varargs[Node]): Node =
   newValue(a[0].value.intVal - a[1].value.intVal)
@@ -387,7 +386,7 @@ proc primClosure(ni: Interpreter, a: varargs[Node]): Node =
 proc primResolve(ni: Interpreter, a: varargs[Node]): Node =
   ni.resolveBlock(a[0])
 proc primParse(ni: Interpreter, a: varargs[Node]): Node =
-  result = newParser().parse(a[0].value.stringVal)
+  newParser().parse(a[0].value.stringVal)
 proc primEcho(ni: Interpreter, a: varargs[Node]): Node =
   echo($a[0])
 proc primIf(ni: Interpreter, a: varargs[Node]): Node =
@@ -402,7 +401,7 @@ proc primDump(ni: Interpreter, a: varargs[Node]): Node =
 
 proc newInterpreter*(): Interpreter =
   result = Interpreter(stack: newSeq[Activation](), args: newSeq[Node](), root: newContext())
-  #Singletons
+  # Singletons
   result.trueVal = newValue(true)
   result.falseVal = newValue(false)
   result.nilVal = newNilValue()
@@ -411,7 +410,7 @@ proc newInterpreter*(): Interpreter =
   discard root.bindit("true", newValue(true))
   discard root.bindit("nil", newNilValue())  
   # Primitives in Nim
-  discard root.bindit("+", newPrim(`+`, true, 2))
+  discard root.bindit("+", newPrim(primAdd, true, 2))
   discard root.bindit("-", newPrim(primSub, true, 2))
   discard root.bindit("*", newPrim(primMul, true, 2))
   discard root.bindit("/", newPrim(primDiv, true, 2))
@@ -455,17 +454,17 @@ proc `[]`(self: Node, i: int): Node =
   ## We allow indexing of Nodes if they are of the composite kind.
   case self.kind
   of niBlock, niParen, niCurly:
-    result = self.nodes[i]
+    self.nodes[i]
   else:
-    result = nil
+    nil
 
 proc len(self: Node): int =
   ## Return number of child nodes
   case self.kind
   of niBlock, niParen, niCurly:
-    result = self.nodes.len
+    self.nodes.len
   else:
-    result = 0
+    0
 
 proc len(self: Activation): int =
   if self.closure.isNil:
@@ -476,9 +475,9 @@ proc len(self: Activation): int =
 proc `[]`(self: Value, i: int): Node =
   case self.kind
   of niClosure:
-    result = self.closureVal.node.nodes[i]
+    self.closureVal.node.nodes[i]
   else:
-    result = nil
+    nil
 
 proc endOfBlock(ni: Interpreter): bool =
   let activation = ni.top
@@ -519,7 +518,7 @@ proc eval(self: NimProc, ni: Interpreter): Node =
   for i in args.len .. self.arity-1:
     args.add(ni.evalNext())
   #debug("ARGS: " & $args)
-  result = self.prok(ni, args)
+  self.prok(ni, args)
 
 proc resolve(self: Node, ni: Interpreter) =
   ## Go through tree and do lookups of words, replacing with the binding.
@@ -547,8 +546,8 @@ proc closureBlock(ni: Interpreter, node: Node): Node =
   of niBlock:
     if not node.resolved:
       discard ni.resolveBlock(node)
-    var closure = newBlockClosure(node, false, 0) # TODO infix/arity
-    result = newValue(closure)
+    # TODO infix/arity
+    return newValue(newBlockClosure(node, false, 0))
   else:
     raiseRuntimeException("Can only bind blocks, not: " & $node)
 
@@ -571,30 +570,30 @@ proc eval(self: Node, ni: Interpreter): Node =
     let binding = ni.lookup(self.word)
     if binding.isNil:
       raiseRuntimeException("Word not found: " & self.word)
-    result = binding.val.eval(ni)
+    return binding.val.eval(ni)
   of niSetWord:
-    result = ni.bindit(self.word, ni.evalNext()).val
+    return ni.bindit(self.word, ni.evalNext()).val
   of niGetWord:
-    result = ni.lookup(self.word).val
+    return ni.lookup(self.word).val
   of niSymbolWord:
-    result = self
+    return self
   of niValue:
-    case self.value.kind
+    return case self.value.kind
     of niProc:
-      result = self.value.procVal.eval(ni)
+      self.value.procVal.eval(ni)
     of niClosure:
-      result = self.value.closureVal.eval(ni)
+      self.value.closureVal.eval(ni)
     else:
-      result = self
+      self
   of niBlock:
-    result = self
+    return self
   of niParen:
-    result = ni.evalParen(self)
+    return ni.evalParen(self)
   of niCurly:
-    result = self # Produce a Context I think...
+    return self # Produce a Context I think...
   of niBinding:
     # Eval of a niBinding is like a static fast niWord
-    result = self.binding.val.eval(ni)
+    return self.binding.val.eval(ni)
   of niSetBinding:
     # Eval of a niSetBinding is like a static fast niSetWord
     result = ni.evalNext()
@@ -703,7 +702,7 @@ proc parse*(self: Parser, str: string): Node =
         else:
           self.token.add(ch)
   self.addNode()
-  result = self.top
+  self.top
 
 proc eval*(ni: Interpreter, code: string): Node =
   ni.primDo(newParser().parse(code))
