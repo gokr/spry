@@ -1,3 +1,5 @@
+# Ni - We are the knights who say...
+
 This is a parser & interpreter for the Ni language, inspired by Rebol.
 
 Ni is meant to mix with Nim and is not Rebol compatible, however most of the
@@ -8,7 +10,7 @@ mixed in. It is also meant to be a much smaller language than Rebol which has a
 And oh, this is just for fun and I am not a good Nim hacker nor a language
 implementor. :)
 
-Noteworthy compared to Rebol:
+## Noteworthy
 
 * Values use pluggable instances of ValueParser so its very easy to add
  more literal "datatypes". They are not hard coded in the Parser/Interpreter.
@@ -23,14 +25,14 @@ Noteworthy compared to Rebol:
  object variant for the AST Nodes. Before parsing words and blocks it tries
  to parse using all registered value parsers in order.
 
- * Curly braces are not used for multiline string literals. Instead they are
+* Curly braces are not used for multiline string literals. Instead they are
  meant to create Contexts (similar to a Nim object).
 
- * There is only one style of function and its a closure.
+* There is only one style of function and its a closure.
 
- * Comments use # instead of ;
+* Comments use # instead of ;
 
- * Literals generally use Nim syntax.
+* Literals generally use Nim syntax.
 
 
 A "block Node" is the AST Node representing a block. It just has a seq[Node]
