@@ -45,7 +45,7 @@ addParserExtension(extendParser)
 proc evalReduce(ni: Interpreter, node: Node): Node =
   ## Evaluate all nodes in the block and return a new block with all results
   ni.stack.add(newActivation(node))
-  while not ni.endOfBlock:
+  while not ni.endOfNode:
     ni.args.add(ni.evalNext())
   discard ni.stack.pop
   result = newBlock(ni.args)

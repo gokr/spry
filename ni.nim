@@ -54,17 +54,17 @@ type
     # TODO: Curly is not yet explored
     of niBlock, niParen, niCurly:
       nodes*: seq[Node]
-      resolved*: bool # A flag so we resolve "only first time" when using bind
+      closure*: Closure   # Optionally a local context
+     # A flag so we resolve "only first time" when using bind
     of niBinding, niSetBinding:
       binding*: Binding # When resolving a niBinding replaces a niWord
       
 
-  # The activation record used by Interpreter for executing blocks
+  # The activation record used by Interpreter for evaluating blocks
   Activation = ref object
-    paren: Node            # The paren we are running
-    closure: BlockClosure  # ...or the bound block we are running TODO: Improve
+    node: Node             # The block we are evaluating
     pos: int               # Which node we are at
-    context: Context       # The context of the closure above
+
 
   # Contexts holds Bindings. This way we, when forming a closure we can lookup
   # a word to get the Binding and from then on simply set/get the val on the
@@ -81,7 +81,7 @@ type
 
   # Values are also represented with an object variant, like Node
   ValueKind* = enum niInt, niFloat, niString, niBool, niNil,
-    niContext, niProc, niClosure
+    niContext, niProc #, niClosure
   Value* = object
     case kind*: ValueKind
     of niInt:     intVal*: int64 # Seems reasonable for Ni
@@ -91,9 +91,8 @@ type
     of niNil:     nil # No need for a value :)
     of niContext: contextVal*: Context
     of niProc:    procVal*: NimProc
-    of niClosure: closureVal*: BlockClosure
     
-  # Base for behaviors, either primitives in Nim or Ni blocks
+  # Base for behaviors, either primitives in Nim or Ni Closures
   Function = ref object of RootObj
     infix*: bool
     arity*: int
@@ -104,11 +103,10 @@ type
   NimProc* = ref object of Function
     prok*: ProcType
 
-  # A block node that has been bound so we can execute it as a function
-  BlockClosure* = ref object of Function
-    node*: Node
+  # Added to a block node when doing bind, so we can execute it as a function
+  Closure* = ref object of Function
     context*: Context
-
+    resolved*: bool
 
 # Utilities I would like to have in stdlib
 template isEmpty[T](a: openArray[T]): bool =
@@ -134,7 +132,8 @@ proc addInterpreterExtension*(prok: InterpreterExt) =
   interpreterExts.add(prok)
 
 # Forward declarations
-proc closureBlock*(ni: Interpreter, node: Node): Node
+proc bindBlock*(ni: Interpreter, node: Node): Node
+proc evalBlock*(node: Node, ni: Interpreter): Node
 proc resolve(self: Node, ni: Interpreter)
 proc parse*(self: Parser, str: string): Node
 proc eval*(self: Node, ni: Interpreter): Node
@@ -166,12 +165,9 @@ proc `$`*(self: Value): string =
     $self.contextVal
   of niProc:
     "proc(" & $self.procVal.arity & ")"
-  of niClosure:
-    "closure(" & $self.closureVal.node & ")"
 
 proc `$`*(self: seq[Node]): string =
   self.map(proc(n: Node): string = $n).join(" ")
-
 
 
 proc `$`*(self: Node): string =
@@ -201,17 +197,6 @@ proc `$`*(self: Node): string =
 template add(self: Node, n: Node) =
   self.nodes.add(n)
 
-proc isFunction(self: Node): bool =
-  case self.kind
-  of niValue:
-    case self.value.kind
-    of niProc, niClosure:
-      true
-    else:
-      false
-  else:
-    false
-
 # Constructor procs
 proc raiseRuntimeException*(msg: string) =
   raise newException(RuntimeException, msg)
@@ -225,8 +210,8 @@ proc newContext*(): Context =
 proc newNimProc*(prok: ProcType, infix: bool, arity: int): NimProc =
   NimProc(prok: prok, infix: infix, arity: arity)
 
-proc newBlockClosure*(node: Node, infix: bool, arity: int): BlockClosure =
-  BlockClosure(node: node, infix: infix, arity: arity)
+proc newClosure*(infix: bool, arity: int): Closure =
+  Closure(infix: infix, arity: arity, context: newContext())
 
 proc newWord*(s: string): Node =
   Node(kind: niWord, word: s)
@@ -258,11 +243,8 @@ proc newBinding*(b: Binding): Node =
 proc newSetBinding*(b: Binding): Node =
   Node(kind: niSetBinding, binding: b)
 
-proc newActivation*(closure: BlockClosure): Activation =
-  Activation(closure: closure, context: closure.context)
-
-proc newActivation*(paren: Node): Activation =
-  Activation(paren: paren)
+proc newActivation*(node: Node): Activation =
+  Activation(node: node)
 
 proc newValue*(v: int64): Node =
   Node(kind: niValue, value: Value(kind: niInt, intVal: v))
@@ -285,8 +267,9 @@ proc newValue*(v: NimProc): Node =
 proc newValue*(v: Context): Node =
   Node(kind: niValue, value: Value(kind: niContext, contextVal: v))
 
-proc newValue*(v: BlockClosure): Node =
-  Node(kind: niValue, value: Value(kind: niClosure, closureVal: v))
+proc newValue*(v: Value): Node =
+  Node(kind: niValue, value: v)
+
 
 proc newPrim*(prok: ProcType, infix: bool, arity: int): Node =
   newValue(NimProc(prok: prok, infix: infix, arity: arity))
@@ -354,9 +337,15 @@ proc newParser*(): Parser =
     ex(result)
 
 # Converters
-converter toValue(x: int64): Value =
-  result.kind = niInt
-  result.intVal = x
+converter toNode(x: int64): Node =
+  newValue(x)
+converter toNode(x: float64): Node =
+  newValue(x)
+converter toNode(x: bool): Node =
+  newValue(x)
+converter toNode(x: string): Node =
+  newValue(x)
+
 converter toValue(x: float64): Value =
   result.kind = niFloat
   result.floatVal = x
@@ -366,43 +355,52 @@ converter toValue(x: string): Value =
 
 converter toString(x: Value): string =
   x.stringVal
-converter toFloat(x: int64): float64 =
-  x.float64
 converter toInt(x: Value): int64 =
   x.intVal
 converter toFloat(x: Value): float64 =
   x.floatVal
+converter toFloat(x: int64): float64 =
+  x.float64
 
 proc resolveBlock(ni: Interpreter, self: Node): Node =
   debug "RESOLVING" & $self
   self.resolve(ni)
-  self.resolved = true
+  self.closure.resolved = true
   debug "RESOLVED: " & $self
   self
 
-proc dump(ni: Interpreter) =
-  echo "ROOT: " & $ni.root
+# Debugging
+proc dump(c: Context): string =
+  $c
+
+proc dump(a: Activation): string =
+  if a.node.closure.notNil:
+    "CONTEXT:\n" & dump(a.node.closure.context)
+  else:
+    ".."
+proc dump(ni: Interpreter): string =
+  result = "ROOT:\n" & dump(ni.root) & "STACK:\n"
   for a in ni.stack:
-    if a.context.notNil:
-      echo "CONTEXT: " & $a.context
+    result.add(dump(a))
+
 
 # Primitives written in Nim
 proc primAdd(ni: Interpreter, a: varargs[Node]): Node =
-  newValue(a[0].value.intVal + a[1].value.intVal)
+  a[0].value.intVal + a[1].value.intVal
 proc primSub(ni: Interpreter, a: varargs[Node]): Node =
-  newValue(a[0].value.intVal - a[1].value.intVal)
+  a[0].value.intVal - a[1].value.intVal
 proc primMul(ni: Interpreter, a: varargs[Node]): Node =
-  newValue(a[0].value.intVal * a[1].value.intVal)
+  a[0].value.intVal * a[1].value.intVal
 proc primDiv(ni: Interpreter, a: varargs[Node]): Node =
-  newValue(a[0].value.intVal / a[1].value.intVal)
+  a[0].value.intVal / a[1].value.intVal
 proc primLt(ni: Interpreter, a: varargs[Node]): Node =
-  newValue(a[0].value.intVal < a[1].value.intVal)
+  a[0].value.intVal < a[1].value.intVal
 proc primGt(ni: Interpreter, a: varargs[Node]): Node =
-  newValue(a[0].value.intVal > a[1].value.intVal)
+  a[0].value.intVal > a[1].value.intVal
 proc primDo(ni: Interpreter, a: varargs[Node]): Node =
-  ni.closureBlock(a[0]).eval(ni)
-proc primClosure(ni: Interpreter, a: varargs[Node]): Node =
-  ni.closureBlock(a[0])
+  ni.bindBlock(a[0]).evalBlock(ni)
+proc primBind(ni: Interpreter, a: varargs[Node]): Node =
+  ni.bindBlock(a[0])
 proc primResolve(ni: Interpreter, a: varargs[Node]): Node =
   ni.resolveBlock(a[0])
 proc primParse(ni: Interpreter, a: varargs[Node]): Node =
@@ -436,7 +434,7 @@ proc newInterpreter*(): Interpreter =
   discard root.bindit("/", newPrim(primDiv, true, 2))
   discard root.bindit("<", newPrim(primLt, true, 2))
   discard root.bindit(">", newPrim(primGt, true, 2))
-  discard root.bindit("closure", newPrim(primClosure, false, 1))
+  discard root.bindit("closure", newPrim(primBind, false, 1))
   discard root.bindit("resolve", newPrim(primResolve, false, 1))
   discard root.bindit("do", newPrim(primDo, false, 1))
   discard root.bindit("parse", newPrim(primParse, false, 1))
@@ -490,19 +488,9 @@ proc len(self: Node): int =
     0
 
 proc len(self: Activation): int =
-  if self.closure.isNil:
-    self.paren.len
-  else:
-    self.closure.node.len
+  self.node.len
 
-proc `[]`(self: Value, i: int): Node =
-  case self.kind
-  of niClosure:
-    self.closureVal.node.nodes[i]
-  else:
-    nil
-
-proc endOfBlock*(ni: Interpreter): bool =
+proc endOfNode*(ni: Interpreter): bool =
   let activation = ni.top
   activation.pos == activation.len
 
@@ -512,10 +500,7 @@ proc next(ni: Interpreter): Node =
   if activation.pos == activation.len:
     raiseRuntimeException("End of current block, too few arguments")
   else:
-    if activation.closure.isNil:
-      result = activation.paren[activation.pos]
-    else:
-      result = activation.closure.node[activation.pos]
+    result = activation.node[activation.pos]
     inc activation.pos
 
 proc evalNext*(ni: Interpreter): Node =
@@ -525,11 +510,10 @@ proc evalNext*(ni: Interpreter): Node =
 proc evalParen*(ni: Interpreter, node: Node): Node =
   ## Evaluate all nodes in the paren, then return last
   ni.stack.add(newActivation(node))
-  while not ni.endOfBlock:
+  while not ni.endOfNode:
     ni.args.add(ni.evalNext())
   discard ni.stack.pop
   result = ni.args.pop
-  #echo "POPRESULT: " & $result
   ni.args = @[]
 
 proc eval(self: NimProc, ni: Interpreter): Node =
@@ -540,7 +524,6 @@ proc eval(self: NimProc, ni: Interpreter): Node =
   # Pull remaining args to reach arity
   for i in args.len .. self.arity-1:
     args.add(ni.evalNext())
-  #debug("ARGS: " & $args)
   self.prok(ni, args)
 
 proc resolve(self: Node, ni: Interpreter) =
@@ -564,21 +547,23 @@ proc resolve(self: Node, ni: Interpreter) =
   else:
     raiseRuntimeException("Can only resolve composite nodes, not: " & $self)
 
-proc closureBlock(ni: Interpreter, node: Node): Node =
+proc bindBlock(ni: Interpreter, node: Node): Node =
   case node.kind
   of niBlock:
-    if not node.resolved:
+    if node.closure.isNil:
+      node.closure = newClosure(false, 0)
+    if not node.closure.resolved:
       discard ni.resolveBlock(node)
     # TODO infix/arity
-    return newValue(newBlockClosure(node, false, 0))
+    return node
   else:
     raiseRuntimeException("Can only bind blocks, not: " & $node)
 
-proc eval*(self: BlockClosure, ni: Interpreter): Node =
-  debug("EVALCLOSURE")
+proc evalBlock*(node: Node, ni: Interpreter): Node =
+  debug("EVALBLOCK")
   ## Let the interpreter do a given Block and return the result as a Node.
-  ni.stack.add(newActivation(self))
-  while not ni.endOfBlock:
+  ni.stack.add(newActivation(node))
+  while not ni.endOfNode:
     ni.args.add(ni.evalNext())
     debug("ARGS:" & $ni.args)
   discard ni.stack.pop
@@ -604,17 +589,19 @@ proc eval(self: Node, ni: Interpreter): Node =
   of niValue:
     return case self.value.kind
     of niProc:
+      # NimProcs evaluate themselves
       self.value.procVal.eval(ni)
-    of niClosure:
-      self.value.closureVal.eval(ni)
     else:
+      # But other values do not
       self
   of niBlock:
+    # Blocks don't evaluate on their own, must use primDo
     return self
   of niParen:
+    # Parens evaluate though
     return ni.evalParen(self)
   of niCurly:
-    return self # Produce a Context I think...
+    return self # TODO: Produce a Context I think...
   of niBinding:
     # Eval of a niBinding is like a static fast niWord
     return self.binding.val.eval(ni)
@@ -628,7 +615,7 @@ proc newWordOrValue(self: Parser): Node =
   let token = self.token
   self.token = ""
   
-  # Try values here...
+  # Try all valueParsers...
   for p in self.valueParsers:
     let valueOrNil = p.parseValue(token)
     if valueOrNil.notNil:
@@ -737,7 +724,7 @@ proc eval*(ni: Interpreter, code: string): Node =
 
 
 when isMainModule:
-  # Just run a given file as argument
+  # Just run a given file as argument, the hash-bang trick works also
   import os
   let fn = commandLineParams()[0]
   let code = readFile(fn)
