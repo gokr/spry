@@ -12,9 +12,9 @@ import strutils, sequtils, tables, nimprof
 type
   # Ni interpreter
   Interpreter* = ref object
-    args: seq[Node]         # Collecting args for infix
-    stack: seq[Activation]  # Execution stack
-    root: Context           # Root bindings
+    args*: seq[Node]         # Collecting args for infix
+    stack*: seq[Activation]  # Execution stack
+    root*: Context           # Root bindings
     trueVal: Node
     falseVal: Node
     nilVal: Node
@@ -29,7 +29,7 @@ type
     valueParsers*: seq[ValueParser]     # Registered valueParsers
 
   # Base class for pluggable value parsers
-  ValueParser = ref object of RootObj
+  ValueParser* = ref object of RootObj
     token: string
   
   # Basic value parsers included by default
@@ -120,6 +120,19 @@ template notNil[T](a:T): bool =
 template debug(x: untyped) =
   when false: echo(x)
 
+# Extending Ni from other modules
+type ParserExt = proc(p: Parser)
+var parserExts = newSeq[ParserExt]()
+
+proc addParserExtension*(prok: ParserExt) =
+  parserExts.add(prok)
+
+type InterpreterExt = proc(ni: Interpreter)
+var interpreterExts = newSeq[InterpreterExt]()
+
+proc addInterpreterExtension*(prok: InterpreterExt) =
+  interpreterExts.add(prok)
+
 # Forward declarations
 proc closureBlock*(ni: Interpreter, node: Node): Node
 proc resolve(self: Node, ni: Interpreter)
@@ -200,87 +213,91 @@ proc isFunction(self: Node): bool =
     false
 
 # Constructor procs
-proc raiseRuntimeException(msg: string) =
+proc raiseRuntimeException*(msg: string) =
   raise newException(RuntimeException, msg)
 
-proc raiseParseException(msg: string) =
+proc raiseParseException*(msg: string) =
   raise newException(ParseException, msg)
 
-proc newContext(): Context =
+proc newContext*(): Context =
   Context(bindings: newTable[string, Binding]())
   
-proc newNimProc(prok: ProcType, infix: bool, arity: int): NimProc =
+proc newNimProc*(prok: ProcType, infix: bool, arity: int): NimProc =
   NimProc(prok: prok, infix: infix, arity: arity)
 
-proc newBlockClosure(node: Node, infix: bool, arity: int): BlockClosure =
+proc newBlockClosure*(node: Node, infix: bool, arity: int): BlockClosure =
   BlockClosure(node: node, infix: infix, arity: arity)
 
-proc newWord(s: string): Node =
+proc newWord*(s: string): Node =
   Node(kind: niWord, word: s)
 
-proc newSetWord(s: string): Node =
+proc newSetWord*(s: string): Node =
   Node(kind: niSetWord, word: s)
 
-proc newGetWord(s: string): Node =
+proc newGetWord*(s: string): Node =
   Node(kind: niGetWord, word: s)
 
-proc newSymbolWord(s: string): Node =
+proc newSymbolWord*(s: string): Node =
   Node(kind: niSymbolWord, word: s)
 
-proc newBlock(): Node =
-  Node(kind: niBlock, nodes: newSeq[Node]())
+proc newBlock*(nodes: seq[Node]): Node =
+  Node(kind: niBlock, nodes: nodes)
+  
+proc newBlock*(): Node =
+  newBlock(newSeq[Node]())
 
-proc newParen(): Node =
+proc newParen*(): Node =
   Node(kind: niParen, nodes: newSeq[Node]())
 
-proc newCurly(): Node =
+proc newCurly*(): Node =
   Node(kind: niCurly, nodes: newSeq[Node]())
 
-proc newBinding(b: Binding): Node =
+proc newBinding*(b: Binding): Node =
   Node(kind: niBinding, binding: b)
 
-proc newSetBinding(b: Binding): Node =
+proc newSetBinding*(b: Binding): Node =
   Node(kind: niSetBinding, binding: b)
 
-proc newActivation(closure: BlockClosure): Activation =
+proc newActivation*(closure: BlockClosure): Activation =
   Activation(closure: closure, context: closure.context)
 
-proc newActivation(paren: Node): Activation =
+proc newActivation*(paren: Node): Activation =
   Activation(paren: paren)
 
-proc newValue(v: int64): Node =
+proc newValue*(v: int64): Node =
   Node(kind: niValue, value: Value(kind: niInt, intVal: v))
 
-proc newValue(v: float64): Node =
+proc newValue*(v: float64): Node =
   Node(kind: niValue, value: Value(kind: niFloat, floatVal: v))
 
-proc newValue(v: string): Node =
+proc newValue*(v: string): Node =
   Node(kind: niValue, value: Value(kind: niString, stringVal: v))
 
-proc newValue(v: bool): Node =
+proc newValue*(v: bool): Node =
   Node(kind: niValue, value: Value(kind: niBool, boolVal: v))
 
-proc newNilValue(): Node =
+proc newNilValue*(): Node =
   Node(kind: niValue, value: Value(kind: niNil))
 
-proc newValue(v: NimProc): Node =
+proc newValue*(v: NimProc): Node =
   Node(kind: niValue, value: Value(kind: niProc, procVal: v))
 
-proc newValue(v: Context): Node =
+proc newValue*(v: Context): Node =
   Node(kind: niValue, value: Value(kind: niContext, contextVal: v))
 
-proc newValue(v: BlockClosure): Node =
+proc newValue*(v: BlockClosure): Node =
   Node(kind: niValue, value: Value(kind: niClosure, closureVal: v))
 
-proc newPrim(prok: ProcType, infix: bool, arity: int): Node =
+proc newPrim*(prok: ProcType, infix: bool, arity: int): Node =
   newValue(NimProc(prok: prok, infix: infix, arity: arity))
 
 # Context lookups
-proc lookup(self: Context, key: string): Binding =
+proc lookup*(self: Context, key: string): Binding =
   self.bindings[key]
 
-proc bindit(self: Context, key: string, val: Node): Binding =
-  self.bindings[key] = Binding(key: key, val: val)
+proc bindit*(self: Context, key: string, val: Node): Binding =
+  result = Binding(key: key, val: val)
+  self.bindings[key] = result
 
 # Methods for the base value parsers
 method parseValue(self: ValueParser, s: string): Node {.procvar.} =
@@ -300,31 +317,31 @@ method parseValue(self: FloatValueParser, s: string): Node {.procvar.} =
 
 method parseValue(self: StringValueParser, s: string): Node {.procvar.} =
   # If it ends and starts with '"' then ok, no escapes yet
-  if s[0] == '"' and s[^1] == '"':
+  if s.len > 1 and s[0] == '"' and s[^1] == '"':
     result = newValue(s[1..^2])
 
-method startValue(self: ValueParser, ch: char): bool =
+method prefixLength(self: ValueParser): int = 0
+
+method tokenReady(self: ValueParser, token: string, ch: char): string =
   ## Return true if self wants to take over parsing a literal
   ## and deciding when its complete. This is used for delimited literals
-  ## that can contain whitespace. Otherwise its not needed.
+  ## that can contain whitespace. Otherwise parseValue is needed.
+  nil
+
+method tokenStart(self: ValueParser, token: string, ch: char): bool =
   false
 
-method startValue(self: StringValueParser, ch: char): bool =
+method prefixLength(self: StringValueParser): int = 1
+
+method tokenStart(self: StringValueParser, token: string, ch: char): bool =
   ch == '"'
 
-method endValue(self: ValueParser, ch: char): bool =
-  false
-
-method endValue(self: StringValueParser, ch: char): bool =
-  ch == '"'
-
-
-method includeLast(self: ValueParser): bool =
-  ## Should the literal include the last character?
-  false
-
-method includeLast(self: StringValueParser): bool =
-  true
+method tokenReady(self: StringValueParser, token: string, ch: char): string =
+  # Minimally two '"' and the previous char was not '\'
+  if ch == '"' and token[^1] != '\\':
+    return token & ch
+  else:
+    return nil
 
 proc newParser*(): Parser =
   ## Create a new Ni parser with the basic value parsers included
@@ -332,6 +349,9 @@ proc newParser*(): Parser =
   result.valueParsers.add(StringValueParser())
   result.valueParsers.add(IntValueParser())
   result.valueParsers.add(FloatValueParser())
+  # Call registered extension procs
+  for ex in parserExts:
+    ex(result)
 
 # Converters
 converter toValue(x: int64): Value =
@@ -425,6 +445,9 @@ proc newInterpreter*(): Interpreter =
   discard root.bindit("ifelse", newPrim(primIfelse, false, 3))
   discard root.bindit("loop", newPrim(primLoop, false, 2))
   discard root.bindit("dump", newPrim(primDump, false, 1))
+  # Call registered extension procs
+  for ex in interpreterExts:
+    ex(result)
 
 proc top(ni: Interpreter): Activation =
   ni.stack[ni.stack.high]
@@ -479,7 +502,7 @@ proc `[]`(self: Value, i: int): Node =
   else:
     nil
 
-proc endOfBlock(ni: Interpreter): bool =
+proc endOfBlock*(ni: Interpreter): bool =
   let activation = ni.top
   activation.pos == activation.len
 
@@ -495,11 +518,11 @@ proc next(ni: Interpreter): Node =
       result = activation.closure.node[activation.pos]
     inc activation.pos
 
-proc evalNext(ni: Interpreter): Node =
+proc evalNext*(ni: Interpreter): Node =
   ## Evaluate the next node in the current block Activation.
   ni.next.eval(ni)
 
-proc evalParen(ni: Interpreter, node: Node): Node =
+proc evalParen*(ni: Interpreter, node: Node): Node =
   ## Evaluate all nodes in the paren, then return last
   ni.stack.add(newActivation(node))
   while not ni.endOfBlock:
@@ -572,6 +595,7 @@ proc eval(self: Node, ni: Interpreter): Node =
       raiseRuntimeException("Word not found: " & self.word)
     return binding.val.eval(ni)
   of niSetWord:
+    debug("SETW:" & self.word)
     return ni.bindit(self.word, ni.evalNext()).val
   of niGetWord:
     return ni.lookup(self.word).val
@@ -648,24 +672,28 @@ proc parse*(self: Parser, str: string): Node =
     ch = str[pos]
     inc pos
     # If we are inside a literal value let the valueParser decide when complete
-    if currentValueParser.notNil and currentValueParser.endValue(ch):
-      if currentValueParser.includeLast:
+    if currentValueParser.notNil:
+      let found = currentValueParser.tokenReady(self.token, ch)
+      if found.notNil:
+        self.token = found
+        self.addNode()
+        currentValueParser = nil
+      else:
         self.token.add(ch)
-      self.addNode()
-      currentValueParser = nil
     else:
       # If we are not parsing a literal with a valueParser whitespace is consumed
       if currentValueParser.isNil and ch in Whitespace:
         # But first we make sure to finish the token if any
         self.addNode()
       else:
-        # Check if a valueParser wants to take over
-        if currentValueParser.isNil and self.token.len == 0:
+        # Check if a valueParser wants to take over, only 5 first chars are checked
+        let tokenLen = self.token.len + 1
+        if currentValueParser.isNil and tokenLen < 5:
           for p in self.valueParsers:
-            if p.startValue(ch):
+            if p.prefixLength == tokenLen and p.tokenStart(self.token, ch):
               currentValueParser = p
               break
-        # Otherwise we do regular token handling
+        # If still no valueParser active we do regular token handling
         if currentValueParser.isNil:
           case ch
           # Comments are not included in the AST

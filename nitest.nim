@@ -1,4 +1,4 @@
-import ni
+import ni, extend
 
 # Some helpers for tests below
 proc show(code: string): string =
@@ -11,7 +11,7 @@ proc run(code: string): string =
 
 
 # A bunch of tests for Parser
-when false:
+when true:
   # Four kinds of words, as normal Rebol/Red has
   assert(show("one") == "[one]")
   assert(show(":one") == "[:one]")
@@ -28,6 +28,9 @@ blue""") == "[red green blue]")
   assert(show("+11") == "[11]")
   assert(show("-11") == "[-11]")
 
+  # String
+  assert(show("\"garf\"") == "[\"garf\"]")
+  
   # Just nesting and mixing
   assert(show("one :two") == "[one :two]")
   assert(show("[]") == "[[]]")
@@ -112,3 +115,11 @@ when true:
   loop 1000 [n: 12 f: 1 do factorial]
   do factorial
   """) == "479001600")
+
+when true:
+  # Demonstrate extension from extend.nim
+  assert(newParser().parse("'''abc'''").nodes[0].kind == niValue)
+  assert(show("'''abc'''") == "[\"abc\"]")
+  assert(run("reduce [1 + 2 3 + 4]") == "[3 7]")
+  
+  
