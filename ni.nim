@@ -434,7 +434,7 @@ proc newInterpreter*(): Interpreter =
   discard root.bindit("/", newPrim(primDiv, true, 2))
   discard root.bindit("<", newPrim(primLt, true, 2))
   discard root.bindit(">", newPrim(primGt, true, 2))
-  discard root.bindit("closure", newPrim(primBind, false, 1))
+  discard root.bindit("bind", newPrim(primBind, false, 1))
   discard root.bindit("resolve", newPrim(primResolve, false, 1))
   discard root.bindit("do", newPrim(primDo, false, 1))
   discard root.bindit("parse", newPrim(primParse, false, 1))
