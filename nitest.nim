@@ -75,7 +75,19 @@ when true:
   # But we can use do to evaluate it
   assert(show("do [3 + 4]") == "[do [3 + 4]]")
   assert(run("do [4 + 3]") == "7")
-
+  
+  # Or we can bind it to resolve and get a closure
+  assert(run("bind [3 + 4]") == "[3 %+:proc(2)% 4]")
+  # But we need to use func to make a closure Value of it
+  assert(run("func [3 + 4]") == "closure([3 %+:proc(2)% 4])")
+  # Which will evaluate
+  #assert(run("f: func [3 + 4] f") == "7")
+  
+  # Precedence and basic math
+  assert(run("5 - 3 + 1") == "3")
+  assert(run("3 * 4") == "12")
+  assert(run("3 + 4 * 2") == "14") # Yeah
+  
   # And we can nest also, since a block has its own Activation
   # Note that only last result of block is used so "1 + 7" is dead code
   assert(run("5 + do [3 + do [1 + 7 1 + 9]]") == "18")
@@ -92,28 +104,33 @@ when true:
   assert(run("parse \"3 + 4\"") == "[3 + 4]")
   assert(run("do parse \"3 + 4\"") == "7")
 
-  # More math and boolean
-  assert(run("5 - 3 + 1") == "3")
-  assert(run("3 * 4") == "12")
-  assert(run("3 + 4 * 2") == "14") # Yeah
+  # Boolean
+  assert(run("true") == "true")
+  assert(run("false") == "false")
   assert(run("3 < 4") == "true")
   assert(run("3 > 4") == "false")
 
   # if and ifelse and echo
   assert(run("x: true if x [true]") == "true")
   assert(run("x: false if x [true]") == "nil")
-  assert(run("if (3 < 4) [\"yay\"]") == "\"yay\"")
-  assert(run("if (3 > 4) [\"yay\"]") == "nil")
-  assert(run("ifelse (3 > 4) [\"yay\"] ['ok]") == "'ok")
+  assert(run("if 3 < 4 [\"yay\"]") == "\"yay\"")
+  assert(run("if 3 > 4 [\"yay\"]") == "nil")
+  assert(run("ifelse 3 > 4 [\"yay\"] ['ok]") == "'ok")
   
   # Factorial using a global n and f. Note that this recursive block causes
   # $ to fail in debugging since string representation never ends :)
   assert(run("""
   n: 12
   f: 1
-  factorial: [ifelse (n > 1) [f: (f * n) n: (n - 1) do factorial] [f]]
-  loop 1000 [n: 12 f: 1 do factorial]
-  do factorial
+  factorial: func [ifelse n > 1 [
+    f: f * n
+    n: n - 1
+    factorial]
+  [
+    f]
+  ]
+  loop 1000 [n: 12 f: 1 factorial]
+  factorial
   """) == "479001600")
 
 when true:

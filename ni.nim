@@ -12,8 +12,11 @@ import strutils, sequtils, tables, nimprof
 type
   # Ni interpreter
   Interpreter* = ref object
-    args*: seq[Node]         # Collecting args for infix
+    last*: Node              # Remember for infix
+    nextInfix*: bool         # Remember we are gobbling
     stack*: seq[Activation]  # Execution stack
+    currentActivation*: Activation
+    currentActivationLen*: int
     root*: Context           # Root bindings
     trueVal: Node
     falseVal: Node
@@ -81,8 +84,8 @@ type
 
   # Values are also represented with an object variant, like Node
   ValueKind* = enum niInt, niFloat, niString, niBool, niNil,
-    niContext, niProc #, niClosure
-  Value* = object
+    niContext, niProc, niClosure
+  Value* = ref object
     case kind*: ValueKind
     of niInt:     intVal*: int64 # Seems reasonable for Ni
     of niFloat:   floatVal*: float64 # Same
@@ -91,6 +94,7 @@ type
     of niNil:     nil # No need for a value :)
     of niContext: contextVal*: Context
     of niProc:    procVal*: NimProc
+    of niClosure: nodeVal*: Node
     
   # Base for behaviors, either primitives in Nim or Ni Closures
   Function = ref object of RootObj
@@ -109,13 +113,13 @@ type
     resolved*: bool
 
 # Utilities I would like to have in stdlib
-template isEmpty[T](a: openArray[T]): bool =
+template isEmpty*[T](a: openArray[T]): bool =
   a.len == 0
-template notEmpty[T](a: openArray[T]): bool =
+template notEmpty*[T](a: openArray[T]): bool =
   a.len > 0
-template notNil[T](a:T): bool =
+template notNil*[T](a:T): bool =
   not a.isNil
-template debug(x: untyped) =
+template debug*(x: untyped) =
   when false: echo(x)
 
 # Extending Ni from other modules
@@ -133,6 +137,7 @@ proc addInterpreterExtension*(prok: InterpreterExt) =
 
 # Forward declarations
 proc bindBlock*(ni: Interpreter, node: Node): Node
+proc funcBlock*(ni: Interpreter, node: Node): Node
 proc evalBlock*(node: Node, ni: Interpreter): Node
 proc resolve(self: Node, ni: Interpreter)
 proc parse*(self: Parser, str: string): Node
@@ -165,6 +170,8 @@ proc `$`*(self: Value): string =
     $self.contextVal
   of niProc:
     "proc(" & $self.procVal.arity & ")"
+  of niClosure:
+    "closure(" & $self.nodeVal & ")"
 
 proc `$`*(self: seq[Node]): string =
   self.map(proc(n: Node): string = $n).join(" ")
@@ -263,6 +270,9 @@ proc newNilValue*(): Node =
 
 proc newValue*(v: NimProc): Node =
   Node(kind: niValue, value: Value(kind: niProc, procVal: v))
+
+proc newValue*(v: Node): Node =
+  Node(kind: niValue, value: Value(kind: niClosure, nodeVal: v))
 
 proc newValue*(v: Context): Node =
   Node(kind: niValue, value: Value(kind: niContext, contextVal: v))
@@ -401,6 +411,8 @@ proc primDo(ni: Interpreter, a: varargs[Node]): Node =
   ni.bindBlock(a[0]).evalBlock(ni)
 proc primBind(ni: Interpreter, a: varargs[Node]): Node =
   ni.bindBlock(a[0])
+proc primFunc(ni: Interpreter, a: varargs[Node]): Node =
+  ni.funcBlock(a[0])
 proc primResolve(ni: Interpreter, a: varargs[Node]): Node =
   ni.resolveBlock(a[0])
 proc primParse(ni: Interpreter, a: varargs[Node]): Node =
@@ -418,7 +430,7 @@ proc primDump(ni: Interpreter, a: varargs[Node]): Node =
   ni.dump
 
 proc newInterpreter*(): Interpreter =
-  result = Interpreter(stack: newSeq[Activation](), args: newSeq[Node](), root: newContext())
+  result = Interpreter(stack: newSeq[Activation](), root: newContext())
   # Singletons
   result.trueVal = newValue(true)
   result.falseVal = newValue(false)
@@ -435,6 +447,7 @@ proc newInterpreter*(): Interpreter =
   discard root.bindit("<", newPrim(primLt, true, 2))
   discard root.bindit(">", newPrim(primGt, true, 2))
   discard root.bindit("bind", newPrim(primBind, false, 1))
+  discard root.bindit("func", newPrim(primFunc, false, 1))
   discard root.bindit("resolve", newPrim(primResolve, false, 1))
   discard root.bindit("do", newPrim(primDo, false, 1))
   discard root.bindit("parse", newPrim(primParse, false, 1))
@@ -447,8 +460,8 @@ proc newInterpreter*(): Interpreter =
   for ex in interpreterExts:
     ex(result)
 
-proc top(ni: Interpreter): Activation =
-  ni.stack[ni.stack.high]
+template top*(ni: Interpreter): Activation =
+  ni.stack[^1]
 
 
 proc lookup(ni: Interpreter, key: string): Binding =
@@ -471,7 +484,7 @@ proc bindit(ni: Interpreter, key: string, val: Node): Binding =
     debug("BIND IN ROOT: " & $key & ": " & $val)
     ni.root.bindit(key, val)
 
-proc `[]`(self: Node, i: int): Node =
+template `[]`(self: Node, i: int): Node =
   ## We allow indexing of Nodes if they are of the composite kind.
   case self.kind
   of niBlock, niParen, niCurly:
@@ -479,7 +492,7 @@ proc `[]`(self: Node, i: int): Node =
   else:
     nil
 
-proc len(self: Node): int =
+template len(self: Node): int =
   ## Return number of child nodes
   case self.kind
   of niBlock, niParen, niCurly:
@@ -487,44 +500,83 @@ proc len(self: Node): int =
   else:
     0
 
-proc len(self: Activation): int =
+proc infix(self: Node): bool =
+  ## True for infix Functions
+  case self.kind
+  of niValue:
+    case self.value.kind
+    of niProc:
+      return self.value.procVal.infix
+    of niClosure:
+      return self.value.nodeVal.infix
+    else:
+      return false
+  of niBinding:
+    return self.binding.val.infix
+  else:
+    return false
+
+template len(self: Activation): int =
   self.node.len
 
-proc endOfNode*(ni: Interpreter): bool =
-  let activation = ni.top
-  activation.pos == activation.len
+template endOfNode*(ni: Interpreter): bool =
+  ni.currentActivation.pos == ni.currentActivationLen
 
-proc next(ni: Interpreter): Node =
+proc pushActivation*(ni: Interpreter, activation: Activation) =
+  ni.currentActivation = activation
+  ni.currentActivationLen = activation.len
+  ni.stack.add(activation)
+
+proc popActivation*(ni: Interpreter) =
+  discard ni.stack.pop
+  if ni.stack.notEmpty:
+    ni.currentActivation = ni.top
+    ni.currentActivationLen = ni.currentActivation.len
+  else:
+    ni.currentActivationLen = 0
+
+proc next*(ni: Interpreter): Node =
   ## Get next node in the current block Activation.
-  let activation = ni.top
-  if activation.pos == activation.len:
+  if ni.endOfNode:
     raiseRuntimeException("End of current block, too few arguments")
   else:
-    result = activation.node[activation.pos]
-    inc activation.pos
+    result = ni.currentActivation.node[ni.currentActivation.pos]
+    inc(ni.currentActivation.pos)
+
+proc peek*(ni: Interpreter): Node =
+  ## Peek next node in the current block Activation.
+  ni.currentActivation.node[ni.currentActivation.pos]
+
+template isNextInfix(ni: Interpreter): bool =
+  not ni.endOfNode and ni.peek.infix 
 
 proc evalNext*(ni: Interpreter): Node =
   ## Evaluate the next node in the current block Activation.
-  ni.next.eval(ni)
+  ## We use a flag to know if we are going ahead to gobble an infix
+  ## so we only do it once. Otherwise prefix words will go right to left...
+  ni.last = ni.next.eval(ni)
+  if ni.nextInfix:
+    ni.nextInfix = false
+    return ni.last
+  if ni.isNextInfix:
+    ni.nextInfix = true
+    ni.last = ni.next.eval(ni)
+  return ni.last
 
-proc evalParen*(ni: Interpreter, node: Node): Node =
-  ## Evaluate all nodes in the paren, then return last
-  ni.stack.add(newActivation(node))
-  while not ni.endOfNode:
-    ni.args.add(ni.evalNext())
-  discard ni.stack.pop
-  result = ni.args.pop
-  ni.args = @[]
-
-proc eval(self: NimProc, ni: Interpreter): Node =
-  var args: seq[Node] = @[]
+proc evalNimProc(self: NimProc, ni: Interpreter): Node =
+  ## This code uses an array to avoid allocating a seq every time
+  var args: array[1..20, Node]
   if self.infix:
-    # If infix we pop the last one gathered
-    args.add(ni.args.pop)
-  # Pull remaining args to reach arity
-  for i in args.len .. self.arity-1:
-    args.add(ni.evalNext())
-  self.prok(ni, args)
+    # If infix we use the last one
+    args[1] = ni.last  
+    # Pull remaining args to reach arity
+    for i in 2 .. self.arity:
+      args[i] = ni.evalNext()
+  else:
+    # Pull remaining args to reach arity
+    for i in 1 .. self.arity:
+      args[i] = ni.evalNext()
+  return self.prok(ni, args)
 
 proc resolve(self: Node, ni: Interpreter) =
   ## Go through tree and do lookups of words, replacing with the binding.
@@ -559,20 +611,28 @@ proc bindBlock(ni: Interpreter, node: Node): Node =
   else:
     raiseRuntimeException("Can only bind blocks, not: " & $node)
 
+proc funcBlock(ni: Interpreter, node: Node): Node =
+  case node.kind
+  of niBlock:
+    return newValue(ni.bindBlock(node))
+  else:
+    raiseRuntimeException("Can only create functions from blocks, not: " & $node)
+
 proc evalBlock*(node: Node, ni: Interpreter): Node =
   debug("EVALBLOCK")
-  ## Let the interpreter do a given Block and return the result as a Node.
-  ni.stack.add(newActivation(node))
+  ## Let the interpreter eval Block and return the result as a Node.
+  ni.pushActivation(newActivation(node))
   while not ni.endOfNode:
-    ni.args.add(ni.evalNext())
-    debug("ARGS:" & $ni.args)
-  discard ni.stack.pop
-  result = ni.args.pop
+    discard ni.evalNext()
+  # TODO: Somewhere here we need to handle arity and infix peeking like
+  # in evalNimProc
+  ni.popActivation()
+  result = ni.last
   debug("POPRESULT: " & $result)
-  ni.args = @[]
+
 
 proc eval(self: Node, ni: Interpreter): Node =
-  ## This is the heart of the Interpreter
+  ## This is the heart dispatcher of the Interpreter
   case self.kind
   of niWord:
     let binding = ni.lookup(self.word)
@@ -590,7 +650,10 @@ proc eval(self: Node, ni: Interpreter): Node =
     return case self.value.kind
     of niProc:
       # NimProcs evaluate themselves
-      self.value.procVal.eval(ni)
+      self.value.procVal.evalNimProc(ni)
+    of niClosure:
+      # As do Closures
+      self.value.nodeVal.evalBlock(ni)
     else:
       # But other values do not
       self
@@ -599,7 +662,7 @@ proc eval(self: Node, ni: Interpreter): Node =
     return self
   of niParen:
     # Parens evaluate though
-    return ni.evalParen(self)
+    return self.evalBlock(ni)
   of niCurly:
     return self # TODO: Produce a Context I think...
   of niBinding:
@@ -630,10 +693,10 @@ proc newWordOrValue(self: Parser): Node =
     return newSymbolWord(token[1..^1])
   return newWord(token)
 
-proc top(self: Parser): Node =
+template top(self: Parser): Node =
   self.stack[self.stack.high]
 
-proc pop(self: Parser) =
+template pop(self: Parser) =
   discard self.stack.pop()
 
 proc push(self: Parser, n: Node) =

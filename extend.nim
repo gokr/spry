@@ -44,12 +44,12 @@ addParserExtension(extendParser)
 
 proc evalReduce(ni: Interpreter, node: Node): Node =
   ## Evaluate all nodes in the block and return a new block with all results
-  ni.stack.add(newActivation(node))
+  var collect = newSeq[Node]()
+  ni.pushActivation(newActivation(node))
   while not ni.endOfNode:
-    ni.args.add(ni.evalNext())
-  discard ni.stack.pop
-  result = newBlock(ni.args)
-  ni.args = @[]
+    collect.add(ni.evalNext())
+  ni.popActivation()
+  result = newBlock(collect)
 
 # This is a primitive we want to add
 proc primReduce*(ni: Interpreter, a: varargs[Node]): Node =
