@@ -84,9 +84,13 @@ when true:
   #assert(run("f: func [3 + 4] f") == "7")
   
   # Precedence and basic math
-  assert(run("5 - 3 + 1") == "3")
   assert(run("3 * 4") == "12")
+  assert(run("5 - 3 + 1") == "3") # Left to right
   assert(run("3 + 4 * 2") == "14") # Yeah
+  assert(run("3 + (4 * 2)") == "11") # Thank god
+  assert(run("3 / 2") == "1.5") # Goes to float
+  assert(run("3 / 2 * 1.2") == "1.8") # 
+  assert(run("3 + 3 * 1.5") == "9.0") # Goes to float
   
   # And we can nest also, since a block has its own Activation
   # Note that only last result of block is used so "1 + 7" is dead code
