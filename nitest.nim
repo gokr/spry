@@ -1,10 +1,10 @@
-import ni, extend
+import ni, niparser, extend
 
 # Some helpers for tests below
 proc show(code: string): string =
   result = $newParser().parse(code)
-  echo("RESULT:" & result)
-
+  echo("RESULT:" & $result)
+  
 proc run(code: string): string =
   result = $newInterpreter().eval(code)
   echo("RESULT:" & result)
@@ -24,7 +24,6 @@ blue""") == "[red green blue]")
 
   # The most trivial datatype, integer!
   assert(show("11") == "[11]")
-  assert(newParser().parse("11").nodes[0].kind == niValue)
   assert(show("+11") == "[11]")
   assert(show("-11") == "[-11]")
 
@@ -43,7 +42,6 @@ blue""") == "[red green blue]")
   
   assert(show(">") == "[>]")
   assert(show("10.30") == "[10.3]")
-  assert(newParser().parse("10.30").nodes[0].kind == niValue)
     
   # A real code Rebol code sample
   assert(show("""loop 10 [print "hello"]
@@ -70,21 +68,21 @@ when true:
 
   # A block is just a block, no evaluation
   assert(show("[3 + 4]") == "[[3 + 4]]")
-  assert(run("[3 + 4]") == "[3 %+:proc(2)% 4]")
 
   # But we can use do to evaluate it
   assert(show("do [3 + 4]") == "[do [3 + 4]]")
   assert(run("do [4 + 3]") == "7")
   
-  # Or we can bind it to resolve and get a closure
-  assert(run("bind [3 + 4]") == "[3 %+:proc(2)% 4]")
-  # But we need to use func to make a closure Value of it
-  assert(run("func [3 + 4]") == "closure([3 %+:proc(2)% 4])")
+  # Or we can resolve which binds words
+  assert(run("resolve [3 + 4]") == "[3 %+:proc-infix(2)% 4]")
+  # But we need to use func to make a closure from it
+  assert(run("func [3 + 4]") == "func(0)[3 %+:proc-infix(2)% 4]")
   # Which will evaluate
-  #assert(run("f: func [3 + 4] f") == "7")
+  assert(run("f: func [3 + 4] f") == "7")
   
   # Precedence and basic math
   assert(run("3 * 4") == "12")
+  assert(run("3 + 1.5") == "4.5")
   assert(run("5 - 3 + 1") == "3") # Left to right
   assert(run("3 + 4 * 2") == "14") # Yeah
   assert(run("3 + (4 * 2)") == "11") # Thank god
@@ -139,7 +137,6 @@ when true:
 
 when true:
   # Demonstrate extension from extend.nim
-  assert(newParser().parse("'''abc'''").nodes[0].kind == niValue)
   assert(show("'''abc'''") == "[\"abc\"]")
   assert(run("reduce [1 + 2 3 + 4]") == "[3 7]")
   

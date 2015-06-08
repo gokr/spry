@@ -1,4 +1,4 @@
-import ni
+import ni, niparser
 # Example extending Ni with multiline string literal similar to Nim but using
 # triple single quotes ''' ... ''' and no skipping whitespace/newline after
 # the first delimiter. Its just an example, adding support for """ was harder
@@ -42,22 +42,24 @@ addParserExtension(extendParser)
 # Extending the Interpreter with a Nim primitive word
 #######################################################################
 
-proc evalReduce(ni: Interpreter, node: Node): Node =
+method evalReduce(self: Composite, ni: Interpreter): Node =
   ## Evaluate all nodes in the block and return a new block with all results
   var collect = newSeq[Node]()
-  ni.pushActivation(newActivation(node))
+  ni.pushActivation(newActivation(self))
   while not ni.endOfNode:
     collect.add(ni.evalNext())
   ni.popActivation()
-  result = newBlock(collect)
+  result = newBlok(collect)
 
-# This is a primitive we want to add
+# This is a primitive we want to add, like primDo but calling proc above
 proc primReduce*(ni: Interpreter, a: varargs[Node]): Node =
-  ni.evalReduce(a[0])
+  let comp = Composite(a[0])
+  discard ni.resolveComposite(comp)
+  comp.evalReduce(ni)
 
 # This proc does the work extending an Interpreter instance
 proc extendInterpreter(ni: Interpreter) {.procvar.} =
-  discard ni.root.bindit("reduce", newPrim(primReduce, false, 1))
+  discard ni.root.bindit("reduce", newNimProc(primReduce, false, 1))
   
 ## Register our extension proc in Ni so it gets called
 addInterpreterExtension(extendInterpreter)
