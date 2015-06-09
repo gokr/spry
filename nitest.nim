@@ -74,9 +74,9 @@ when true:
   assert(run("do [4 + 3]") == "7")
   
   # Or we can resolve which binds words
-  assert(run("resolve [3 + 4]") == "[3 %+:proc-infix(2)% 4]")
+  assert(run("resolve [3 + 4]") == "[3 + 4]") # "[3 %+:proc-infix(2)% 4]")
   # But we need to use func to make a closure from it
-  assert(run("func [3 + 4]") == "func(0)[3 %+:proc-infix(2)% 4]")
+  assert(run("func [3 + 4]") == "[3 + 4]") #"func(0)[3 %+:proc-infix(2)% 4]")
   # Which will evaluate
   assert(run("f: func [3 + 4] f") == "7")
   

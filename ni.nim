@@ -59,6 +59,7 @@ proc addInterpreterExtension*(prok: InterpreterExt) =
 
 # Forward declarations
 proc compile*(ni: Interpreter, self: Blok): Node
+method resolveComposite*(self: Composite, ni: Interpreter): Node
 method resolve*(self: Node, ni: Interpreter): Node
 method eval*(self: Node, ni: Interpreter): Node
 method evalDo*(self: Node, ni: Interpreter): Node
@@ -72,18 +73,26 @@ method `$`*(self: NimProc): string =
   return result & "(" & $self.arity & ")"
 
 method `$`*(self: Funk): string =
-  if self.infix:
-    result = "func-infix"
+  when false:
+    if self.infix:
+      result = "func-infix"
+    else:
+      result = "func"
+    return result & "(" & $self.arity & ")" & "[" & $self.blok.nodes & "]"
   else:
-    result = "func"
-  return result & "(" & $self.arity & ")" & "[" & $self.blok.nodes & "]"
+    return "[" & $self.blok.nodes & "]"
 
 method `$`*(self: GetBinding): string =
-  "%" & $self.binding & "%"
+  when false:
+    "%" & $self.binding & "%"
+  else:
+    $self.binding.key
 
 method `$`*(self: SetBinding): string =
-  ":%" & $self.binding & "%"
-
+  when false:
+    ":%" & $self.binding & "%"
+  else:
+    ":" & $self.binding.val
 
 # Constructor procs
 proc raiseRuntimeException*(msg: string) =
@@ -109,7 +118,7 @@ proc newActivation*(comp: Composite): Activation =
 
 method resolveComposite*(ni: Interpreter, self: Composite): Node =
   if not self.resolved:
-    discard self.resolve(ni)
+    discard self.resolveComposite(ni)
     self.resolved = true
   return self
 
@@ -380,7 +389,7 @@ method resolve(self: SetWord, ni: Interpreter): Node =
   if hit.notNil:
     return newSetBinding(hit)
 
-method resolve(self: Composite, ni: Interpreter): Node =
+method resolveComposite(self: Composite, ni: Interpreter): Node =
   ## Go through tree and do lookups of words, replacing with the binding.
   for pos,child in mpairs(self.nodes):
     let binding = child.resolve(ni) # Recurse
