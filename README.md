@@ -17,18 +17,19 @@ implementor. :)
  Later on more and more of Ni will reflect so they will probably end up being
  set up in Ni, as well as implementable in Ni.
 
-* Fundamental values now are: nil, int64, float64, string, bool
+* Fundamental values now are: nil, int, float, string, bool
 
 * true, false and nil are singleton nodes in the Interpreter
 
-* The Parser is a very simple recursive descent parser using the normal Nim
- object variant for the AST Nodes. Before parsing words and blocks it tries
- to parse using all registered value parsers in order.
+* The Parser is a very simple recursive descent parser using objects for
+ AST Nodes. Before parsing words and blocks it tries to parse using all
+ registered value parsers in order. This makes it very easy to add literals.
 
-* Curly braces are not used for multiline string literals. Instead they are
- meant to create Contexts (similar to a Nim object).
+* Curly braces are not used for multiline string literals. Exactly what to use
+  them for I am undecided.
 
-* There is only one style of function and its a closure.
+* There are two kinds of functions, builtins in Nim or funcs created from blocks
+  in Rebol style, that are closures.
 
 * Comments use # instead of ;
 
@@ -36,11 +37,9 @@ implementor. :)
 
 
 A "block Node" is the AST Node representing a block. It just has a seq[Node]
-and is "just data". But using bind we can turn it into an executable
-BlockClosure:
+and is "simply data". But using the func word we can turn it into an executable
+function.
 
-First time we do a block Node, we lazily bind. bind calls resolve on the
-block node so that words are resolved to bindings. Then bind creates a
-BlockClosure wrapping the block Node with a Context.
+Resolving is currently done lazily the first time a block is used as code.
 
-See primDo, primResolve, primClosure.
+For example snippets, see nitest.nim.
