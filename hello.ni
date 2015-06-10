@@ -1,0 +1,3 @@
+#!./ni
+echo "Hello World"
+
