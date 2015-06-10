@@ -45,6 +45,7 @@ type
 
   Composite* = ref object of Node
     nodes*: seq[Node]
+    pos*: int
     resolved*: bool
   Paren* = ref object of Composite
   Blok* = ref object of Composite

@@ -76,9 +76,9 @@ when true:
   # Or we can resolve which binds words
   assert(run("resolve [3 + 4]") == "[3 + 4]") # "[3 %+:proc-infix(2)% 4]")
   # But we need to use func to make a closure from it
-  assert(run("func [3 + 4]") == "[3 + 4]") #"func(0)[3 %+:proc-infix(2)% 4]")
+  assert(run("func [] [3 + 4]") == "[[] [3 + 4]]") #"func(0)[3 %+:proc-infix(2)% 4]")
   # Which will evaluate
-  assert(run("f: func [3 + 4] f") == "7")
+  assert(run("f: func [] [3 + 4] f") == "7")
   
   # Precedence and basic math
   assert(run("3 * 4") == "12")
@@ -112,6 +112,26 @@ when true:
   assert(run("3 < 4") == "true")
   assert(run("3 > 4") == "false")
 
+  # Block indexing and positioning
+  assert(run("[3 4] len") == "2")
+  assert(run("[] len") == "0")
+  assert(run("[3 4] first") == "3")
+  assert(run("[3 4] second") == "4")
+  assert(run("[3 4] last") == "4")
+  assert(run("[3 4] at 0") == "3")
+  assert(run("[3 4] at 1") == "4")
+  assert(run("[3 4] at 1") == "4")
+  assert(run("[3 4] put 0 5") == "[5 4]")
+  assert(run("x: [3 4] x put 1 5 x") == "[3 5]")
+  assert(run("x: [3 4] x read") == "3")
+  assert(run("x: [3 4] x setpos 1 x read") == "4")
+  assert(run("x: [3 4] x setpos 1 x reset x read") == "3")
+  assert(run("x: [3 4] x next") == "3")
+  assert(run("x: [3 4] x next x next") == "4")
+  assert(run("x: [3 4] x pos") == "0")
+  assert(run("x: [3 4] x next x pos") == "1")
+  assert(run("x: [3 4] x write 5") == "[5 4]")
+  
   # if and ifelse and echo
   assert(run("x: true if x [true]") == "true")
   assert(run("x: false if x [true]") == "nil")
@@ -119,12 +139,19 @@ when true:
   assert(run("if 3 > 4 [\"yay\"]") == "nil")
   assert(run("ifelse 3 > 4 [\"yay\"] ['ok]") == "'ok")
   
+  # func
+  assert(run("z: func [] [3 + 4] z") == "7")
+  assert(run("x: func [] [3 + 4] :x") == "[[] [3 + 4]]")
+  assert(run("x: func [] [3 + 4] 'x") == "'x")
+  assert(run("x: func [] [3 + 4] :x second write 5 x") == "9")
+  
+  
   # Factorial using a global n and f. Note that this recursive block causes
   # $ to fail in debugging since string representation never ends :)
   assert(run("""
   n: 12
   f: 1
-  factorial: func [ifelse n > 1 [
+  factorial: func [] [ifelse n > 1 [
     f: f * n
     n: n - 1
     factorial]
