@@ -406,6 +406,23 @@ proc newInterpreter*(): Interpreter =
   discard root.bindit("/", newNimProc(primDiv, true, 2))
   discard root.bindit("<", newNimProc(primLt, true, 2))
   discard root.bindit(">", newNimProc(primGt, true, 2))
+  
+  # Booleans
+  discard root.bindit("not", newNimProc(
+    proc (ni: Interpreter, a: varargs[Node]): Node =
+      newValue(not BoolVal(a[0]).value), false, 1))
+  discard root.bindit("and", newNimProc(
+    proc (ni: Interpreter, a: varargs[Node]): Node =
+      newValue(BoolVal(a[0]).value and BoolVal(a[1]).value), true, 2))  
+  discard root.bindit("or", newNimProc(
+    proc (ni: Interpreter, a: varargs[Node]): Node =
+      newValue(BoolVal(a[0]).value or BoolVal(a[1]).value), true, 2))
+  
+  # Strings
+  discard root.bindit("&", newNimProc(
+    proc (ni: Interpreter, a: varargs[Node]): Node =
+      newValue(StringVal(a[0]).value & StringVal(a[1]).value), true, 2))  
+  
   # Basic blocks
   #discard root.bindit("head", newNimProc(primHead, true, 2)) # Collides with Lisp
   #discard root.bindit("tail", newNimProc(primTail, true, 2)) # Collides with Lisp
@@ -446,11 +463,22 @@ proc newInterpreter*(): Interpreter =
   discard root.bindit("resolve", newNimProc(primResolve, false, 1))
   discard root.bindit("do", newNimProc(primDo, false, 1))
   discard root.bindit("parse", newNimProc(primParse, false, 1))
+
+  # IO
   discard root.bindit("echo", newNimProc(primEcho, false, 1))
+
+  # Control structures
   discard root.bindit("if", newNimProc(primIf, false, 2))
   discard root.bindit("ifelse", newNimProc(primIfelse, false, 3))
   discard root.bindit("loop", newNimProc(primLoop, false, 2))
+
+  # Debugging
   discard root.bindit("dump", newNimProc(primDump, false, 1))
+  
+  # Some scripting prims
+  discard root.bindit("quit", newNimProc(
+    proc (ni: Interpreter, a: varargs[Node]): Node =
+      quit(IntVal(a[0]).value), false, 1)) 
   
   result.pushActivation(newRootActivation(root))
   # Call registered extension procs

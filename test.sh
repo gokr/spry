@@ -1,4 +1,4 @@
-nim c -d:release nitest
+nim c nitest
 ./nitest
 if [ $? -ne 0 ]; then
   echo "TEST FAILED"

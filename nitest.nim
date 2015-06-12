@@ -96,6 +96,7 @@ when true:
 
   # Strings
   assert(run("\"ab[c\"") == "\"ab[c\"")
+  assert(run("\"ab\" & \"cd\"") == "\"abcd\"")
 
   # Set and get globals
   assert(run("x: 4 5 + x") == "9")
@@ -108,9 +109,18 @@ when true:
 
   # Boolean
   assert(run("true") == "true")
+  assert(run("not true") == "false")
   assert(run("false") == "false")
+  assert(run("not false") == "true")
   assert(run("3 < 4") == "true")
   assert(run("3 > 4") == "false")
+  assert(run("not 3 > 4") == "true")
+  assert(run("false or false") == "false")
+  assert(run("true or false") == "true")
+  assert(run("false or true") == "true")
+  assert(run("3 > 4 or 3 < 4") == "true")
+  assert(run("3 > 4 and 3 < 4") == "false")
+  assert(run("7 > 4 and 3 < 4") == "true")
 
   # Block indexing and positioning
   assert(run("[3 4] len") == "2")
@@ -183,6 +193,5 @@ when true:
 when true:
   # Demonstrate extension from extend.nim
   assert(show("'''abc'''") == "[\"abc\"]")
-  assert(run("reduce [1 + 2 3 + 4]") == "[3 7]")
-  
+  assert(run("reduce [1 + 2 3 + 4]") == "[3 7]")  
   
