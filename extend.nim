@@ -45,7 +45,7 @@ addParserExtension(extendParser)
 method evalReduce(self: Composite, ni: Interpreter): Node =
   ## Evaluate all nodes in the block and return a new block with all results
   var collect = newSeq[Node]()
-  ni.pushActivation(newActivation(self))
+  ni.pushActivation(newActivation(Blok(self)))
   while not ni.endOfNode:
     collect.add(ni.evalNext())
   ni.popActivation()

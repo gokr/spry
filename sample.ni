@@ -89,7 +89,7 @@ echo do myblock 	# Prints 9
 echo foo                # Prints 9 too, since.. you know, foo is a func of myblock
 
 
-# Fetch func, pick out body, put in "20" at position 0 so that
+# Fetch func, pick out body, put in "20" at position 2 so that
 # it now reads [foo + 20]
 :combo second put 2 20
 echo :combo

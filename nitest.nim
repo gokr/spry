@@ -99,7 +99,7 @@ when true:
 
   # Set and get globals
   assert(run("x: 4 5 + x") == "9")
-  assert(run("x: 4 do [y: (x + 3)] y + x") == "11")
+  assert(run("x: 4 k: do [y: x + 3 y] k + x") == "11")
   assert(run("x: 1 do [x: (x + 1)] x") == "2")
 
   # Use parse word
@@ -145,6 +145,19 @@ when true:
   assert(run("x: func [] [3 + 4] 'x") == "'x")
   assert(run("x: func [] [3 + 4] :x second write 5 x") == "9")
   
+  # func args
+  assert(run("x: func [a] [a] x 5") == "5")
+  assert(run("x: func [a b] [b] x 5 4") == "4")
+  assert(run("x: func [a b] [a + b] x 5 4") == "9")
+  assert(run("z: 15 x: func [a b] [a + b + z] x 1 2") == "18")
+
+  # func infix works too, and with 3 or more arguments too...
+  assert(run("xx: func-infix [a b] [a + b + b] 5 xx 4 xx 2") == "17") # 5+4+4 + 2+2
+  assert(run("pick2add: func-infix [block b c] [ block at b + (block at c)] [1 2 3] pick2add 0 2") == "4") # 1+3
+  
+  # TODO: func closures, this test currently fails! The second call to c overwrites the closed a value.
+  # I think this is because our bindings are made destructively into the bodies without cloning them.
+  #assert(run("c: func [a] [func [b] [a + b]] d: c 1 e: c 2 reduce [d 1 d 2 e 1 e 2]") == "[2 3 3 4]")
   
   # Factorial using a global n and f. Note that this recursive block causes
   # $ to fail in debugging since string representation never ends :)
@@ -162,6 +175,11 @@ when true:
   factorial
   """) == "479001600")
 
+  # Ok, but now we can do arguments so...
+  assert(run("""
+  factorial: func [n] [ifelse n > 0 [n * factorial (n - 1)] [1]]
+  factorial 12
+  """) == "479001600")
 when true:
   # Demonstrate extension from extend.nim
   assert(show("'''abc'''") == "[\"abc\"]")
