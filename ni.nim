@@ -347,6 +347,9 @@ proc primLast(ni: Interpreter, a: varargs[Node]): Node =
 proc primDo(ni: Interpreter, a: varargs[Node]): Node =
   ni.resolveComposite(Composite(a[0])).evalDo(ni)
 
+proc primEval(ni: Interpreter, a: varargs[Node]): Node =
+  Composite(a[0]).evalDo(ni)
+
 proc primFunk(ni: Interpreter, a: varargs[Node]): Node =
   ni.funk(Blok(a[0]), Blok(a[1]), false)
 
@@ -462,6 +465,7 @@ proc newInterpreter*(): Interpreter =
   discard root.bindit("func-infix", newNimProc(primFunkInfix, false, 2))
   discard root.bindit("resolve", newNimProc(primResolve, false, 1))
   discard root.bindit("do", newNimProc(primDo, false, 1))
+  discard root.bindit("eval", newNimProc(primEval, false, 1))
   discard root.bindit("parse", newNimProc(primParse, false, 1))
 
   # IO
@@ -473,7 +477,7 @@ proc newInterpreter*(): Interpreter =
   discard root.bindit("loop", newNimProc(primLoop, false, 2))
 
   # Debugging
-  discard root.bindit("dump", newNimProc(primDump, false, 1))
+  discard root.bindit("dump", newNimProc(primDump, false, 0))
   
   # Some scripting prims
   discard root.bindit("quit", newNimProc(
@@ -725,10 +729,8 @@ method eval(self: SetBinding, ni: Interpreter): Node =
   result = ni.evalNext()
   self.binding.val = result
 
-
 proc eval*(ni: Interpreter, code: string): Node =
   ni.primDo(newParser().parse(code))
-
 
 when isMainModule:
   # Just run a given file as argument, the hash-bang trick works also
