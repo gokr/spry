@@ -383,6 +383,7 @@ proc pushActivation*(ni: Interpreter, activation: Activation)  {.inline.} =
   activation.parent = ni.currentActivation
   ni.currentActivation = activation
   ni.currentActivationLen = activation.len
+  ni.last = nil
 
 proc popActivation*(ni: Interpreter)  {.inline.} =
   ni.currentActivation = ni.currentActivation.parent
