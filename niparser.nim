@@ -31,6 +31,7 @@ type
   SetWord* = ref object of Word
   GetWord* = ref object of Word
   LitWord* = ref object of Word
+  ArgWord* = ref object of Word
   
   Value* = ref object of Node
   IntVal* = ref object of Value
@@ -124,6 +125,9 @@ method `$`*(self: GetWord): string =
 method `$`*(self: LitWord): string =
   "'" & self.word
 
+method `$`*(self: ArgWord): string =
+  ">" & self.word
+
 method `$`*(self: Blok): string =
   "[" & $self.nodes & "]"
 
@@ -164,6 +168,9 @@ proc newGetWord*(s: string): GetWord =
 
 proc newLitWord*(s: string): LitWord =
   LitWord(word: s)
+
+proc newArgWord*(s: string): ArgWord =
+  ArgWord(word: s)
 
 proc newBlok*(nodes: seq[Node]): Blok =
   Blok(nodes: nodes)
@@ -266,12 +273,21 @@ proc newWordOrValue(self: Parser): Node =
       return valueOrNil
 
   # Then it must be a word
+  
+  # All get words start with ":"
   if token[0] == ':':
     return newGetWord(token[1..^1])
+  # Or a set word
   if token[^1] == ':':
     return newSetWord(token[0..^2])
+  # Or a literal word
   if token[0] == '\'':
     return newLitWord(token[1..^1])
+  # An arg word (unique for Ni) starts with ">" but must
+  # then be followed by at least 1 letter. So ">>" or ">" is not an arg word
+  # but ">a" or ">p1" is.
+  if token[0] == '>' and token.len > 1 and token[1] in Letters:
+    return newArgWord(token[1..^1])
   return newWord(token)
 
 template top(self: Parser): Node =
