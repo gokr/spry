@@ -16,11 +16,12 @@ proc main() =
   # Let's create a Ni interpreter. It also holds all state.
   let ni = newInterpreter()
   var
-    lines, stashed = newSeq[string]()
-    fileLines = newSeq[string]()
+    lines, stashed, fileLines = newSeq[string]()
     suspended: bool = true
  
-  # Check if a file was given as input
+  # Check if a file was given as input, if so collect lines
+  # and set suspended = false which means we start out following the given
+  # script instead of interactively.
   if commandLineParams().len > 0:
     let fn = commandLineParams()[0]
     if fn.len() > 0:
@@ -28,7 +29,8 @@ proc main() =
       for line in lines(fn):
         fileLines.add(line)
 
-  echo "Welcome to Ni! Enter code, an empty line will evaluate previous lines"
+  echo "We are the knights who say... Ni! Enter shrubbary... eh, code and"
+  echo "an empty line will evaluate previous lines, so hit enter twice."
   # We collect lines until an empty line is entered, easy way to enter
   # multiline code.
 
@@ -40,8 +42,10 @@ proc main() =
       if fileLines.len == 0:
         echo "Good bye"
         quit 0
+      # Read a line, eh, would be nice with removeFirst or popFirst...
       line = fileLines[0]
       fileLines.delete(0)
+      # Logic for pausing
       if line.strip() == "# pause":
         stdout.write("         <Hit enter to eval or s = suspend>")
         var enter = stdin.readLine()
@@ -53,12 +57,14 @@ proc main() =
         continue
       else:
         stdout.write(line & "\n")
-    
+
+    # Logic to start the script again    
     if suspended and line.strip() == "c":
       lines = stashed
       suspended = false
       continue
-      
+    
+    # Finally time to eval
     if line.strip().len() == 0:
       let code = lines.join("\n")
       lines = newSeq[string]()
