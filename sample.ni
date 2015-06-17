@@ -43,10 +43,10 @@ echo myblock
 echo do myblock
 
 # But we can also turn a block into a function using the "func" function.
-# Func takes two blocks as arguments, a spec and a body.
-# A function without arguments would use an empty block as spec.
+# Func takes a block as argument and turns it into a closure.
+# Arguments are pulled using so called ArgWords, ">a".
 # Let's turn myblock into a function and assign it to "foo".
-foo: func [] myblock
+foo: func myblock
 
 # Now we can run it just with "foo" because a function will run
 # when we evaluate it. It should print "7".
@@ -56,14 +56,14 @@ echo foo
 # Currently parse will put whatever it parses into a block
 # so we don't need "[]" inside the string. The bar func we create
 # below is equivalent to foo.
-bar: func [] parse "3 + 4"
+bar: func parse "3 + 4"
 
 # So this should also print "7"
 echo bar
 
 # The fact that Ni code is just blocks means we can compose and manipulate
 # code just as data. First let's make a func calling our previous funcs.
-combo: func [] [foo + bar]
+combo: func [foo + bar]
 
 # It should print "14"
 echo combo
@@ -71,7 +71,7 @@ echo combo
 # Now let's manipulate the combo func. It is actually a block containing
 # the spec and body block. To get the func itself and not what it evaluates
 # to we can use a get-word, which is the word with a ":" prefix.
-# This should thus print the combo func itself: "[[] [foo + bar]]"
+# This should thus print the combo func itself: "[[foo + bar]]"
 echo :combo
 
 # So... blocks are collections
@@ -91,7 +91,7 @@ echo foo                # Prints 9 too, since.. you know, foo is a func of myblo
 
 # Fetch func, pick out body, put in "20" at position 2 so that
 # it now reads [foo + 20]
-:combo second put 2 20
+:combo first put 2 20
 echo :combo
 
 # Should print 27....nah, 29!
