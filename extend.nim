@@ -46,7 +46,7 @@ method evalReduce(self: Composite, ni: Interpreter): Node =
   ## Evaluate all nodes in the block and return a new block with all results
   var collect = newSeq[Node]()
   ni.pushActivation(newActivation(Blok(self)))
-  while not ni.endOfNode:
+  while not ni.atEnd:
     collect.add(ni.evalNext())
   ni.popActivation()
   result = newBlok(collect)
@@ -65,4 +65,7 @@ proc extendInterpreter(ni: Interpreter) {.procvar.} =
 addInterpreterExtension(extendInterpreter)
 
 
+#######################################################################
+# Extending the Interpreter with a Nim primitive word
+#######################################################################
 

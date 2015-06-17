@@ -77,11 +77,11 @@ when true:
   assert(run("do [4 + 3]") == "7")
   
   # Or we can resolve which binds words
-  assert(run("resolve [3 + 4]") == "[3 + 4]") # "[3 %+:proc-infix(2)% 4]")
+  assert(run("resolve [3 + 4]") == "[3 + 4]")
   # But we need to use func to make a closure from it
-  assert(run("func [] [3 + 4]") == "[[] [3 + 4]]") #"func(0)[3 %+:proc-infix(2)% 4]")
+  assert(run("func [3 + 4]") == "[[3 + 4]]")
   # Which will evaluate
-  assert(run("f: func [] [3 + 4] f") == "7")
+  assert(run("f: func [3 + 4] f") == "7")
   
   # Precedence and basic math
   assert(run("3 * 4") == "12")
@@ -153,20 +153,24 @@ when true:
   assert(run("ifelse 3 > 4 [\"yay\"] ['ok]") == "'ok")
   
   # func
-  assert(run("z: func [] [3 + 4] z") == "7")
-  assert(run("x: func [] [3 + 4] :x") == "[[] [3 + 4]]")
-  assert(run("x: func [] [3 + 4] 'x") == "'x")
-  assert(run("x: func [] [3 + 4] :x second write 5 x") == "9")
+  assert(run("z: func [3 + 4] z") == "7")
+  assert(run("x: func [3 + 4] :x") == "[[3 + 4]]")
+  assert(run("x: func [3 + 4] 'x") == "'x")
+  assert(run("x: func [3 + 4] :x first write 5 x") == "9")
   
   # func args
-  assert(run("x: func [a] [a] x 5") == "5")
-  assert(run("x: func [a b] [b] x 5 4") == "4")
-  assert(run("x: func [a b] [a + b] x 5 4") == "9")
-  assert(run("z: 15 x: func [a b] [a + b + z] x 1 2") == "18")
+  assert(run("x: func [>a a + 1] x 5") == "6")
+  assert(run("x: func [>a + 1] x 5") == "6") # Slicker than the above!
+  assert(run("x: func [>a >b b] x 5 4") == "4")
+  assert(run("x: func [>a >b a + b] x 5 4") == "9")
+  assert(run("x: func [>a + >b] x 5 4") == "9") # Again, slicker
+  assert(run("z: 15 x: func [>a >b a + b + z] x 1 2") == "18")
+  assert(run("z: 15 x: func [>a + >b + z] x 1 2") == "18") # Slick indeed
 
   # func infix works too, and with 3 or more arguments too...
-  assert(run("xx: funci [a b] [a + b + b] 5 xx 4 xx 2") == "17") # 5+4+4 + 2+2
-  assert(run("pick2add: funci [block b c] [ block at b + (block at c)] [1 2 3] pick2add 0 2") == "4") # 1+3
+  assert(run("xx: funci [>a >b a + b + b] 5 xx 4 xx 2") == "17") # 5+4+4 + 2+2
+  assert(run("xx: funci [>a + >b + b] 5 xx 4 xx 2") == "17") # 5+4+4 + 2+2
+  assert(run("pick2add: funci [>block >b >c block at b + (block at c)] [1 2 3] pick2add 0 2") == "4") # 1+3
   
   # TODO: func closures, this test currently fails! The second call to c overwrites the closed a value.
   # I think this is because our bindings are made destructively into the bodies without cloning them.
@@ -177,7 +181,7 @@ when true:
   assert(run("""
   n: 12
   f: 1
-  factorial: func [] [ifelse n > 1 [
+  factorial: func [ifelse n > 1 [
     f: f * n
     n: n - 1
     factorial]
@@ -190,7 +194,7 @@ when true:
 
   # Ok, but now we can do arguments so...
   assert(run("""
-  factorial: func [n] [ifelse n > 0 [n * factorial (n - 1)] [1]]
+  factorial: func [>n ifelse n > 0 [n * factorial (n - 1)] [1]]
   factorial 12
   """) == "479001600")
 when true:

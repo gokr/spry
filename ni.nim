@@ -2,7 +2,12 @@
 #
 # Copyright (c) 2015 Göran Krampe
 
-## TODO: Move to slimmer func syntax with new word formats using > ->
+## TODO: Fix closures, perhaps move to cloning funcs as activation records as Self does
+## TODO: Add mold and fix string representation vs mold representation
+## TODO: Rewrite sample as tutorial1 and make it complete
+## TODO: Add some funky stuff like compose
+## TODO: Add objects and delegation
+## TODO: Implement load save of the world
 
 import strutils, sequtils, tables, nimprof, typetraits
 import niparser
@@ -10,10 +15,7 @@ import niparser
 type
   # Ni interpreter
   Interpreter* = ref object
-    last*: Node                     # Remember for infix
-    nextInfix*: bool                # Remember we are gobbling
     currentActivation*: Activation  # Execution spaghetti stack
-    currentActivationLen*: int
     root*: Context                  # Root bindings
     trueVal: Node
     falseVal: Node
@@ -43,6 +45,9 @@ type
   # This is a so called Spaghetti Stack with only a parent pointer so that they
   # can get garbage collected if not referenced by any other record anymore.
   Activation* = ref object of RootObj
+    last*: Node                     # Remember for infix
+    nextInfix*: bool                # Remember we are gobbling
+    infixArg*: Node                 # Temporary holding
     parent*: Activation
     pos*: int          # Which node we are at
     body*: Composite   # The composite representing code (Blok, Paren, Funk body)
@@ -63,7 +68,7 @@ proc addInterpreterExtension*(prok: InterpreterExt) =
   interpreterExts.add(prok)
 
 # Forward declarations
-proc funk*(ni: Interpreter, spec, body: Blok, infix: bool): Node
+proc funk*(ni: Interpreter, body: Blok, infix: bool): Node
 method resolveComposite*(self: Composite, ni: Interpreter): Node
 method resolve*(self: Node, ni: Interpreter): Node
 method eval*(self: Node, ni: Interpreter): Node
@@ -113,14 +118,8 @@ proc len(self: Activation): int =
   self.body.nodes.len
 
 # Funk stuff
-proc spec(self: Funk): Blok =
-  Blok(self[0])
-
 proc body(self: Funk): Blok =
-  Blok(self[1])
-
-proc arity(self: Funk): int =
-  self.spec.nodes.len
+  Blok(self[0])
 
 # Constructor procs
 proc raiseRuntimeException*(msg: string) =
@@ -129,9 +128,8 @@ proc raiseRuntimeException*(msg: string) =
 proc newNimProc*(prok: ProcType, infix: bool, arity: int): NimProc =
   NimProc(prok: prok, infix: infix, arity: arity)
 
-proc newFunk*(spec: Blok, body: Blok, infix: bool, parent: Activation): Funk =
+proc newFunk*(body: Blok, infix: bool, parent: Activation): Funk =
   var nodes: seq[Node] = @[]
-  nodes.add(spec)
   nodes.add(body)
   Funk(nodes: nodes, infix: infix, parent: parent)
 
@@ -144,17 +142,8 @@ proc newSetBinding*(b: Binding): SetBinding =
 proc newRootActivation(root: Context): Activation =
   RootActivation(body: newBlok(), context: root)
 
-proc newActivation*(funk: Funk, args: openarray[Node]): Activation =
-  var cont: Context
-  # Skipping newContext if no arguments
-  if funk.arity > 0:
-    cont = newContext()
-    # Bind arguments into the activation context
-    let spec = funk.spec
-    for i,param in pairs(args):
-#      echo "BINDING ARGUMENT: " & Word(spec[i]).word & " = " & $param 
-      discard cont.bindit(Word(spec[i]).word, param)
-  FunkActivation(funk: funk, body: funk.body, context: cont)
+proc newActivation*(funk: Funk): Activation =
+  FunkActivation(funk: funk, body: funk.body)
 
 proc newActivation*(body: Blok): Activation =
   BlokActivation(body: body)
@@ -287,26 +276,16 @@ method `>`(a,b: FloatVal): Node {.inline.} =
 method `>`(a,b: StringVal): Node {.inline.} =
   newValue(a.value > b.value)
 
-
 proc `[]`(a: Composite, b: IntVal): Node {.inline.} =
   a[b.value]
-#proc `[]=`(a: Composite, b: IntVal, c: Node): Node {.inline.} =
-#  a[b.value] = c
-
-
 
 proc pushActivation*(ni: Interpreter, activation: Activation)  {.inline.} =
   activation.parent = ni.currentActivation
   ni.currentActivation = activation
-  ni.currentActivationLen = activation.len
-  ni.last = nil
+  ni.currentActivation.last = nil
 
 proc popActivation*(ni: Interpreter)  {.inline.} =
   ni.currentActivation = ni.currentActivation.parent
-  if ni.currentActivation.notNil:
-    ni.currentActivationLen = ni.currentActivation.len
-  else:
-    ni.currentActivationLen = 0
 
 # A template reducing boilerplate for registering nim primitives
 template nimPrim(name: string, infix: bool, arity: int, body: stmt): stmt {.immediate, dirty.} =
@@ -391,8 +370,8 @@ proc newInterpreter*(): Interpreter =
     
   
   #discard root.bindit("bind", newNimProc(primBind, false, 1))
-  nimPrim("func", false, 2):    ni.funk(Blok(a[0]), Blok(a[1]), false)
-  nimPrim("funci", false, 2):   ni.funk(Blok(a[0]), Blok(a[1]), true)
+  nimPrim("func", false, 1):    ni.funk(Blok(a[0]), false)
+  nimPrim("funci", false, 1):   ni.funk(Blok(a[0]), true)
   nimPrim("resolve", false, 1): ni.resolveComposite(Composite(a[0]))
   nimPrim("do", false, 1):      ni.resolveComposite(Composite(a[0])).evalDo(ni)
   nimPrim("eval", false, 1):    Composite(a[0]).evalDo(ni)
@@ -454,7 +433,6 @@ method bindit(self: BlokActivation, key: string, val: Node): Binding =
     self.context = newContext()
   return self.context.bindit(key, val)
 
-
 proc lookup(ni: Interpreter, key: string): Binding =
   #ni.dump()
   #debug "LOOKUP OF: " & key
@@ -483,38 +461,42 @@ method infix(self: NimProc): bool =
 method infix(self: GetBinding): bool =
   self.binding.val.infix
 
+proc atEnd(self: Activation): bool {.inline.} =
+  self.pos == self.len
 
-proc endOfNode*(ni: Interpreter): bool {.inline.} =
-  ni.currentActivation.pos == ni.currentActivationLen
-
-proc next*(ni: Interpreter): Node  {.inline.} =
-  ## Get next node in the current block Activation.
-  if ni.endOfNode:
-    raiseRuntimeException("End of current block, too few arguments")
+proc next*(self: Activation): Node {.inline.} =
+  if self.atEnd:
+    raiseRuntimeException("End of current block, too few arguments?")
   else:
-    result = ni.currentActivation[ni.currentActivation.pos]
-    inc(ni.currentActivation.pos)
+    result = self[self.pos]
+    inc(self.pos)
 
-proc peek*(ni: Interpreter): Node =
+proc peek*(self: Activation): Node {.inline.} =
   ## Peek next node in the current block Activation.
-  ni.currentActivation[ni.currentActivation.pos]
+  self[self.pos]
 
-proc isNextInfix(ni: Interpreter): bool =
-  not ni.endOfNode and ni.peek.infix 
+proc isNextInfix*(self: Activation): bool {.inline.} =
+  not self.atEnd and self.peek.infix 
+
+proc evalNext*(self: Activation, ni: Interpreter): Node {.inline.} =
+  ## Evaluate the next node in this Activation.
+  ## We use a flag to know if we are going ahead to gobble an infix
+  ## so we only do it once. Otherwise prefix words will go right to left...
+  self.last = self.next.eval(ni)
+  if self.nextInfix:
+    self.nextInfix = false
+    return self.last
+  if self.isNextInfix:
+    self.nextInfix = true
+    self.last = self.next.eval(ni)
+  return self.last
 
 proc evalNext*(ni: Interpreter): Node =
   ## Evaluate the next node in the current block Activation.
-  ## We use a flag to know if we are going ahead to gobble an infix
-  ## so we only do it once. Otherwise prefix words will go right to left...
-  ni.last = ni.next.eval(ni)
-  if ni.nextInfix:
-    ni.nextInfix = false
-    return ni.last
-  if ni.isNextInfix:
-    ni.nextInfix = true
-    ni.last = ni.next.eval(ni)
-  return ni.last
+  return ni.currentActivation.evalNext(ni)
 
+proc atEnd*(ni: Interpreter): bool {.inline.} =
+  return ni.currentActivation.atEnd
 
 method resolve(self: Node, ni: Interpreter): Node =
   ## Base case, we only resolve GetWord and SetWord
@@ -553,6 +535,15 @@ method resolve(self: SetWord, ni: Interpreter): Node =
 #  else:
 #    echo "NOT FOUND SETWORD: " & self.word
 
+method resolve(self: Composite, ni: Interpreter): Node =
+  ## Go through nodes (no recurse) and do lookups of words, replacing with the binding.
+  for pos,child in mpairs(self.nodes):
+    let binding = child.resolve(ni)
+    if binding.notNil:
+#      echo "BINDING IN COMPOSITE: " & $binding
+      self.nodes[pos] = binding
+  return nil
+
 method resolveComposite(self: Composite, ni: Interpreter): Node =
   ## Go through nodes (no recurse) and do lookups of words, replacing with the binding.
   for pos,child in mpairs(self.nodes):
@@ -562,22 +553,13 @@ method resolveComposite(self: Composite, ni: Interpreter): Node =
       self.nodes[pos] = binding
   return nil
 
-proc funk*(ni: Interpreter, spec, body: Blok, infix: bool): Node =
-  result = newFunk(spec, body, infix, ni.top)
-  var locals = newSeq[string]()
-  # The parameter names we do not want to bind
-  for n in spec.nodes:
-    locals.add(Word(n).word)
-  # Resolve one level deep
+proc funk*(ni: Interpreter, body: Blok, infix: bool): Node =
+  result = newFunk(body, infix, ni.top)
+  # Resolve recursively for now
   for pos,child in mpairs(body.nodes):
     let binding = child.resolve(ni)
     if binding.notNil:
-      # Only if not a param
-      if not locals.contains(BindingNode(binding).binding.key): 
-#        echo "BOUND IN NEWFUNK:" & $(BindingNode(binding).binding)
-        body.nodes[pos] = binding
-#      else:
-#        echo "NOT BOUND IN NEWFUNK, IS LOCAL: " & BindingNode(binding).binding.key
+      body.nodes[pos] = binding
 
 # The heart of the interpreter - eval
 method eval(self: Node, ni: Interpreter): Node =
@@ -602,12 +584,21 @@ method eval(self: LitWord, ni: Interpreter): Node =
   ## The word itself
   self
 
+method eval(self: ArgWord, ni: Interpreter): Node =
+  ## Pull next argument from parent activation
+  if ni.currentActivation.infixArg.isNil:
+    return ni.currentActivation.bindit(self.word, ni.currentActivation.parent.evalNext(ni)).val
+  else:
+    let arg = ni.currentActivation.infixArg
+    ni.currentActivation.infixArg = nil
+    return ni.currentActivation.bindit(self.word, arg).val
+    
 method eval(self: NimProc, ni: Interpreter): Node =
   ## This code uses an array to avoid allocating a seq every time
   var args: array[1..20, Node]
   if self.infix:
     # If infix we use the last one
-    args[1] = ni.last  
+    args[1] = ni.currentActivation.last  
     # Pull remaining args to reach arity
     for i in 2 .. self.arity:
       args[i] = ni.evalNext()
@@ -618,40 +609,33 @@ method eval(self: NimProc, ni: Interpreter): Node =
   result = self.prok(ni, args)
 
 method eval(self: Funk, ni: Interpreter): Node =
-  var args = newSeq[Node]() #array[1..20, Node]
-  ## This code uses an array to avoid allocating a seq every time
-  if self.arity > 0:
-    if self.infix:
-      # If infix we use the last one
-      args.add(ni.last) # args[1] = ni.last  
-      # Pull remaining args to reach arity
-      for i in 2 .. self.arity:
-        args.add(ni.evalNext()) #args[i] = ni.evalNext()
-    else:
-      # Pull remaining args to reach arity
-      for i in 1 .. self.arity:
-        args.add(ni.evalNext()) #args[i] = ni.evalNext()
-  
-  # Time to actually run the Funk
-  ni.pushActivation(newActivation(self, args))
-  while not ni.endOfNode:
-    discard ni.evalNext()
+  let previous = ni.currentActivation
+  ni.pushActivation(newActivation(self))
+  let current = ni.currentActivation
+  if self.infix:
+    # If infix we use the last one
+    current.infixArg = previous.last  
+  while not current.atEnd:
+    discard current.evalNext(ni)
   ni.popActivation()
-  return ni.last
+  return current.last
 
 method eval(self: Paren, ni: Interpreter): Node =
-  ni.pushActivation(newActivation(self))
-  while not ni.endOfNode:
-    discard ni.evalNext()
+  let current = newActivation(self)
+  ni.pushActivation(current)
+  while not current.atEnd:
+    discard current.evalNext(ni)
   ni.popActivation()
-  return ni.last
+  return current.last
 
 method evalDo(self: Node, ni: Interpreter): Node =
-  ni.pushActivation(newActivation(Blok(self)))
-  while not ni.endOfNode:
-    discard ni.evalNext()
+  let current = newActivation(Blok(self))
+  ni.pushActivation(current)
+  while not current.atEnd:
+    discard current.evalNext(ni)
   ni.popActivation()
-  return ni.last
+  return current.last
+
   
 method eval(self: Blok, ni: Interpreter): Node =
   self
