@@ -17,6 +17,9 @@ when true:
   assert(show(":one") == "[:one]")
   assert(show("one:") == "[one:]")
   assert(show("'one") == "['one]")
+  
+  # And an arg word, special for Ni
+  assert(show(">one") == "[>one]")
   assert(show("""
 red
 green
@@ -162,8 +165,8 @@ when true:
   assert(run("z: 15 x: func [a b] [a + b + z] x 1 2") == "18")
 
   # func infix works too, and with 3 or more arguments too...
-  assert(run("xx: func-infix [a b] [a + b + b] 5 xx 4 xx 2") == "17") # 5+4+4 + 2+2
-  assert(run("pick2add: func-infix [block b c] [ block at b + (block at c)] [1 2 3] pick2add 0 2") == "4") # 1+3
+  assert(run("xx: funci [a b] [a + b + b] 5 xx 4 xx 2") == "17") # 5+4+4 + 2+2
+  assert(run("pick2add: funci [block b c] [ block at b + (block at c)] [1 2 3] pick2add 0 2") == "4") # 1+3
   
   # TODO: func closures, this test currently fails! The second call to c overwrites the closed a value.
   # I think this is because our bindings are made destructively into the bodies without cloning them.

@@ -40,7 +40,8 @@ type
     parent*: Activation
 
   # The activation record used by Interpreter for evaluating Block/Paren.
-  # This is a so called Spaghetti Stack with only a parent pointer.
+  # This is a so called Spaghetti Stack with only a parent pointer so that they
+  # can get garbage collected if not referenced by any other record anymore.
   Activation* = ref object of RootObj
     parent*: Activation
     pos*: int          # Which node we are at
@@ -79,7 +80,7 @@ method `$`*(self: NimProc): string =
 method `$`*(self: Funk): string =
   when false:
     if self.infix:
-      result = "func-infix"
+      result = "funci"
     else:
       result = "func"
     return result & "(" & $self.arity & ")" & "[" & $self.nodes & "]"
@@ -215,7 +216,7 @@ proc dump(ni: Interpreter) =
     echo "-----------------------------"
   echo "========================================"
 
-# Primitives written in Nim
+# Methods supporting the Nim math primitives with coercions
 method `+`(a: Node, b: Node): Node {.inline.} =
   raiseRuntimeException("Can not evaluate " & $a & " + " & $b)
 method `+`(a: IntVal, b: IntVal): Node {.inline.} =
@@ -226,8 +227,6 @@ method `+`(a: FloatVal, b: IntVal): Node {.inline.} =
   newValue(a.value + b.value.float)
 method `+`(a: FloatVal, b: FloatVal): Node {.inline.} =
   newValue(a.value + b.value)
-proc primAdd(ni: Interpreter, a: varargs[Node]): Node =
-  a[0] + a[1]
 
 method `-`(a: Node, b: Node): Node {.inline.} =
   raiseRuntimeException("Can not evaluate " & $a & " - " & $b)
@@ -239,8 +238,6 @@ method `-`(a: FloatVal, b: IntVal): Node {.inline.} =
   newValue(a.value - b.value.float)
 method `-`(a: FloatVal, b: FloatVal): Node {.inline.} =
   newValue(a.value - b.value)
-proc primSub(ni: Interpreter, a: varargs[Node]): Node =
-  a[0] - a[1]
 
 method `*`(a: Node, b: Node): Node {.inline.} =
   raiseRuntimeException("Can not evaluate " & $a & " * " & $b)
@@ -252,8 +249,6 @@ method `*`(a: FloatVal, b: IntVal): Node {.inline.} =
   newValue(a.value * b.value.float)
 method `*`(a: FloatVal, b: FloatVal): Node {.inline.} =
   newValue(a.value * b.value)
-proc primMul(ni: Interpreter, a: varargs[Node]): Node =
-  a[0] * a[1]
 
 method `/`(a: Node, b: Node): Node {.inline.} =
   raiseRuntimeException("Can not evaluate " & $a & " / " & $b)
@@ -265,8 +260,6 @@ method `/`(a: FloatVal, b: IntVal): Node {.inline.} =
   newValue(a.value / b.value.float)
 method `/`(a,b: FloatVal): Node {.inline.} =
   newValue(a.value / b.value)
-proc primDiv(ni: Interpreter, a: varargs[Node]): Node =
-  a[0] / a[1]
 
 method `<`(a: Node, b: Node): Node {.inline.} =
   raiseRuntimeException("Can not evaluate " & $a & " < " & $b)
@@ -280,8 +273,6 @@ method `<`(a,b: FloatVal): Node {.inline.} =
   newValue(a.value < b.value)
 method `<`(a,b: StringVal): Node {.inline.} =
   newValue(a.value < b.value)
-proc primLt(ni: Interpreter, a: varargs[Node]): Node =
-  a[0] < a[1]
 
 method `>`(a: Node, b: Node): Node {.inline.} =
   raiseRuntimeException("Can not evaluate " & $a & " < " & $b)
@@ -295,89 +286,14 @@ method `>`(a,b: FloatVal): Node {.inline.} =
   newValue(a.value > b.value)
 method `>`(a,b: StringVal): Node {.inline.} =
   newValue(a.value > b.value)
-proc primGt(ni: Interpreter, a: varargs[Node]): Node =
-  a[0] > a[1]
+
 
 proc `[]`(a: Composite, b: IntVal): Node {.inline.} =
   a[b.value]
 #proc `[]=`(a: Composite, b: IntVal, c: Node): Node {.inline.} =
 #  a[b.value] = c
-proc primLen(ni: Interpreter, a: varargs[Node]): Node =
-  newValue(Composite(a[0]).nodes.len)
-proc primAt(ni: Interpreter, a: varargs[Node]): Node =
-  Composite(a[0])[IntVal(a[1])]
-proc primPut(ni: Interpreter, a: varargs[Node]): Node =
-  result = a[0]
-  Composite(result)[IntVal(a[1]).value] = a[2]
-proc primRead(ni: Interpreter, a: varargs[Node]): Node =
-  let comp = Composite(a[0])
-  comp[comp.pos]
-proc primWrite(ni: Interpreter, a: varargs[Node]): Node =
-  result = a[0]
-  let comp = Composite(result)
-  comp[comp.pos] = a[1]
-
-proc primReset(ni: Interpreter, a: varargs[Node]): Node =
-  Composite(a[0]).pos = 0
-proc primPos(ni: Interpreter, a: varargs[Node]): Node =
-  newValue(Composite(a[0]).pos)
-proc primSetPos(ni: Interpreter, a: varargs[Node]): Node =
-  result = a[0]
-  let comp = Composite(result)
-  comp.pos = IntVal(a[1]).value
-proc primNext(ni: Interpreter, a: varargs[Node]): Node =
-  let comp = Composite(a[0])
-  result = comp[comp.pos]
-  inc(comp.pos)
-
-proc primFirst(ni: Interpreter, a: varargs[Node]): Node =
-  Composite(a[0])[0]
-proc primSecond(ni: Interpreter, a: varargs[Node]): Node =
-  Composite(a[0])[1]
-proc primThird(ni: Interpreter, a: varargs[Node]): Node =
-  Composite(a[0])[2]
-proc primFourth(ni: Interpreter, a: varargs[Node]): Node =
-  Composite(a[0])[3]
-proc primFifth(ni: Interpreter, a: varargs[Node]): Node =
-  Composite(a[0])[4]
-proc primLast(ni: Interpreter, a: varargs[Node]): Node =
-  Composite(a[0]).nodes[^1]
 
 
-proc primDo(ni: Interpreter, a: varargs[Node]): Node =
-  ni.resolveComposite(Composite(a[0])).evalDo(ni)
-
-proc primEval(ni: Interpreter, a: varargs[Node]): Node =
-  Composite(a[0]).evalDo(ni)
-
-proc primFunk(ni: Interpreter, a: varargs[Node]): Node =
-  ni.funk(Blok(a[0]), Blok(a[1]), false)
-
-proc primFunkInfix(ni: Interpreter, a: varargs[Node]): Node =
-  ni.funk(Blok(a[0]), Blok(a[1]), true)
-  
-proc primResolve(ni: Interpreter, a: varargs[Node]): Node =
-  ni.resolveComposite(Composite(a[0]))
-  
-proc primParse(ni: Interpreter, a: varargs[Node]): Node =
-  newParser().parse(StringVal(a[0]).value)
-  
-proc primEcho(ni: Interpreter, a: varargs[Node]): Node =
-  echo($a[0])
-
-proc primIf(ni: Interpreter, a: varargs[Node]): Node =
-  if BoolVal(a[0]).value: ni.primDo(a[1]) else: ni.nilVal
-
-proc primIfelse(ni: Interpreter, a: varargs[Node]): Node =
-  if BoolVal(a[0]).value: ni.primDo(a[1]) else: ni.primDo(a[2])
-
-proc primLoop(ni: Interpreter, a: varargs[Node]): Node =
-  let fn = ni.resolveComposite(Composite(a[1]))
-  for i in 1 .. IntVal(a[0]).value:
-    result = fn.evalDo(ni)
-
-proc primDump(ni: Interpreter, a: varargs[Node]): Node =
-  dump(ni)
 
 proc pushActivation*(ni: Interpreter, activation: Activation)  {.inline.} =
   activation.parent = ni.currentActivation
@@ -392,6 +308,12 @@ proc popActivation*(ni: Interpreter)  {.inline.} =
   else:
     ni.currentActivationLen = 0
 
+# A template reducing boilerplate for registering nim primitives
+template nimPrim(name: string, infix: bool, arity: int, body: stmt): stmt {.immediate, dirty.} =
+   discard root.bindit(name, newNimProc(
+    proc (ni: Interpreter, a: varargs[Node]): Node =
+      body, infix, arity))
+
 proc newInterpreter*(): Interpreter =
   result = Interpreter(root: newContext())
   # Singletons
@@ -401,94 +323,113 @@ proc newInterpreter*(): Interpreter =
   let root = result.root
   discard root.bindit("false", result.falseVal)
   discard root.bindit("true", result.trueVal)
-  discard root.bindit("nil", result.nilVal)  
+  discard root.bindit("nil", result.nilVal)
+    
   # Primitives in Nim
   # Basic math
-  discard root.bindit("+", newNimProc(primAdd, true, 2))
-  discard root.bindit("-", newNimProc(primSub, true, 2))
-  discard root.bindit("*", newNimProc(primMul, true, 2))
-  discard root.bindit("/", newNimProc(primDiv, true, 2))
-  discard root.bindit("<", newNimProc(primLt, true, 2))
-  discard root.bindit(">", newNimProc(primGt, true, 2))
+  nimPrim("+", true, 2):  a[0] + a[1]
+  nimPrim("-", true, 2):  a[0] - a[1]
+  nimPrim("*", true, 2):  a[0] * a[1]
+  nimPrim("/", true, 2):  a[0] / a[1]
+  nimPrim("<", true, 2):  a[0] < a[1]
+  nimPrim(">", true, 2):  a[0] > a[1]
   
   # Booleans
-  discard root.bindit("not", newNimProc(
-    proc (ni: Interpreter, a: varargs[Node]): Node =
-      newValue(not BoolVal(a[0]).value), false, 1))
-  discard root.bindit("and", newNimProc(
-    proc (ni: Interpreter, a: varargs[Node]): Node =
-      newValue(BoolVal(a[0]).value and BoolVal(a[1]).value), true, 2))  
-  discard root.bindit("or", newNimProc(
-    proc (ni: Interpreter, a: varargs[Node]): Node =
-      newValue(BoolVal(a[0]).value or BoolVal(a[1]).value), true, 2))
-  
+  nimPrim("not", false, 1): newValue(not BoolVal(a[0]).value)
+  nimPrim("and", true, 2):  newValue(BoolVal(a[0]).value and BoolVal(a[1]).value)
+  nimPrim("or", true, 2):   newValue(BoolVal(a[0]).value or BoolVal(a[1]).value)
+    
   # Strings
-  discard root.bindit("&", newNimProc(
-    proc (ni: Interpreter, a: varargs[Node]): Node =
-      newValue(StringVal(a[0]).value & StringVal(a[1]).value), true, 2))  
+  nimPrim("&", true, 2):    newValue(StringVal(a[0]).value & StringVal(a[1]).value)  
   
   # Basic blocks
-  #discard root.bindit("head", newNimProc(primHead, true, 2)) # Collides with Lisp
-  #discard root.bindit("tail", newNimProc(primTail, true, 2)) # Collides with Lisp
-
-  # at: and at:put: in Smalltalk seems to be pick/poke in Rebol
-  # change/at is similar in Rebol but operate at current "positition"
+  # Rebol head/tail collides too much with Lisp IMHO so not sure what to do with
+  # those.
+  # at: and at:put: in Smalltalk seems to be pick/poke in Rebol.
+  # change/at is similar in Rebol but work at current pos.
   # Ni uses at/put instead of pick/poke and read/write instead of change/at
   
   # Left to think about is peek/poke (Rebol has no peek) and perhaps pick/drop
   # The old C64 Basic had peek/poke for memory at:/at:put: ... :) Otherwise I
   # generally associate peek with lookahead.
-  # Idea here: Use xxx? for boolean funcs and xxx! for void funcs
-  discard root.bindit("len", newNimProc(primLen, true, 1))  # Called length in Rebol
-  discard root.bindit("at", newNimProc(primAt, true, 2))  # Called pick in Rebol
-  discard root.bindit("put", newNimProc(primPut, true, 3))  # Called poke in Rebol
-  discard root.bindit("read", newNimProc(primRead, true, 1))  # Called at in Rebol
-  discard root.bindit("write", newNimProc(primWrite, true, 2))  # Called change in Rebol
+  # Idea here: Use xxx? for infix funcs, arity 1, returning booleans
+  # ..and xxx! for infix funcs arity 0.
+  nimPrim("len", true, 1):  newValue(Composite(a[0]).nodes.len) # Called length in Rebol
+  nimPrim("at", true, 2):   Composite(a[0])[IntVal(a[1])]
+  nimPrim("put", true, 3): # Called poke in Rebol
+    result = a[0];
+    Composite(result)[IntVal(a[1]).value] = a[2]
+  nimPrim("read", true, 1): # Called at in Rebol
+    let comp = Composite(a[0])
+    comp[comp.pos]
+  nimPrim("write", true, 2): # Called change in Rebol
+    result = a[0]
+    let comp = Composite(result)
+    comp[comp.pos] = a[1]
   
   # Positioning
-  discard root.bindit("reset", newNimProc(primReset, true, 1))  # Called change in Rebol
-  discard root.bindit("pos", newNimProc(primPos, true, 1))  # ? in Rebol 
-  discard root.bindit("setpos", newNimProc(primSetPos, true, 2))  # ? in Rebol
+  nimPrim("reset", true, 1):  Composite(a[0]).pos = 0 # Called change in Rebol
+  nimPrim("pos", true, 1):    newValue(Composite(a[0]).pos) # ? in Rebol 
+  nimPrim("setpos", true, 2):    # ? in Rebol
+    result = a[0]
+    let comp = Composite(result)
+    comp.pos = IntVal(a[1]).value
  
   # Streaming
-  discard root.bindit("next", newNimProc(primNext, true, 1))  # ? in Rebol
+  nimPrim("next", true, 1):
+    let comp = Composite(a[0])
+    result = comp[comp.pos]
+    inc(comp.pos)
 
   # These are like in Rebol/Smalltalk but we use infix like in Smalltalk
-  discard root.bindit("first", newNimProc(primFirst, true, 1))
-  discard root.bindit("second", newNimProc(primSecond, true, 1))
-  discard root.bindit("third", newNimProc(primThird, true, 1))
-  discard root.bindit("fourth", newNimProc(primFourth, true, 1))
-  discard root.bindit("fifth", newNimProc(primFifth, true, 1))
-  discard root.bindit("last", newNimProc(primLast, true, 1))
+  nimPrim("first", true, 1):  Composite(a[0])[0]
+  nimPrim("second", true, 1): Composite(a[0])[1]
+  nimPrim("third", true, 1):  Composite(a[0])[2]
+  nimPrim("fourth", true, 1): Composite(a[0])[3]
+  nimPrim("fifth", true, 1):  Composite(a[0])[4]
+  nimPrim("last", true, 1):   Composite(a[0]).nodes[^1]
+    
   
   #discard root.bindit("bind", newNimProc(primBind, false, 1))
-  discard root.bindit("func", newNimProc(primFunk, false, 2))
-  discard root.bindit("func-infix", newNimProc(primFunkInfix, false, 2))
-  discard root.bindit("resolve", newNimProc(primResolve, false, 1))
-  discard root.bindit("do", newNimProc(primDo, false, 1))
-  discard root.bindit("eval", newNimProc(primEval, false, 1))
-  discard root.bindit("parse", newNimProc(primParse, false, 1))
+  nimPrim("func", false, 2):    ni.funk(Blok(a[0]), Blok(a[1]), false)
+  nimPrim("funci", false, 2):   ni.funk(Blok(a[0]), Blok(a[1]), true)
+  nimPrim("resolve", false, 1): ni.resolveComposite(Composite(a[0]))
+  nimPrim("do", false, 1):      ni.resolveComposite(Composite(a[0])).evalDo(ni)
+  nimPrim("eval", false, 1):    Composite(a[0]).evalDo(ni)
+  nimPrim("parse", false, 1):   newParser().parse(StringVal(a[0]).value)
 
   # IO
-  discard root.bindit("echo", newNimProc(primEcho, false, 1))
-
+  nimPrim("echo", false, 1):    echo($a[0])
+ 
   # Control structures
-  discard root.bindit("if", newNimProc(primIf, false, 2))
-  discard root.bindit("ifelse", newNimProc(primIfelse, false, 3))
-  discard root.bindit("loop", newNimProc(primLoop, false, 2))
+  nimPrim("if", false, 2):
+    if BoolVal(a[0]).value:
+      ni.resolveComposite(Composite(a[1])).evalDo(ni)
+    else:
+      ni.nilVal
+  nimPrim("ifelse", false, 3):
+    if BoolVal(a[0]).value:
+      ni.resolveComposite(Composite(a[1])).evalDo(ni)
+    else:
+      ni.resolveComposite(Composite(a[2])).evalDo(ni)
+  nimPrim("loop", false, 2):
+    let fn = ni.resolveComposite(Composite(a[1]))
+    for i in 1 .. IntVal(a[0]).value:
+      result = fn.evalDo(ni)
 
   # Debugging
-  discard root.bindit("dump", newNimProc(primDump, false, 0))
+  nimPrim("dump", false, 0):    dump(ni)
   
   # Some scripting prims
-  discard root.bindit("quit", newNimProc(
-    proc (ni: Interpreter, a: varargs[Node]): Node =
-      quit(IntVal(a[0]).value), false, 1)) 
-  
+  nimPrim("quit", false, 1):    quit(IntVal(a[0]).value)
+
+  # Create root activation
   result.pushActivation(newRootActivation(root))
-  # Call registered extension procs
+  
+  # Call registered extension procs to the interpreter
   for ex in interpreterExts:
     ex(result)
+
 
 proc top*(ni: Interpreter): Activation =
   ni.currentActivation
@@ -731,7 +672,7 @@ method eval(self: SetBinding, ni: Interpreter): Node =
   self.binding.val = result
 
 proc eval*(ni: Interpreter, code: string): Node =
-  ni.primDo(newParser().parse(code))
+  ni.resolveComposite(Composite(newParser().parse(code))).evalDo(ni)
 
 when isMainModule:
   # Just run a given file as argument, the hash-bang trick works also
