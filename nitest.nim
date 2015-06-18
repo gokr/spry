@@ -124,6 +124,22 @@ when true:
   assert(run("3 > 4 or 3 < 4") == "true")
   assert(run("3 > 4 and 3 < 4") == "false")
   assert(run("7 > 4 and 3 < 4") == "true")
+  assert(run("7 >= 4") == "true")
+  assert(run("4 >= 4") == "true")
+  assert(run("3 >= 4") == "false")
+  assert(run("7 <= 4") == "false")
+  assert(run("4 <= 4") == "true")
+  assert(run("3 <= 4") == "true")
+  assert(run("3 == 4") == "false")
+  assert(run("4 == 4") == "true")
+  assert(run("3.0 == 4.0") == "false")
+  assert(run("4 == 4.0") == "true")
+  assert(run("4.0 == 4") == "true")
+  assert(run("\"abc\" == \"abc\"") == "true")
+  assert(run("\"abc\" == \"AAA\"") == "false")
+  assert(run("true == true") == "true")
+  assert(run("false == true") == "false")
+  
 
   # Block indexing and positioning
   assert(run("[3 4] len") == "2")

@@ -263,18 +263,36 @@ method `<`(a,b: FloatVal): Node {.inline.} =
 method `<`(a,b: StringVal): Node {.inline.} =
   newValue(a.value < b.value)
 
-method `>`(a: Node, b: Node): Node {.inline.} =
-  raiseRuntimeException("Can not evaluate " & $a & " < " & $b)
-method `>`(a: IntVal, b: IntVal): Node {.inline.} =
-  newValue(a.value > b.value)
-method `>`(a: IntVal, b: FloatVal): Node {.inline.} =
-  newValue(a.value.float > b.value)
-method `>`(a: FloatVal, b: IntVal): Node {.inline.} =
-  newValue(a.value > b.value.float)
-method `>`(a,b: FloatVal): Node {.inline.} =
-  newValue(a.value > b.value)
-method `>`(a,b: StringVal): Node {.inline.} =
-  newValue(a.value > b.value)
+method `<=`(a: Node, b: Node): Node {.inline.} =
+  raiseRuntimeException("Can not evaluate " & $a & " <= " & $b)
+method `<=`(a: IntVal, b: IntVal): Node {.inline.} =
+  newValue(a.value <= b.value)
+method `<=`(a: IntVal, b: FloatVal): Node {.inline.} =
+  newValue(a.value.float <= b.value)
+method `<=`(a: FloatVal, b: IntVal): Node {.inline.} =
+  newValue(a.value <= b.value.float)
+method `<=`(a,b: FloatVal): Node {.inline.} =
+  newValue(a.value <= b.value)
+method `<=`(a,b: StringVal): Node {.inline.} =
+  newValue(a.value <= b.value)
+method `<=`(a, b: BoolVal): Node {.inline.} =
+  newValue(a.value <= b.value)
+
+method `==`(a: Node, b: Node): Node {.inline.} =
+  raiseRuntimeException("Can not evaluate " & $a & " == " & $b)
+method `==`(a: IntVal, b: IntVal): Node {.inline.} =
+  newValue(a.value == b.value)
+method `==`(a: IntVal, b: FloatVal): Node {.inline.} =
+  newValue(a.value.float == b.value)
+method `==`(a: FloatVal, b: IntVal): Node {.inline.} =
+  newValue(a.value == b.value.float)
+method `==`(a,b: FloatVal): Node {.inline.} =
+  newValue(a.value == b.value)
+method `==`(a,b: StringVal): Node {.inline.} =
+  newValue(a.value == b.value)
+method `==`(a, b: BoolVal): Node {.inline.} =
+  newValue(a.value == b.value)
+
 
 proc `[]`(a: Composite, b: IntVal): Node {.inline.} =
   a[b.value]
@@ -310,14 +328,19 @@ proc newInterpreter*(): Interpreter =
   nimPrim("-", true, 2):  a[0] - a[1]
   nimPrim("*", true, 2):  a[0] * a[1]
   nimPrim("/", true, 2):  a[0] / a[1]
-  nimPrim("<", true, 2):  a[0] < a[1]
-  nimPrim(">", true, 2):  a[0] > a[1]
   
+  # Comparisons
+  nimPrim("<", true, 2):  a[0] < a[1]
+  nimPrim(">", true, 2):  a[1] < a[0]
+  nimPrim("<=", true, 2):  a[0] <= a[1]
+  nimPrim(">=", true, 2):  a[1] <= a[0]
+  nimPrim("==", true, 2):  a[0] == a[1]
+
   # Booleans
   nimPrim("not", false, 1): newValue(not BoolVal(a[0]).value)
   nimPrim("and", true, 2):  newValue(BoolVal(a[0]).value and BoolVal(a[1]).value)
   nimPrim("or", true, 2):   newValue(BoolVal(a[0]).value or BoolVal(a[1]).value)
-    
+
   # Strings
   nimPrim("&", true, 2):    newValue(StringVal(a[0]).value & StringVal(a[1]).value)  
   
