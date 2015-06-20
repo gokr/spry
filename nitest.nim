@@ -182,6 +182,8 @@ when true:
   assert(run("x: func [>a + >b] x 5 4") == "9") # Again, slicker
   assert(run("z: 15 x: func [>a >b a + b + z] x 1 2") == "18")
   assert(run("z: 15 x: func [>a + >b + z] x 1 2") == "18") # Slick indeed
+  assert(run("do [>b + 3] 4") == "7") # Muhahaha!
+  assert(run("do [>b + >c - 1] 4 3") == "6") # Muhahaha!
 
   # func infix works too, and with 3 or more arguments too...
   assert(run("xx: funci [>a >b a + b + b] 5 xx 4 xx 2") == "17") # 5+4+4 + 2+2

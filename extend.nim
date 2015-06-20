@@ -64,8 +64,3 @@ proc extendInterpreter(ni: Interpreter) {.procvar.} =
 ## Register our extension proc in Ni so it gets called
 addInterpreterExtension(extendInterpreter)
 
-
-#######################################################################
-# Extending the Interpreter with a Nim primitive word
-#######################################################################
-
