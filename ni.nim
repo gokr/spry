@@ -36,7 +36,7 @@ type
     infix*: bool
     arity*: int 
 
-  # An executable Ni function, 1st element is spec, 2nd element is body 
+  # An executable Ni function 
   Funk* = ref object of Blok
     infix*: bool
     parent*: Activation
@@ -48,15 +48,15 @@ type
     last*: Node                     # Remember for infix
     nextInfix*: bool                # Remember we are gobbling
     infixArg*: Node                 # Temporary holding
+    returned*: bool                  # Mark return
     parent*: Activation
     pos*: int          # Which node we are at
-    body*: Composite   # The composite representing code (Blok, Paren, Funk body)
+    body*: Composite   # The composite representing code (Blok, Paren, Funk)
 
   # We want to distinguish different activations
-  BlokActivation = ref object of Activation
+  BlokActivation* = ref object of Activation
     context*: Context  # Local context, this is where we put named args etc
   FunkActivation* = ref object of BlokActivation
-    funk*: Funk
   ParenActivation* = ref object of Activation
   RootActivation* = ref object of BlokActivation
 
@@ -117,10 +117,6 @@ proc `[]`(self: Activation, i: int): Node =
 proc len(self: Activation): int =
   self.body.nodes.len
 
-# Funk stuff
-proc body(self: Funk): Blok =
-  Blok(self[0])
-
 # Constructor procs
 proc raiseRuntimeException*(msg: string) =
   raise newException(RuntimeException, msg)
@@ -129,9 +125,7 @@ proc newNimProc*(prok: ProcType, infix: bool, arity: int): NimProc =
   NimProc(prok: prok, infix: infix, arity: arity)
 
 proc newFunk*(body: Blok, infix: bool, parent: Activation): Funk =
-  var nodes: seq[Node] = @[]
-  nodes.add(body)
-  Funk(nodes: nodes, infix: infix, parent: parent)
+  Funk(nodes: body.nodes, infix: infix, parent: parent)
 
 proc newGetBinding*(b: Binding): GetBinding =
   GetBinding(binding: b)
@@ -142,8 +136,8 @@ proc newSetBinding*(b: Binding): SetBinding =
 proc newRootActivation(root: Context): Activation =
   RootActivation(body: newBlok(), context: root)
 
-proc newActivation*(funk: Funk): Activation =
-  FunkActivation(funk: funk, body: funk.body)
+proc newActivation*(funk: Funk): FunkActivation =
+  FunkActivation(body: funk)
 
 proc newActivation*(body: Blok): Activation =
   BlokActivation(body: body)
@@ -178,7 +172,7 @@ method outer(self: Activation): Activation =
 method outer(self: FunkActivation): Activation =
   # Instead of looking at my parent, which would be the caller
   # we go to the activation where I was created
-  self.funk.parent
+  Funk(self.body).parent
 
 # Walk activations for lookups and binds
 iterator parentWalk(first: Activation): Activation =
@@ -191,11 +185,19 @@ iterator parentWalk(first: Activation): Activation =
         activation = activation.outer()      
 
 # Debugging
+method isFunk(self: Activation):bool =
+  false
+method isFunk(self: FunkActivation):bool =
+  true
+
 method dump(self: Activation) =
-  echo "POS: " & $self.pos
+  echo "ACTIVATION POS: " & $self.pos
+
+method dump(self: FunkActivation) =
+  echo "FUNKACTIVATION POS: " & $self.pos
 
 method dump(self: BlokActivation) =
-  echo "POS: " & $self.pos
+  echo "BLOKACTIVATION POS: " & $self.pos
   echo($self.context)
   
 proc dump(ni: Interpreter) =
@@ -368,6 +370,13 @@ proc newInterpreter*(): Interpreter =
     result = a[0]
     let comp = Composite(result)
     comp[comp.pos] = a[1]
+# This is hard, because evalDo of fn wants to pull its argument from
+# the parent activation, but there is none here. Hmmm.
+#  nimPrim("do", true, 2):
+#    let fn = ni.resolveComposite(Composite(a[1]))
+#    for node in Composite(a[0]).nodes:
+#      result = fn.evalDo(ni)
+
   
   # Positioning
   nimPrim("reset", true, 1):  Composite(a[0]).pos = 0 # Called change in Rebol
@@ -382,6 +391,9 @@ proc newInterpreter*(): Interpreter =
     let comp = Composite(a[0])
     result = comp[comp.pos]
     inc(comp.pos)
+  nimPrim("end?", true, 1):
+    let comp = Composite(a[0])
+    newValue(comp.pos == comp.nodes.len)
 
   # These are like in Rebol/Smalltalk but we use infix like in Smalltalk
   nimPrim("first", true, 1):  Composite(a[0])[0]
@@ -390,13 +402,12 @@ proc newInterpreter*(): Interpreter =
   nimPrim("fourth", true, 1): Composite(a[0])[3]
   nimPrim("fifth", true, 1):  Composite(a[0])[4]
   nimPrim("last", true, 1):   Composite(a[0]).nodes[^1]
-    
-  
+
   #discard root.bindit("bind", newNimProc(primBind, false, 1))
   nimPrim("func", false, 1):    ni.funk(Blok(a[0]), false)
   nimPrim("funci", false, 1):   ni.funk(Blok(a[0]), true)
   nimPrim("resolve", false, 1): ni.resolveComposite(Composite(a[0]))
-  nimPrim("do", false, 1):      ni.resolveComposite(Composite(a[0])).evalDo(ni)
+  nimPrim("do", false, 1):    ni.resolveComposite(Composite(a[0])).evalDo(ni)
   nimPrim("eval", false, 1):    Composite(a[0]).evalDo(ni)
   nimPrim("parse", false, 1):   newParser().parse(StringVal(a[0]).value)
 
@@ -404,6 +415,9 @@ proc newInterpreter*(): Interpreter =
   nimPrim("echo", false, 1):    echo($a[0])
  
   # Control structures
+  nimPrim("return", false, 1):
+    ni.currentActivation.returned = true
+    a[0]
   nimPrim("if", false, 2):
     if BoolVal(a[0]).value:
       ni.resolveComposite(Composite(a[1])).evalDo(ni)
@@ -418,6 +432,32 @@ proc newInterpreter*(): Interpreter =
     let fn = ni.resolveComposite(Composite(a[1]))
     for i in 1 .. IntVal(a[0]).value:
       result = fn.evalDo(ni)
+      # Or else non local returns don't work :)
+      if ni.currentActivation.returned:
+        return
+  nimPrim("timesRepeat", true, 2):
+    let fn = ni.resolveComposite(Composite(a[1]))
+    for i in 1 .. IntVal(a[0]).value:
+      result = fn.evalDo(ni)
+      # Or else non local returns don't work :)
+      if ni.currentActivation.returned:
+        return
+  nimPrim("whileTrue", true, 2):
+    let blk1 = ni.resolveComposite(Composite(a[0]))
+    let blk2 = ni.resolveComposite(Composite(a[1]))
+    while BoolVal(blk1.evalDo(ni)).value:
+      result = blk2.evalDo(ni)
+      # Or else non local returns don't work :)
+      if ni.currentActivation.returned:
+        return
+  nimPrim("whileFalse", true, 2):
+    let blk1 = ni.resolveComposite(Composite(a[0]))
+    let blk2 = ni.resolveComposite(Composite(a[1]))
+    while not BoolVal(blk1.evalDo(ni)).value:
+      result = blk2.evalDo(ni)
+      # Or else non local returns don't work :)
+      if ni.currentActivation.returned:
+        return
 
   # Debugging
   nimPrim("dump", false, 0):    dump(ni)
@@ -633,13 +673,17 @@ method eval(self: NimProc, ni: Interpreter): Node =
 
 method eval(self: Funk, ni: Interpreter): Node =
   let previous = ni.currentActivation
-  ni.pushActivation(newActivation(self))
-  let current = ni.currentActivation
+  let current: FunkActivation = newActivation(self)
+  ni.pushActivation(current)
   if self.infix:
     # If infix we use the last one
     current.infixArg = previous.last  
   while not current.atEnd:
     discard current.evalNext(ni)
+    if current.returned:
+      echo "RETURN FROM FUNK"
+      ni.currentActivation = Funk(current.body).parent
+      return current.last
   ni.popActivation()
   return current.last
 
@@ -648,6 +692,11 @@ method eval(self: Paren, ni: Interpreter): Node =
   ni.pushActivation(current)
   while not current.atEnd:
     discard current.evalNext(ni)
+    if current.returned:
+      echo "RETURN FROM PAREN"
+      ni.popActivation()
+      ni.currentActivation.returned = true
+      return current.last
   ni.popActivation()
   return current.last
 
@@ -656,6 +705,11 @@ method evalDo(self: Node, ni: Interpreter): Node =
   ni.pushActivation(current)
   while not current.atEnd:
     discard current.evalNext(ni)
+    if current.returned:
+      echo "RETURN FROM BLOK"
+      ni.popActivation()
+      ni.currentActivation.returned = true
+      return current.last
   ni.popActivation()
   return current.last
 

@@ -79,7 +79,7 @@ when true:
   # Or we can resolve which binds words
   assert(run("resolve [3 + 4]") == "[3 + 4]")
   # But we need to use func to make a closure from it
-  assert(run("func [3 + 4]") == "[[3 + 4]]")
+  assert(run("func [3 + 4]") == "[3 + 4]")
   # Which will evaluate
   assert(run("f: func [3 + 4] f") == "7")
   
@@ -157,6 +157,8 @@ when true:
   assert(run("x: [3 4] x setpos 1 x reset x read") == "3")
   assert(run("x: [3 4] x next") == "3")
   assert(run("x: [3 4] x next x next") == "4")
+  assert(run("x: [3 4] x next x end?") == "false")
+  assert(run("x: [3 4] x next x next x end?") == "true")
   assert(run("x: [3 4] x pos") == "0")
   assert(run("x: [3 4] x next x pos") == "1")
   assert(run("x: [3 4] x write 5") == "[5 4]")
@@ -168,11 +170,21 @@ when true:
   assert(run("if 3 > 4 [\"yay\"]") == "nil")
   assert(run("ifelse 3 > 4 [\"yay\"] ['ok]") == "'ok")
   
+  # loops
+  assert(run("x: 0 loop 5 [x: x + 1] x") == "5")
+  assert(run("x: 0 loop 0 [x: x + 1] x") == "0")
+  assert(run("x: 0 5 timesRepeat [x: x + 1] x") == "5") # Smalltalk style
+  assert(run("x: 0 [x > 5] whileFalse [x: x + 1] x") == "6") # Smalltalk style
+  assert(run("x: 10 [x > 5] whileTrue [x: x - 1] x") == "5") # Smalltalk style
+
   # func
   assert(run("z: func [3 + 4] z") == "7")
-  assert(run("x: func [3 + 4] :x") == "[[3 + 4]]")
+  assert(run("x: func [3 + 4] :x") == "[3 + 4]")
   assert(run("x: func [3 + 4] 'x") == "'x")
-  assert(run("x: func [3 + 4] :x first write 5 x") == "9")
+  assert(run("x: func [3 + 4] :x write 5 x") == "9")
+  assert(run("x: func [3 + 4 return 1 8 + 9] x") == "1")
+  # Its a non local return so it returns all the way, thus it works deep down
+  assert(run("x: func [3 + 4 do [ 2 + 3 return 1 1 + 1] 8 + 9] x") == "1")
   
   # func args
   assert(run("x: func [>a a + 1] x 5") == "6")
@@ -206,15 +218,42 @@ when true:
   [
     f]
   ]
-  loop 1000 [n: 12 f: 1 factorial]
   factorial
   """) == "479001600")
 
   # Ok, but now we can do arguments so...
   assert(run("""
-  factorial: func [>n ifelse n > 0 [n * factorial (n - 1)] [1]]
+  factorial: func [ifelse >n > 0 [n * factorial (n - 1)] [1]]
   factorial 12
   """) == "479001600")
+  
+  # Implementing detect, note that we use the internal streaming of blocks
+  # so we need to do call reset first. Also note the use of return which
+  # is a non local return in Smalltalk style, so it will return from the
+  # whole func.
+  assert(run("""
+  y: [1 2 3]  
+  detect: funci [>blk >fun
+    blk reset
+    [blk end?] whileFalse [
+      n: blk next
+      if do fun n [return n]]
+    return nil
+  ]
+  y detect [>each > 1]
+  """) == "2")
+  
+  # Implementing do. This one is hard to do since scoping is a bit WIP still,
+  # from inside the block I have no way to store a result on the outer level :)
+#  assert(run("""
+#  y: [1 2 3]
+#  each: funci [>blk >fun
+#    blk reset
+#    [blk end?] whileFalse [do fun (blk next)]
+#  ]
+#  y each []
+#  """) == "7")
+  
 when true:
   # Demonstrate extension from extend.nim
   assert(show("'''abc'''") == "[\"abc\"]")
