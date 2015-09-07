@@ -2,7 +2,7 @@
 # Run with: ./ni factorial.ni
 
 # A recursive factorial
-factorial: func [ifelse >n > 0 [n * factorial (n - 1)] [1]]
+factorial = func [ifelse (:n > 0) [n * factorial (n - 1)] [1]]
 
 # Do it over and over :)
-loop 100000 [factorial 12]
+100000 timesRepeat: [factorial 12]
