@@ -10,7 +10,7 @@
 # to Ni itself so that it can be written fully in Ni.
 
 import os, strutils
-import ni, niparser, extend
+import ni, niparser
 
 proc main() =
   # Let's create a Ni interpreter. It also holds all state.
@@ -40,7 +40,7 @@ proc main() =
       line = stdin.readLine()
     else:
       if fileLines.len == 0:
-        echo "Good bye"
+        echo "Eki eki eki patang!"
         quit 0
       # Read a line, eh, would be nice with removeFirst or popFirst...
       line = fileLines[0]
