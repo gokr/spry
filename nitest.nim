@@ -1,25 +1,30 @@
-import ni, niparser, extend
+import ni, niparser #, extend
 
 # Some helpers for tests below
 proc show(code: string): string =
   result = $newParser().parse(code)
   echo("RESULT:" & $result)
-  
+  echo("---------------------")
 proc run(code: string): string =
   result = $newInterpreter().eval(code)
   echo("RESULT:" & result)
+  echo("---------------------")
 
 
 # A bunch of tests for Parser
 when true:
-  # Four kinds of words, as normal Rebol/Red has
-  assert(show("one") == "[one]")
-  assert(show(":one") == "[:one]")
-  assert(show("one:") == "[one:]")
-  assert(show("'one") == "['one]")
+  # The different kinds of words
+  assert(show("one") == "[one]")        # Eval word  
+  assert(show(".one") == "[.one]")      # Eval word, only resolve locally
+  assert(show("..one") == "[..one]")    # Eval word, start resolve in parent
+  assert(show("^one") == "[^one]")      # Lookup word
+  assert(show("^.one") == "[^.one]")    # Lookup word, only resolve locally
+  assert(show("^..one") == "[^..one]")  # Lookup word, start resolve in parent
+  assert(show(":one") == "[:one]")      # Arg word, pulls in from caller
+  assert(show(":'one") == "[:'one]")    # Arg word, pulls in without eval
+  assert(show("'one") == "['one]")      # Literal word
+  assert(show("a at: 1 put: 2") == "[a at:put: 1 2]")  # Keyword syntactic sugar
   
-  # And an arg word, special for Ni
-  assert(show(">one") == "[>one]")
   assert(show("""
 red
 green
@@ -40,27 +45,34 @@ blue""") == "[red green blue]")
   assert(show("{}") == "[{}]")
   assert(show("one two [three]") == "[one two [three]]")
   assert(show("one (two) {four [three] five}") == "[one (two) {four [three] five}]")
-  assert(show(":one [two: ['three]]") == "[:one [two: ['three]]]")    
+  assert(show(":one [:two ['three]]") == "[:one [:two ['three]]]")    
   assert(show(":one [123 -4['three]+5]") == "[:one [123 -4 ['three] 5]]")
   
+  # Keyword syntax sugar
+  assert(show("[1 2] at: 0 put: 1") == "[[1 2] at:put: 0 1]")
+  assert(show("4 timesRepeat: [echo 34]") == "[4 timesRepeat: [echo 34]]")
+  assert(show("[3 < 4] whileTrue: [5 timesRepeat: [echo 42]]") == "[[3 < 4] whileTrue: [5 timesRepeat: [echo 42]]]")
+  assert(show("[3 4] at: [1 2 [hey]] put: [5 timesRepeat: [echo 42]]") == "[[3 4] at:put: [1 2 [hey]] [5 timesRepeat: [echo 42]]]")
+
+
   assert(show(">") == "[>]")
   assert(show("10.30") == "[10.3]")
     
-  # A real code Rebol code sample
+  # A real Rebol code sample, but with assignment words replaced with "=" assignment
   assert(show("""loop 10 [print "hello"]
 
 if time > 10:30 [send jim news]
 
-sites: [
+sites = [
     http://www.rebol.com [save %reb.html data]
     http://www.cnn.com   [print data]
     ftp://www.amiga.com  [send cs@org.foo data]
 ]
 
 foreach [site action] sites [
-    data: read site
+    data = read site
     do action
-]""") == """[loop 10 [print "hello"] if time > 10:30 [send jim news] sites: [http://www.rebol.com [save %reb.html data] http://www.cnn.com [print data] ftp://www.amiga.com [send cs@org.foo data]] foreach [site action] sites [data: read site do action]]""")
+]""") == """[loop 10 [print "hello"] if time > 10:30 [send jim news] sites = [http://www.rebol.com [save %reb.html data] http://www.cnn.com [print data] ftp://www.amiga.com [send cs@org.foo data]] foreach [site action] sites [data = read site do action]]""")
 
 # Tests for Interpreter
 when true:
@@ -81,7 +93,12 @@ when true:
   # But we need to use func to make a closure from it
   assert(run("func [3 + 4]") == "[3 + 4]")
   # Which will evaluate
-  assert(run("f: func [3 + 4] f") == "7")
+  assert(run("do func [3 + 4]") == "7")
+  
+  # Assignment is a prim
+  assert(run("x = 5") == "5")
+  assert(run("x = 5 x") == "5")
+  assert(run("f = func [3 + 4] f") == "7")
   
   # Precedence and basic math
   assert(run("3 * 4") == "12")
@@ -101,10 +118,13 @@ when true:
   assert(run("\"ab[c\"") == "\"ab[c\"")
   assert(run("\"ab\" & \"cd\"") == "\"abcd\"")
 
-  # Set and get globals
-  assert(run("x: 4 5 + x") == "9")
-  assert(run("x: 4 k: do [y: x + 3 y] k + x") == "11")
-  assert(run("x: 1 do [x: (x + 1)] x") == "2")
+  # Set and get variables
+  assert(run("x = 4 5 + x") == "9")
+  assert(run("x = 1 x = x x") == "1")
+  assert(run("x = 4 return x") == "4")  
+  assert(run("x = 1 x = (x + 2) x") == "3")
+  assert(run("x = 4 k = do [y = (x + 3) y] k + x") == "11")
+  #assert(run("x = 1 do [x = (x + 1)] x") == "2")
 
   # Use parse word
   assert(run("parse \"3 + 4\"") == "[3 + 4]")
@@ -117,13 +137,18 @@ when true:
   assert(run("not false") == "true")
   assert(run("3 < 4") == "true")
   assert(run("3 > 4") == "false")
-  assert(run("not 3 > 4") == "true")
+  assert(run("not (3 > 4)") == "true")
   assert(run("false or false") == "false")
   assert(run("true or false") == "true")
   assert(run("false or true") == "true")
-  assert(run("3 > 4 or 3 < 4") == "true")
-  assert(run("3 > 4 and 3 < 4") == "false")
-  assert(run("7 > 4 and 3 < 4") == "true")
+  assert(run("true or true") == "true")
+  assert(run("false and false") == "false")
+  assert(run("true and false") == "false")
+  assert(run("false and true") == "false")
+  assert(run("true and true") == "true")
+  assert(run("3 > 4 or (3 < 4)") == "true")
+  assert(run("3 > 4 and (3 < 4)") == "false")
+  assert(run("7 > 4 and (3 < 4)") == "true")
   assert(run("7 >= 4") == "true")
   assert(run("4 >= 4") == "true")
   assert(run("3 >= 4") == "false")
@@ -147,115 +172,143 @@ when true:
   assert(run("[3 4] first") == "3")
   assert(run("[3 4] second") == "4")
   assert(run("[3 4] last") == "4")
-  assert(run("[3 4] at 0") == "3")
-  assert(run("[3 4] at 1") == "4")
-  assert(run("[3 4] at 1") == "4")
-  assert(run("[3 4] put 0 5") == "[5 4]")
-  assert(run("x: [3 4] x put 1 5 x") == "[3 5]")
-  assert(run("x: [3 4] x read") == "3")
-  assert(run("x: [3 4] x setpos 1 x read") == "4")
-  assert(run("x: [3 4] x setpos 1 x reset x read") == "3")
-  assert(run("x: [3 4] x next") == "3")
-  assert(run("x: [3 4] x next x next") == "4")
-  assert(run("x: [3 4] x next x end?") == "false")
-  assert(run("x: [3 4] x next x next x end?") == "true")
-  assert(run("x: [3 4] x pos") == "0")
-  assert(run("x: [3 4] x next x pos") == "1")
-  assert(run("x: [3 4] x write 5") == "[5 4]")
+  assert(run("[3 4] at: 0") == "3")
+  assert(run("[3 4] at: 1") == "4")
+  assert(run("[3 4] at: 1") == "4")
+  assert(run("[3 4] at: 0 put: 5") == "[5 4]")
+  assert(run("x = [3 4] x at: 1 put: 5 x") == "[3 5]")
+  assert(run("x = [3 4] x read") == "3")
+  assert(run("x = [3 4] x pos: 1 x read") == "4")
+  assert(run("x = [3 4] x pos: 1 x reset x read") == "3")
+  assert(run("x = [3 4] x next") == "3")
+  assert(run("x = [3 4] x next x next") == "4")
+  assert(run("x = [3 4] x next x end?") == "false")
+  assert(run("x = [3 4] x next x next x end?") == "true")
+  assert(run("x = [3 4] x pos") == "0")
+  assert(run("x = [3 4] x next x pos") == "1")
+  assert(run("x = [3 4] x write: 5") == "[5 4]")
+  assert(run("x = [3 4] x add: 5 x") == "[3 4 5]")
+  assert(run("x = [3 4] x removeLast x") == "[3]")
+  assert(run("[3 4] & [5 6]") == "[3 4 5 6]")
   
   # if and ifelse and echo
-  assert(run("x: true if x [true]") == "true")
-  assert(run("x: false if x [true]") == "nil")
-  assert(run("if 3 < 4 [\"yay\"]") == "\"yay\"")
-  assert(run("if 3 > 4 [\"yay\"]") == "nil")
-  assert(run("ifelse 3 > 4 [\"yay\"] ['ok]") == "'ok")
+  assert(run("x = true if x [true]") == "true")
+  assert(run("x = true if x [12]") == "12")
+  assert(run("if false [12]") == "nil")
+  assert(run("x = false if x [true]") == "nil")
+  assert(run("if (3 < 4) [\"yay\"]") == "\"yay\"")
+  assert(run("if (3 > 4) [\"yay\"]") == "nil")
+  assert(run("ifelse (3 > 4) [\"yay\"] ['ok]") == "'ok")
+  assert(run("ifelse (3 > 4) [true] [false]") == "false")
+  assert(run("ifelse (4 > 3) [true] [false]") == "true")
   
   # loops
-  assert(run("x: 0 loop 5 [x: x + 1] x") == "5")
-  assert(run("x: 0 loop 0 [x: x + 1] x") == "0")
-  assert(run("x: 0 5 timesRepeat [x: x + 1] x") == "5") # Smalltalk style
-  assert(run("x: 0 [x > 5] whileFalse [x: x + 1] x") == "6") # Smalltalk style
-  assert(run("x: 10 [x > 5] whileTrue [x: x - 1] x") == "5") # Smalltalk style
-
+  assert(run("x = 0 5 timesRepeat: [x = (x + 1)] x") == "5")
+  assert(run("x = 0 0 timesRepeat: [x = (x + 1)] x") == "0")
+  assert(run("x = 0 5 timesRepeat: [x = (x + 1)] x") == "5")
+  assert(run("x = 0 [x > 5] whileFalse: [x = (x + 1)] x") == "6")
+  assert(run("x = 10 [x > 5] whileTrue: [x = (x - 1)] x") == "5")
+  
   # func
-  assert(run("z: func [3 + 4] z") == "7")
-  assert(run("x: func [3 + 4] :x") == "[3 + 4]")
-  assert(run("x: func [3 + 4] 'x") == "'x")
-  assert(run("x: func [3 + 4] :x write 5 x") == "9")
-  assert(run("x: func [3 + 4 return 1 8 + 9] x") == "1")
+  assert(run("z = func [3 + 4] z") == "7")
+  assert(run("x = func [3 + 4] ^x") == "[3 + 4]")
+  assert(run("x = func [3 + 4] 'x") == "'x")
+  assert(run("x = func [3 + 4] ^x write: 5 x") == "9")
+  assert(run("x = func [3 + 4 return 1 8 + 9] x") == "1")
   # Its a non local return so it returns all the way, thus it works deep down
-  assert(run("x: func [3 + 4 do [ 2 + 3 return 1 1 + 1] 8 + 9] x") == "1")
+  assert(run("x = func [3 + 4 do [ 2 + 3 return 1 1 + 1] 8 + 9] x") == "1")
   
   # func args
-  assert(run("x: func [>a a + 1] x 5") == "6")
-  assert(run("x: func [>a + 1] x 5") == "6") # Slicker than the above!
-  assert(run("x: func [>a >b b] x 5 4") == "4")
-  assert(run("x: func [>a >b a + b] x 5 4") == "9")
-  assert(run("x: func [>a + >b] x 5 4") == "9") # Again, slicker
-  assert(run("z: 15 x: func [>a >b a + b + z] x 1 2") == "18")
-  assert(run("z: 15 x: func [>a + >b + z] x 1 2") == "18") # Slick indeed
-  assert(run("do [>b + 3] 4") == "7") # Muhahaha!
-  assert(run("do [>b + >c - 1] 4 3") == "6") # Muhahaha!
+  assert(run("do [:a] 5") == "5")
+  assert(run("x = func [:a a + 1] x 5") == "6")
+  assert(run("x = func [:a + 1] x 5") == "6") # Slicker than the above!
+  assert(run("x = func [:a :b b] x 5 4") == "4")
+  assert(run("x = func [:a :b a + b] x 5 4") == "9")
+  assert(run("x = func [:a + :b] x 5 4") == "9") # Again, slicker
+  assert(run("z = 15 x = func [:a :b a + b + z] x 1 2") == "18")
+  assert(run("z = 15 x = func [:a + :b + z] x 1 2") == "18") # Slick indeed
+  assert(run("do [:b + 3] 4") == "7") # Muhahaha!
+  assert(run("do [:b + :c - 1] 4 3") == "6") # Muhahaha!
+  assert(run("d = 5 do [:x] d") == "5")
+  assert(run("d = 5 do [:'x] d") == "d")
+  # x will be a Binding, need val and key prims to access it!
+  #assert(run("a = \"ab\" do [:'x & \"c\"] a") == "\"ac\"") # x becomes "a"
+  assert(run("a = \"ab\" do [:x & \"c\"] a") == "\"abc\"") # x becomes "ab"
 
   # func infix works too, and with 3 or more arguments too...
-  assert(run("xx: funci [>a >b a + b + b] 5 xx 4 xx 2") == "17") # 5+4+4 + 2+2
-  assert(run("xx: funci [>a + >b + b] 5 xx 4 xx 2") == "17") # 5+4+4 + 2+2
-  assert(run("pick2add: funci [>block >b >c block at b + (block at c)] [1 2 3] pick2add 0 2") == "4") # 1+3
+  assert(run("xx = func [:a :b a + b + b] xx 2 (xx 5 4)") == "28") # 2 + (5+4+4) + (5+4+4)
+  assert(run("xx = funci [:a :b a + b] 5 xx 2") == "7") # 5 + 7
+  assert(run("xx = funci [:a + :b] 5 xx 2") == "7") # 5 + 7
+  assert(run("xx = funci [:a :b a + b + b] 5 xx (4 xx 2)") == "21") # 5 + (4+2+2) + (4+2+2)
+  assert(run("xx = funci [:a + :b + b] (5 xx 4) xx 2") == "17") # 5+4+4 + 2+2
+  assert(run("pick2add = funci [:block :b :c block at: b + (block at: c)] [1 2 3] pick2add 0 2") == "4") # 1+3
   
   # TODO: func closures, this test currently fails! The second call to c overwrites the closed a value.
   # I think this is because our bindings are made destructively into the bodies without cloning them.
   #assert(run("c: func [a] [func [b] [a + b]] d: c 1 e: c 2 reduce [d 1 d 2 e 1 e 2]") == "[2 3 3 4]")
   
-  # Factorial using a global n and f. Note that this recursive block causes
-  # $ to fail in debugging since string representation never ends :)
-  assert(run("""
-  n: 12
-  f: 1
-  factorial: func [ifelse n > 1 [
-    f: f * n
-    n: n - 1
-    factorial]
-  [
-    f]
-  ]
-  factorial
-  """) == "479001600")
-
   # Ok, but now we can do arguments so...
   assert(run("""
-  factorial: func [ifelse >n > 0 [n * factorial (n - 1)] [1]]
+  factorial = func [ifelse (:n > 0) [n * factorial (n - 1)] [1]]
   factorial 12
   """) == "479001600")
+
+  # Implement simple for loop
+  assert(run("""
+  for = func [:n :m :blk
+    x = n
+    [x <= m] whileTrue: [
+      do blk x
+      x = (x + 1)]]
+  r = 0
+  for 2 5 [r = (r + :i)]
+  r
+  """) == "14")
   
-  # Implementing detect, note that we use the internal streaming of blocks
+  # Implementing Smalltalk do:
+  assert(run("""
+  do: = funci [:blk :fun
+    blk reset
+    [blk end?] whileFalse: [do fun (blk next)]
+  ]
+  r = 0 y = [1 2 3]
+  y do: [r = (r + :e)]
+  r""") == "6")
+  
+  # Implementing detect:, note that we use the internal streaming of blocks
   # so we need to do call reset first. Also note the use of return which
   # is a non local return in Smalltalk style, so it will return from the
   # whole func.
   assert(run("""
-  y: [1 2 3]  
-  detect: funci [>blk >fun
+  detect: = funci [:blk :pred
     blk reset
-    [blk end?] whileFalse [
-      n: blk next
-      if do fun n [return n]]
+    [blk end?] whileFalse: [
+      n = (blk next)
+      if do pred n [return n]]
     return nil
   ]
-  y detect [>each > 1]
-  """) == "2")
-  
-  # Implementing do. This one is hard to do since scoping is a bit WIP still,
-  # from inside the block I have no way to store a result on the outer level :)
-#  assert(run("""
-#  y: [1 2 3]
-#  each: funci [>blk >fun
-#    blk reset
-#    [blk end?] whileFalse [do fun (blk next)]
-#  ]
-#  y each []
-#  """) == "7")
-  
-when true:
+  [1 2 3 4] detect: [:each > 2]
+  """) == "3")
+
+  # Implementing select:
+  assert(run("""
+  select: = funci [:blk :pred
+    result = []
+    blk reset
+    [blk end?] whileFalse: [
+      n = (blk next)
+      if do pred n [result add: n]]
+    return result
+  ]
+  [1 2 3 4] select: [:each > 2]
+  """) == "[3 4]")
+    
+
+when false: # Disabled right now, needs fixing
   # Demonstrate extension from extend.nim
   assert(show("'''abc'''") == "[\"abc\"]")
   assert(run("reduce [1 + 2 3 + 4]") == "[3 7]")  
   
+
+
+
