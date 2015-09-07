@@ -3,6 +3,7 @@ nirepl
 niparser
 factorial
 nitest
+ni2nim
 nimcache
 extend
 profile_*
