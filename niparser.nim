@@ -26,12 +26,27 @@ type
   # Nodes form an AST which we later eval directly using Interpreter
   Node* = ref object of RootObj
   Word* = ref object of Node
-    word*: string    
-  EvalWord* = ref object of Word
-  SetWord* = ref object of Word
-  GetWord* = ref object of Word
-  LitWord* = ref object of Word
-  ArgWord* = ref object of Word
+    word*: string   
+  GetW* = ref object of Word
+  EvalW* = ref object of Word
+  
+  # These are all concrete word types
+  LitWord* = ref object of Word  
+
+  EvalWord* = ref object of EvalW
+  EvalLocalWord* = ref object of EvalW
+  EvalParentWord* = ref object of EvalW
+  EvalArgWord* = ref object of EvalW
+
+  GetWord* = ref object of GetW
+  GetLocalWord* = ref object of GetW
+  GetParentWord* = ref object of GetW
+  GetArgWord* = ref object of GetW
+  
+  # And support for keyword syntactic sugar, only used during parsing
+  KeyWord* = ref object of Node
+    keys*: seq[string]
+    args*: seq[Node]
   
   Value* = ref object of Node
   IntVal* = ref object of Value
@@ -60,7 +75,7 @@ type
   # Contexts holds Bindings. This way we, when forming a closure we can lookup
   # a word to get the Binding and from then on simply set/get the val on the
   # Binding instead.
-  Binding* = ref object
+  Binding* = ref object of Node
     key*: string
     val*: Node
 
@@ -87,7 +102,7 @@ method `$`*(self: Node): string =
   echo repr(self)
 
 method `$`*(self: Binding): string =
-  self.key & ":" & $self.val
+  $self.key & "=" & $self.val
 
 method `$`*(self: Context): string =
   result = "{"
@@ -116,17 +131,32 @@ proc `$`*(self: seq[Node]): string =
 method `$`*(self: Word): string =
   self.word
 
-method `$`*(self: SetWord): string =
-  self.word & ":"
+method `$`*(self: EvalWord): string =
+  self.word
+
+method `$`*(self: EvalLocalWord): string =
+  "." & self.word
+
+method `$`*(self: EvalParentWord): string =
+  ".." & self.word
 
 method `$`*(self: GetWord): string =
-  ":" & self.word
+  "^" & self.word
+
+method `$`*(self: GetLocalWord): string =
+  "^." & self.word
+
+method `$`*(self: GetParentWord): string =
+  "^.." & self.word
 
 method `$`*(self: LitWord): string =
   "'" & self.word
 
-method `$`*(self: ArgWord): string =
-  ">" & self.word
+method `$`*(self: EvalArgWord): string =
+  ":" & self.word
+
+method `$`*(self: GetArgWord): string =
+  ":'" & self.word
 
 method `$`*(self: Blok): string =
   "[" & $self.nodes & "]"
@@ -137,10 +167,18 @@ method `$`*(self: Paren): string =
 method `$`*(self: Curly): string =
   "{" & $self.nodes & "}"
 
+method `$`*(self: KeyWord): string =
+  "KEYWORD(" & $self.keys & " " & $self.args & ")"
+
 # AST manipulation
 proc add*(self: Composite, n: Node) =
   self.nodes.add(n)
 
+proc add*(self: Composite, n: openarray[Node]) =
+  self.nodes.add(n)
+  
+proc removeLast*(self: Composite) =
+  system.delete(self.nodes,self.nodes.high)
 
 # Context lookups
 proc lookup*(self: Context, key: string): Binding =
@@ -157,20 +195,35 @@ proc raiseParseException(msg: string) =
 proc newContext*(): Context =
   Context(bindings: newTable[string, Binding]())
 
-proc newWord*(s: string): Word =
-  Word(word: s)
+proc newEvalWord*(s: string): EvalWord =
+  EvalWord(word: s)
 
-proc newSetWord*(s: string): SetWord =
-  SetWord(word: s)
+proc newEvalLocalWord*(s: string): EvalLocalWord =
+  EvalLocalWord(word: s)
+
+proc newEvalParentWord*(s: string): EvalParentWord =
+  EvalParentWord(word: s)
 
 proc newGetWord*(s: string): GetWord =
   GetWord(word: s)
 
+proc newGetLocalWord*(s: string): GetLocalWord =
+  GetLocalWord(word: s)
+
+proc newGetParentWord*(s: string): GetParentWord =
+  GetParentWord(word: s)
+
 proc newLitWord*(s: string): LitWord =
   LitWord(word: s)
 
-proc newArgWord*(s: string): ArgWord =
-  ArgWord(word: s)
+proc newEvalArgWord*(s: string): EvalArgWord =
+  EvalArgWord(word: s)
+
+proc newGetArgWord*(s: string): GetArgWord =
+  GetArgWord(word: s)
+
+proc newKeyWord*(): KeyWord =
+  KeyWord(keys: newSeq[string](), args: newSeq[Node]())
 
 proc newBlok*(nodes: seq[Node]): Blok =
   Blok(nodes: nodes)
@@ -260,6 +313,63 @@ proc len(self: Node): int =
 proc len(self: Composite): int =
   self.nodes.len
 
+proc addKey(self: KeyWord, key: string) =
+  self.keys.add(key)
+
+proc addArg(self: KeyWord, arg: Node) =
+  self.args.add(arg)
+
+proc inBalance(self: KeyWord): bool =
+  return self.args.len == self.keys.len
+
+proc produceNodes(self: KeyWord): seq[Node] =
+  #echo "PRODUCE NODES"
+  result = newSeq[Node]()
+  result.add(newEvalWord(self.keys.join()))
+  result.add(self.args)
+  #echo repr(result)
+
+template top(self: Parser): Node =
+  self.stack[self.stack.high]
+
+proc currentKeyword(self: Parser): KeyWord =
+  # If there is a KeyWord on the stack return it, otherwise nil
+  if self.top of KeyWord:
+    return KeyWord(self.top)
+  else:
+    return nil
+
+proc closeKeyword(self: Parser)
+proc pop(self: Parser) =
+  if self.currentKeyword().notNil:
+    self.closeKeyword()
+  discard self.stack.pop()
+
+proc addNode(self: Parser)
+proc closeKeyword(self: Parser) =
+  let keyword = self.currentKeyword()
+  discard self.stack.pop()
+  let nodes = keyword.produceNodes()
+  Composite(self.top).removeLast()
+  Composite(self.top).add(nodes)
+  
+proc doAddNode(self: Parser, node: Node) =
+  # If we are collecting a keyword, we get nil until its ready
+  let keyword = self.currentKeyword()
+  if keyword.isNil:
+    # Then we are not parsing a keyword
+    Composite(self.top).add(node)
+  else:
+    if keyword.inBalance():
+      self.closeKeyword()
+      self.doAddNode(node)
+    else:
+      keyword.args.add(node)
+
+proc push(self: Parser, n: Node) =
+  if not self.stack.isEmpty:
+    self.doAddNode(n)
+  self.stack.add(n)
 
 proc newWordOrValue(self: Parser): Node =
   ## Decide what to make, a word or value
@@ -273,38 +383,78 @@ proc newWordOrValue(self: Parser): Node =
       return valueOrNil
 
   # Then it must be a word
+  let len = token.len
+  let first = token[0]
+ 
+  # All arg words (unique for Ni) are preceded with ":"
+  if first == ':' and len > 1:
+    if token[1] == '\'':
+      if token.len < 3:
+        raiseParseException("Malformed literal argword, missing at least 1 character")
+      # Then its a literal arg word
+      return newGetArgWord(token[2..^1])
+    else:
+      return newEvalArgWord(token[1..^1])
+ 
+  # All lookup words are preceded with "^"
+  if first == '^' and len > 1:
+    if token[1] == '.':
+      # Local or parent
+      if len > 2:
+        if token[2] == '.':
+          if len > 3:
+            return newGetParentWord(token[3..^1])
+          else:
+            raiseParseException("Malformed parent lookup word, missing at least 1 character")
+        else:
+          return newGetLocalWord(token[2..^1])
+      else:
+        raiseParseException("Malformed local lookup word, missing at least 1 character")
+    else:
+      return newGetWord(token[1..^1])
   
-  # All get words start with ":"
-  if token[0] == ':':
-    return newGetWord(token[1..^1])
-  # Or a set word
-  if token[^1] == ':':
-    return newSetWord(token[0..^2])
-  # Or a literal word
-  if token[0] == '\'':
-    return newLitWord(token[1..^1])
-  # An arg word (unique for Ni) starts with ">" but must
-  # then be followed by at least 1 letter. So ">>" or ">" is not an arg word
-  # but ">a" or ">p1" is.
-  if token[0] == '>' and token.len > 1 and token[1] in Letters:
-    return newArgWord(token[1..^1])
-  return newWord(token)
+  # All literal words are preceded with "'"
+  if first == '\'':
+    if len < 2:
+      raiseParseException("Malformed literal word, missing at least 1 character")
+    else:
+      return newLitWord(token[1..^1])
+  
+  # All keywords end with ":"
+  if token[^1] == ':' and len > 1:
+    if self.currentKeyword().isNil:
+      # Then its the first key we parse, push a KeyWord
+      self.push(newKeyWord())
+    if self.currentKeyword().inBalance():
+      # keys and args balance so far, so we can add a new key
+      self.currentKeyword().addKey(token)
+    else:
+      raiseParseException("Malformed keyword syntax, expecting an argument")
+    return nil
+  
+  # A regular eval word then, possibly prefixed with . or ..
+  if first == '.':
+    # Local or parent
+    if len > 1:
+      if token[1] == '.':
+        if len > 2:
+          return newEvalParentWord(token[2..^1])
+        else:
+          raiseParseException("Malformed parent eval word, missing at least 1 character")
+      else:
+        return newEvalLocalWord(token[1..^1])
+    else:
+      raiseParseException("Malformed local eval word, missing at least 1 character")
+  else:
+    return newEvalWord(token)
 
-template top(self: Parser): Node =
-  self.stack[self.stack.high]
-
-template pop(self: Parser) =
-  discard self.stack.pop()
-
-proc push(self: Parser, n: Node) =
-  if not self.stack.isEmpty:
-    Composite(self.top).add(n)
-  self.stack.add(n)
 
 proc addNode(self: Parser) =
+  # If there is a token we figure out what to make of it
   if self.token.len > 0:
-    Composite(self.top).add(self.newWordOrValue())
-    self.token = ""
+    let node = self.newWordOrValue()
+    if node.notNil:
+      self.doAddNode(node)
 
 proc parse*(self: Parser, str: string): Node =
   var ch: char
@@ -375,8 +525,11 @@ proc parse*(self: Parser, str: string): Node =
           else:
             self.token.add(ch)
         else:
+          # Just collect for current value parser
           self.token.add(ch)
   self.addNode()
+  if self.currentKeyword().notNil:
+    self.closeKeyword()
   self.top
 
 
