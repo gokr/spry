@@ -40,14 +40,13 @@ proc main() =
       line = stdin.readLine()
     else:
       if fileLines.len == 0:
-        echo "Eki eki eki patang!"
         quit 0
       # Read a line, eh, would be nice with removeFirst or popFirst...
       line = fileLines[0]
       fileLines.delete(0)
       # Logic for pausing
       if line.strip() == "# pause":
-        stdout.write("         <Hit enter to eval or s = suspend>")
+        stdout.write("         <Hit enter to eval or s = suspend>\n")
         var enter = stdin.readLine()
         if enter.strip() == "s":
           stdout.write("         <Suspended, c = continue>\n")
@@ -70,7 +69,7 @@ proc main() =
       lines = newSeq[string]()
       try:
         # Let the interpreter eval the code
-        var output = $ni.eval(code)
+        var output = $ni.evalRoot(code)
         # Print any result
         if output.isNil:
           output = if suspended: "nil" else: ""

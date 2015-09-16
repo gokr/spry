@@ -1,20 +1,22 @@
-#!./ni
-# Run with: ./ni sample.ni
-
+#!./nirepl
+# ...or run with: ./ni sample.ni
+#
 # Fun Fun with Ni!
-
+#
 # Ni source code is basically just a list of "words" and "values"
 # with sublists created using "[..]" and such a list is called
 # a "block". Parenthesis can also be used to control evalation
 # order. This file, when parsed by the Parser, is wrapped in
 # a block.
-
+#
 # This is a word followed by a value. It should print "Hello".
 echo "Hello"
+# pause
 
 # Here is a block with all core Ni value types.
 # It should print "[3 4.0 true false nil "hey"]"
 echo [3 4.0 true false nil "hey"]
+# pause
 
 # A word is just a string until it gets resolved. "echo" above
 # got resolved to a primitive function taking 1 argument, when
@@ -22,77 +24,94 @@ echo [3 4.0 true false nil "hey"]
 # level deep though, so the words "true", "false" and "nil"
 # are still just words in the block above. When they are resolved
 # they would refer to the singletons for those three values.
-
-# "myblock:" below is a so called set-word, it means set the word
-# "myblock" to refer to whatever comes to the left.
-# Currently Ni only has global variables. So after this line
+#
+# We can bind stuff to words with regular assignment. After this line
 # "myblock" refers to a block with two value nodes and one
 # word node - "+". But the "+" is not yet resolved.
-myblock: [3 + 4]
+myblock = [3 + 4]
+# pause
 
 # When the echo function pulls in its argument, it first evaluates
 # it. For words it means "look up and evaluate what we found".
-# We found a block, but blocks just return themselves when called
+# We found a block, which is the basic unit of code in Ni, but
+# blocks just return themselves when called
 # upon to evaluate. We need to do more to actually "run" them.
 # It should print "[3 + 4]" 
 echo myblock
+# pause
 
 # The "do" word will resolve the block and then run it as code.
 # Its at this point that "+" gets resolved to a primitive infix function.
-# It should print "7".
+# This should print "7".
 echo do myblock
+# pause
 
 # But we can also turn a block into a function using the "func" function.
-# Func takes a block as argument and turns it into a closure.
-# Arguments are pulled using so called ArgWords, ">a".
-# Let's turn myblock into a function and assign it to "foo".
-foo: func myblock
+# Func takes a block as argument and turns it into a closure with
+# its own local context of words.
+# Arguments are pulled using so called "arg words", which is just a word
+# prefixed with a ":". Let's turn myblock into a function and assign it to "foo".
+foo = func myblock
+# pause
 
 # Now we can run it just with "foo" because a function will run
 # when we evaluate it. It should print "7".
 echo foo
+# pause
 
 # The Ni Parser is exposed through the "parse" primitive.
 # Currently parse will put whatever it parses into a block
 # so we don't need "[]" inside the string. The bar func we create
 # below is equivalent to foo.
-bar: func parse "3 + 4"
+bar = func parse "3 + 4"
+# pause
 
 # So this should also print "7"
 echo bar
+# pause
 
 # The fact that Ni code is just blocks means we can compose and manipulate
 # code just as data. First let's make a func calling our previous funcs.
-combo: func [foo + bar]
+combo = func [foo + bar]
+# pause
 
 # It should print "14"
 echo combo
+# pause
 
-# Now let's manipulate the combo func. It is actually a block containing
-# the spec and body block. To get the func itself and not what it evaluates
-# to we can use a get-word, which is the word with a ":" prefix.
-# This should thus print the combo func itself: "[[foo + bar]]"
-echo :combo
+# Now let's manipulate the combo func.
+# To get the func itself and not what it evaluates
+# to we can use a "lookup word", which is the word with a "^" prefix.
+# This should thus print the combo func itself: "[foo + bar]"
+echo ^combo
+# pause
 
 # So... blocks are collections
-echo myblock len 	# Prints 3
-echo myblock first 	# Prints 3
-echo myblock at 1 	# Prints +
+echo (myblock len) 	# Prints 3
+echo (myblock first) 	# Prints 3
+echo (myblock at: 1)	# Prints +
+# pause
 
 # ..and also positionable streams
-echo myblock pos	# Prints 0
-echo myblock read	# Gets the element at pos, prints 3
-echo myblock next	# Gets the element at pos, increment pos, prints 3
-echo myblock next	# Gets the element at pos, increment pos, prints +
-echo myblock write 6	# Writes 6 at current pos, which is 2, prints myblock itself
-echo do myblock 	# Prints 9
-echo foo                # Prints 9 too, since.. you know, foo is a func of myblock
-
+echo (myblock pos)	# Prints 0
+echo (myblock read)	# Gets the element at pos, prints 3
+echo (myblock next)	# Gets the element at pos, increment pos, prints 3
+echo (myblock next)	# Gets the element at pos, increment pos, prints +
+echo (myblock write: 6)	# Writes 6 at current pos, which is 2, prints myblock itself
+echo (do myblock)	# Prints 9
+echo foo                # Prints 7 still, since.. foo copied from myblock
+# pause
 
 # Fetch func, pick out body, put in "20" at position 2 so that
 # it now reads [foo + 20]
-:combo first put 2 20
-echo :combo
+^combo at: 2 put: 20
+echo ^combo
+# pause
+
+# Fetch foo func, put in "6" at position 2
+^foo at: 2 put 6
+echo ^foo
+# pause
 
 # Should print 27....nah, 29!
 echo combo

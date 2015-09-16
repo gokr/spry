@@ -15,7 +15,7 @@ var s:seq[string] = @["a", "b"]
 
 # Bind a NimProc to the word "nimpush" that will simply take an argument
 # which is a string and add it to the seq.
-discard root.bindit("nimpush", newNimProc(
+discard root.makeBinding("nimpush", newNimProc(
   # Every NimProc returns a Node, note that arguments will be
   # pulled from inside the Nim code by calling the Interpreter
   proc (ni: Interpreter): Node =
@@ -42,5 +42,5 @@ echo "After Ni script we have: " & $s
 try:
   discard n.eval("nimpush 123")
 except ObjectConversionError:
-  echo "Ooops!"
+  echo "Yes, we got a proper exception when trying to push an integer. Cool!"
 

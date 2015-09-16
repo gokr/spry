@@ -26,7 +26,7 @@ type
   # Nodes form an AST which we later eval directly using Interpreter
   Node* = ref object of RootObj
   Word* = ref object of Node
-    word*: string   
+    word*: string  
   GetW* = ref object of Word
   EvalW* = ref object of Word
   
@@ -62,7 +62,6 @@ type
   Composite* = ref object of Node
     nodes*: seq[Node]
     pos*: int
-    resolved*: bool
   Paren* = ref object of Composite
   Blok* = ref object of Composite
   Curly* = ref object of Composite
@@ -184,7 +183,7 @@ proc removeLast*(self: Composite) =
 proc lookup*(self: Context, key: string): Binding =
   self.bindings[key]
 
-proc bindit*(self: Context, key: string, val: Node): Binding =
+proc makeBinding*(self: Context, key: string, val: Node): Binding =
   result = Binding(key: key, val: val)
   self.bindings[key] = result
 

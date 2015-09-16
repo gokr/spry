@@ -17,7 +17,7 @@ echo "hello"
 # pause
 
 # Ni is, like Nim, a language where there is no class concept - 
-
+#
 # The word "echo" is a core word in Ni, but its not a keyword - its rather a
 # Ni standard library function. All words in Ni's vocabulary can be redefined.
 #
@@ -30,6 +30,7 @@ echo [true false nil]
 # but also for making ordered sequences like "[1 2 3]" and such a sequence is
 # called a "block".
 echo([1 2 3] len)
+# pause
 
 # Parenthesis can also be used to control evalation
 # order. This file, when parsed by the Parser, is wrapped in

@@ -2,6 +2,6 @@
 import ni
 
 discard newInterpreter().eval """
-  factorial = [ifelse (:n > 1) [n * factorial(n - 1)] [1]]
-  echo(factorial 12)
+  factorial = func [ifelse (:n > 0) [n * factorial (n - 1)] [1]]
+  echo (factorial 12)
 """
