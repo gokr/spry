@@ -8,8 +8,10 @@
 ## TODO: Add objects and delegation
 ## TODO: Implement load save of the world
 
-import strutils, sequtils, tables, nimprof, typetraits
+import strutils, sequtils, tables, nimprof, typetraits #, threadpool
 import niparser
+
+#{.experimental.}
 
 type
   # Ni interpreter
@@ -64,7 +66,7 @@ proc addInterpreterExtension*(prok: InterpreterExt) =
 # Forward declarations to make Nim happy
 proc funk*(ni: Interpreter, body: Blok, infix: bool): Node
 method eval*(self: Node, ni: Interpreter): Node
-method evalDo*(self: Node, ni: Interpreter): Node
+proc evalDo*(self: Node, ni: Interpreter): Node
 
 # String representations
 method `$`*(self: NimProc): string =
@@ -367,6 +369,13 @@ proc makeBinding(ni: Interpreter, key: string, val: Node): Binding =
   for activation in contextWalk(ni.currentActivation):
     return activation.makeBinding(key, val)
 
+proc setBinding(ni: Interpreter, word: Word, value: Node): Binding =
+  result = ni.lookup(word.word)
+  if result.notNil:
+    result.val = value
+  else:
+    result = ni.makeBinding(word.word, value)
+
 method infix(self: Node): bool =
   false
 
@@ -429,13 +438,8 @@ proc newInterpreter*(): Interpreter =
    
   # Primitives in Nim
   nimPrim("=", true, 2):
-    let key = Word(argInfix(ni)).word
     result = evalArg(ni) # Perhaps we could make it eager here? Pulling in more?
-    let binding = ni.lookup(key)
-    if binding.isNil:
-      discard ni.makeBinding(key, result)
-    else:
-      binding.val = result
+    discard ni.setBinding(Word(argInfix(ni)), result)
     
   # Basic math
   nimPrim("+", true, 2):  evalArgInfix(ni) + evalArg(ni)
@@ -498,15 +502,6 @@ proc newInterpreter*(): Interpreter =
     result = evalArgInfix(ni)
     let comp = Composite(result)
     comp.removeLast()
-
-
-# This is hard, because evalDo of fn wants to pull its argument from
-# the parent activation, but there is none here. Hmmm.
-#  nimPrim("do:", true, 2):
-#    let comp = Composite(evalArgInfix(ni))
-#    for node in comp.nodes:
-#      result = fn.evalDo(ni)
-
   
   # Positioning
   nimPrim("reset", true, 1):  Composite(evalArgInfix(ni)).pos = 0 # Called change in Rebol
@@ -519,8 +514,16 @@ proc newInterpreter*(): Interpreter =
   # Streaming
   nimPrim("next", true, 1):
     let comp = Composite(evalArgInfix(ni))
+    if comp.pos == comp.nodes.len:
+      return ni.nilVal
     result = comp[comp.pos]
     inc(comp.pos)
+  nimPrim("prev", true, 1):
+    let comp = Composite(evalArgInfix(ni))
+    if comp.pos == 0:
+      return ni.nilVal
+    dec(comp.pos)
+    result = comp[comp.pos]
   nimPrim("end?", true, 1):
     let comp = Composite(evalArgInfix(ni))
     newValue(comp.pos == comp.nodes.len)
@@ -588,6 +591,22 @@ proc newInterpreter*(): Interpreter =
       if ni.currentActivation.returned:
         return
 
+  # This is hard, because evalDo of fn wants to pull its argument from  
+  # the parent activation, but there is none here. Hmmm.
+  #nimPrim("do:", true, 2):
+  #  let comp = Composite(evalArgInfix(ni))
+  #  let blk = Composite(evalArg(ni))
+  #  for node in comp.nodes:
+  #    result = blk.evalDo(node, ni)
+
+  # Parallel
+  #nimPrim("parallel", true, 1):
+  #  let comp = Composite(evalArgInfix(ni))
+  #  parallel:
+  #    for node in comp.nodes:
+  #      let blk = Blok(node)
+  #      discard spawn blk.evalDo(ni)
+
   # Debugging
   nimPrim("dump", false, 0):    dump(ni)
   
@@ -604,15 +623,6 @@ proc newInterpreter*(): Interpreter =
 
 proc atEnd*(ni: Interpreter): bool {.inline.} =
   return ni.currentActivation.atEnd
-
-proc setBinding(ni: Interpreter, word: Word, value: Node) =
-  let b = ni.lookup(word.word)
-  if b.notNil:
-    b.val = value
-    #echo("Bound " & word.word & " to " & $value)
-  else:
-    discard ni.makeBinding(word.word, value)
-    #echo("Bound new " & word.word & " to " & $value)
 
 proc funk*(ni: Interpreter, body: Blok, infix: bool): Node =
   result = newFunk(body, infix, ni.currentActivation)
@@ -682,16 +692,16 @@ method eval(self: EvalArgWord, ni: Interpreter): Node =
   ni.currentActivation = previousActivation
   let ev = arg.eval(ni)
   ni.currentActivation = here
-  ni.setBinding(self, ev)
+  discard ni.setBinding(self, ev)
   return ev
 
 method eval(self: GetArgWord, ni: Interpreter): Node =
   ## Pull next argument, do not eval it and bind its word into a local word
   if ni.currentActivation.body.infix and ni.currentActivation.infixArg.isNil:
     ni.currentActivation.infixArg = argInfix(ni)
-    return ni.makeBinding(self.word, ni.currentActivation.infixArg).val
+    return ni.setBinding(self, ni.currentActivation.infixArg).val
   else:
-    return ni.makeBinding(self.word, arg(ni)).val
+    return ni.setBinding(self, arg(ni)).val
 
 method eval(self: NimProc, ni: Interpreter): Node =
   return self.prok(ni)
@@ -720,7 +730,7 @@ method eval(self: Funk, ni: Interpreter): Node =
 method eval(self: Paren, ni: Interpreter): Node =
   newActivation(self).eval(ni)
  
-method evalDo(self: Node, ni: Interpreter): Node =
+proc evalDo(self: Node, ni: Interpreter): Node =
   newActivation(Blok(self)).eval(ni)
 
 method evalRootDo(self: Node, ni: Interpreter): Node =
@@ -748,8 +758,9 @@ proc evalRoot*(ni: Interpreter, code: string): Node =
   ## Evaluate code in the root activation
   # First pop the root activation
   ni.popActivation()
-  # This will push it back
+  # This will push it back and... pop it too
   result = Composite(newParser().parse(code)).evalRootDo(ni)
+  # ...so we need to put it back
   ni.pushActivation(ni.rootActivation)
 
 when isMainModule:

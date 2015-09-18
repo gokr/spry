@@ -12,6 +12,8 @@
 import os, strutils
 import ni, niparser
 
+import nipython
+
 proc main() =
   # Let's create a Ni interpreter. It also holds all state.
   let ni = newInterpreter()

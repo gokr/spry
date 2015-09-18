@@ -183,6 +183,9 @@ when true:
   assert(run("x = [3 4] x next x next") == "4")
   assert(run("x = [3 4] x next x end?") == "false")
   assert(run("x = [3 4] x next x next x end?") == "true")
+  assert(run("x = [3 4] x next x next x next") == "nil")
+  assert(run("x = [3 4] x next x next x prev") == "4")  
+  assert(run("x = [3 4] x next x next x prev x prev") == "3")  
   assert(run("x = [3 4] x pos") == "0")
   assert(run("x = [3 4] x next x pos") == "1")
   assert(run("x = [3 4] x write: 5") == "[5 4]")
@@ -267,7 +270,7 @@ when true:
   eval r
   """) == "14")
   
-  # Implementing Smalltalk do:
+  # Implementing Smalltalk do: in Ni
   assert(run("""
   do: = funci [:blk :fun
     blk reset
