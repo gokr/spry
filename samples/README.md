@@ -6,6 +6,11 @@ The *.nim examples are compiled using nim:
 
 	./ni2nim
 
+...or all in one:
+
+	nim c -r ni2nim
+
+
 The *.ni examples are either run directly if
 you have a "ni" interpreter in your path, or
 you run them like:

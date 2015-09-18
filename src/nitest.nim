@@ -1,4 +1,4 @@
-import ni, niparser, extend
+import ni, niparser, niextend
 
 # Some helpers for tests below
 proc show(code: string): string =

@@ -1,4 +1,4 @@
-import ni, niparser, nipython
+import ni, nipython
 
 # Create a Ni interpreter
 let n = newInterpreter()
