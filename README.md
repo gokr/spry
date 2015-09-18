@@ -19,29 +19,22 @@ in nimscript and thus everything can be fully cross platform.
 
 ### Linux
 
-1. Get [Nim!](http://www.nim-lang.org). I recommend following the [instructions at the bottom](http://nim-lang.org/download.html).
-2. Install Nimble, [the Nim package manager](https://github.com/nim-lang/nimble). Yeah, its very nice and simple to use. Its not needed really for Ni, but makes some things easier.
-3. Clone this repo. Then:
+1. Get [Nim](http://www.nim-lang.org)! I recommend following the [instructions at the bottom](http://nim-lang.org/download.html).
+2. Install Nimble, [the Nim package manager](https://github.com/nim-lang/nimble). Yeah, its very nice and simple to use. Its not really needed but makes some things easier.
+3. Clone this repo. Then `cd ni/src && ./test.sh`. If it ends with "ALL GOOD"... **its all good :)**
 
-	cd src
-	./test.sh
 
-It should build nitest.nim and run it verifying all tests are green. nitest.nim is simply a range of asserts verifying that small Ni
-programs execute and produce the expected output. If it ends with "ALL GOOD"... **its all good :)**
+The tests in `nitest.nim` is simply a range of asserts verifying that small Ni
+programs execute and produce the expected output.
 
-You can at this point if you like use nimble to build/install Ni. To build Ni, (non release mode) in the bin directory:
-
-	nimble build
-
-...or in release mode and installed in path:
+At this point you can use nimble to build & install Ni:
 
 	nimble install
 
-For the other platforms the steps are basically the same. Compiling with Nim is also trivial, you simply compile the top level file like this:
+For the other platforms the steps are basically the same.
 
-	nim c thefile.nim
-
-So for example building samples in the samples directory is trivial to do. Nim is its own build tool, no need for Makefiles etc.
+So now that you have installed Ni, you can proceed to play with the samples in the `samples` directory.
+See README in there for details.
 
 ### Other platforms
 
@@ -71,6 +64,7 @@ yet since its evolving but you can:
 * Look at the various `samples`
 * Try running `tutorial1.ni` in tutorials, which is just showing we can do interactive tutorials with the repl
 * Try out the repl by running `nirepl`
+* And of course, read the source code `ni.nim` and `niparser.nim`. Its hopefully not that messy.
 
 ## History
 
