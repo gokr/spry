@@ -1,5 +1,5 @@
-#!ni
-# Run with: ./ni factorial.ni
+#!/usr/bin/env ni
+# Run with: ni factorial.ni
 
 # A recursive factorial
 factorial = func [ifelse (:n > 0) [n * factorial (n - 1)] [1]]
