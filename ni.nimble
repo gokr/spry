@@ -6,8 +6,8 @@ description   = "Rebol-ish dynamic language in Nim"
 license       = "MIT"
 bin           = "ni,nirepl"
 
-srcDir = "src"
-binDir = "bin"
+srcDir        = "src"
+binDir        = "bin"
 
 [Deps]
 Requires      = "nim >= 0.11.2, python"
