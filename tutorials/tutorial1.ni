@@ -1,4 +1,4 @@
-#!./nirepl
+#!/usr/bin/env nirepl
 #
 # Ni is a crazy little mix of Rebol/Smalltalk/Self/Lisp/Forth and Nim. Kinda.
 #

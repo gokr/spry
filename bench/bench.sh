@@ -1,3 +1,3 @@
-nim c -d:release ../src/ni
+nim c -d:release --out:$PWD/ni ../src/ni.nim
 echo "Ni:"
-time ../src/ni factorial.ni
+time ./ni factorial.ni

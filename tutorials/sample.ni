@@ -1,6 +1,4 @@
-#!./nirepl
-# ...or run with: ./ni sample.ni
-#
+#!/usr/bin/env nirepl
 # Fun Fun with Ni!
 #
 # Ni source code is basically just a list of "words" and "values"
