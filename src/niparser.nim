@@ -96,12 +96,13 @@ var parserExts = newSeq[ParserExt]()
 proc addParserExtension*(prok: ParserExt) =
   parserExts.add(prok)
 
-# String representations
+# Ni representations
 method `$`*(self: Node): string =
+  # Fallback if missing
   echo repr(self)
 
 method `$`*(self: Binding): string =
-  $self.key & "=" & $self.val
+  $self.key & " = " & $self.val
 
 method `$`*(self: Context): string =
   result = "{"
@@ -168,6 +169,15 @@ method `$`*(self: Curly): string =
 
 method `$`*(self: KeyWord): string =
   "KEYWORD(" & $self.keys & " " & $self.args & ")"
+
+# Human string representations
+method form*(self: Node): string =
+  # Default is to use $
+  $self
+
+method form*(self: StringVal): string =
+  # No surrounding ""
+  $self.value
 
 # AST manipulation
 proc add*(self: Composite, n: Node) =

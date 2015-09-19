@@ -546,7 +546,7 @@ proc newInterpreter*(): Interpreter =
   nimPrim("parse", false, 1):   newParser().parse(StringVal(evalArg(ni)).value)
 
   # IO
-  nimPrim("echo", false, 1):    echo($evalArg(ni))
+  nimPrim("echo", false, 1):    echo(form(evalArg(ni)))
  
   # Control structures
   nimPrim("return", false, 1):
