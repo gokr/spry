@@ -609,6 +609,7 @@ proc newInterpreter*(): Interpreter =
 
   # Debugging
   nimPrim("dump", false, 0):    dump(ni)
+  nimPrim("repr", false, 1):    newValue(repr(evalArg(ni)))
   
   # Some scripting prims
   nimPrim("quit", false, 1):    quit(IntVal(evalArg(ni)).value)
@@ -649,6 +650,9 @@ method canEval*(self: NimProc, ni: Interpreter):bool =
 method canEval*(self: EvalArgWord, ni: Interpreter):bool =
   true
 
+method canEval*(self: GetArgWord, ni: Interpreter):bool =
+  true
+
 method canEval*(self: Paren, ni: Interpreter):bool =
   true
 
@@ -665,15 +669,33 @@ method eval(self: Word, ni: Interpreter): Node =
 
 method eval(self: GetWord, ni: Interpreter): Node =
   ## Look up only
-  ni.lookup(self.word).val
+  let hit = ni.lookup(self.word)
+  if hit.isNil: ni.nilVal else: hit.val
 
 method eval(self: GetLocalWord, ni: Interpreter): Node =
   ## Look up only
-  ni.lookupLocal(self.word).val
+  let hit = ni.lookupLocal(self.word)
+  if hit.isNil: ni.nilVal else: hit.val
 
 method eval(self: GetParentWord, ni: Interpreter): Node =
   ## Look up only
-  ni.lookup(self.word).val
+  let hit = ni.lookupParent(self.word)
+  if hit.isNil: ni.nilVal else: hit.val
+
+method eval(self: EvalWord, ni: Interpreter): Node =
+  ## Look up only
+  let hit = ni.lookup(self.word)
+  if hit.isNil: ni.nilVal else: hit.val.eval(ni)
+
+method eval(self: EvalLocalWord, ni: Interpreter): Node =
+  ## Look up only
+  let hit = ni.lookupLocal(self.word)
+  if hit.isNil: ni.nilVal else: hit.val.eval(ni)
+
+method eval(self: EvalParentWord, ni: Interpreter): Node =
+  ## Look up only
+  let hit = ni.lookupParent(self.word)
+  if hit.isNil: ni.nilVal else: hit.val.eval(ni)
 
 method eval(self: LitWord, ni: Interpreter): Node =
   ## The word itself
@@ -696,12 +718,15 @@ method eval(self: EvalArgWord, ni: Interpreter): Node =
   return ev
 
 method eval(self: GetArgWord, ni: Interpreter): Node =
-  ## Pull next argument, do not eval it and bind its word into a local word
+  var arg: Node
+  let previousActivation = ni.argParent()
   if ni.currentActivation.body.infix and ni.currentActivation.infixArg.isNil:
-    ni.currentActivation.infixArg = argInfix(ni)
-    return ni.setBinding(self, ni.currentActivation.infixArg).val
+    arg = previousActivation.last # arg = parentArgInfix(ni)
+    ni.currentActivation.infixArg = arg
   else:
-    return ni.setBinding(self, arg(ni)).val
+    arg = previousActivation.next() # parentArg(ni)
+  discard ni.setBinding(self, arg)
+  return arg
 
 method eval(self: NimProc, ni: Interpreter): Node =
   return self.prok(ni)

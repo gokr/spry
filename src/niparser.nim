@@ -156,7 +156,7 @@ method `$`*(self: EvalArgWord): string =
   ":" & self.word
 
 method `$`*(self: GetArgWord): string =
-  ":'" & self.word
+  ":^" & self.word
 
 method `$`*(self: Blok): string =
   "[" & $self.nodes & "]"
@@ -397,10 +397,10 @@ proc newWordOrValue(self: Parser): Node =
  
   # All arg words (unique for Ni) are preceded with ":"
   if first == ':' and len > 1:
-    if token[1] == '\'':
+    if token[1] == '^':
       if token.len < 3:
-        raiseParseException("Malformed literal argword, missing at least 1 character")
-      # Then its a literal arg word
+        raiseParseException("Malformed get argword, missing at least 1 character")
+      # Then its a get arg word
       return newGetArgWord(token[2..^1])
     else:
       return newEvalArgWord(token[1..^1])

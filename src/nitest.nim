@@ -235,10 +235,22 @@ when true:
   assert(run("do [:b + 3] 4") == "7") # Muhahaha!
   assert(run("do [:b + :c - 1] 4 3") == "6") # Muhahaha!
   assert(run("d = 5 do [:x] d") == "5")
-  assert(run("d = 5 do [:'x] d") == "d")
+  assert(run("d = 5 do [:^x] d") == "d")
   # x will be a Word, need val and key prims to access it!
   #assert(run("a = \"ab\" do [:'x & \"c\"] a") == "\"ac\"") # x becomes "a"
   assert(run("a = \"ab\" do [:x & \"c\"] a") == "\"abc\"") # x becomes "ab"
+
+  # . and ..
+  assert(run("d = 5 do [eval ^d]") == "5")
+  assert(run("d = 5 do [eval ^.d]") == "nil")
+  assert(run("d = 5 do [eval ^..d]") == "5")
+  assert(run("d = 5 do [eval d]") == "5")
+  assert(run("d = 5 do [eval .d]") == "nil")
+  assert(run("d = 5 do [eval ..d]") == "5")
+  # Scoped assignment doesn't work yet
+  #assert(run("d = 5 do [ .d = 3 ..d + .d]") == "8")
+  #assert(run("d = 5 do [ d = 3 ..d + d]") == "6")
+  #assert(run("d = 5 do [ ..d = 3 ..d + d]") == "6")
 
   # func infix works too, and with 3 or more arguments too...
   assert(run("xx = func [:a :b a + b + b] xx 2 (xx 5 4)") == "28") # 2 + (5+4+4) + (5+4+4)
@@ -248,6 +260,16 @@ when true:
   assert(run("xx = funci [:a + :b + b] (5 xx 4) xx 2") == "17") # 5+4+4 + 2+2
   assert(run("pick2add = funci [:block :b :c block at: b + (block at: c)] [1 2 3] pick2add 0 2") == "4") # 1+3
   assert(run("pick2add = funci [:block at: :b + (block at: :c)] [1 2 3] pick2add 0 2") == "4") # 1+3
+  
+  # Variadic and dynamic args
+  # Does not work since there is a semantic glitch - who is the argParent?
+  #assert(run("sum = 0 sum-until-zero = func [[:a > 0] whileTrue: [sum = sum + a]] (sum-until-zero 1 2 3 0 4 4)") == "6")
+  # This func does not pull second arg if first is < 0.
+  assert(run("add = func [ if (:a < 0) [return nil] return (a + :b) ] add -4 3") == "3")
+  assert(run("add = func [ if (:a < 0) [return nil] return (a + :b) ] add 1 3") == "4")
+  
+  # Macros, they need to be able to return multipe nodes...
+  assert(run("z = 5 foo = func [:^a return func [a + 10]] fupp = foo z z = 3 fupp") == "13")
   
   # func closures. Creates two different funcs closing over two values of a
   assert(run("c = func [:a func [a + :b]] d = (c 2) e = (c 3) (d 1 + e 1)") == "7") # 3 + 4
