@@ -107,9 +107,11 @@ echo ^combo
 # pause
 
 # Fetch foo func, put in "6" at position 2
-^foo at: 2 put 6
+^foo at: 2 put: 6
 echo ^foo
 # pause
 
 # Should print 27....nah, 29!
 echo combo
+# pause
+
