@@ -12,6 +12,8 @@ Rebol/Smalltalk/Self/Forth and Nim. Characteristics:
 For the moment Ni is procedural, but an object model based on cloning and
 delegation is planned.
 
+Here are [my articles about Ni](http://goran.krampe.se/category/ni)
+
 ## Why would I play with this?
 
 Some plausible reasons:
