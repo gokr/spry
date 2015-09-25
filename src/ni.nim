@@ -432,7 +432,12 @@ proc newInterpreter*(): Interpreter =
   discard root.makeBinding("true", result.trueVal)
   discard root.makeBinding("undef", result.undefVal)
   discard root.makeBinding("nil", result.nilVal)
-   
+  
+  # Lookups
+  nimPrim("?", true, 1):
+    let val = evalArgInfix(ni)
+    newValue(not (val of UndefVal))
+  
   # Primitives in Nim
   nimPrim("=", true, 2):
     result = evalArg(ni) # Perhaps we could make it eager here? Pulling in more?

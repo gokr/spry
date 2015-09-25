@@ -101,6 +101,10 @@ when true:
   
   # Nil vs undef
   assert(run("eval x") == "undef")
+  assert(run("x ?") == "false")
+  assert(run("x = 1 x ?") == "true")
+  assert(run("x = 1 if (x ?) [12]") == "12")
+  assert(run("x = 1 x = undef x ?") == "false")
   assert(run("x = 5 x = undef eval x") == "undef")
   assert(run("x = 5 x = nil eval x") == "nil")
   
