@@ -2,12 +2,6 @@
 #
 # Copyright (c) 2015 Göran Krampe
 
-## TODO: Add mold and fix string representation vs mold representation
-## TODO: Rewrite sample as tutorial1 and make it complete
-## TODO: Add some funky stuff like compose
-## TODO: Add objects and delegation
-## TODO: Implement load save of the world
-
 import strutils, sequtils, tables, nimprof, typetraits #, threadpool
 import niparser
 
@@ -18,7 +12,7 @@ type
   Interpreter* = ref object
     currentActivation*: Activation  # Execution spaghetti stack
     rootActivation*: RootActivation # The first one
-    root*: Context                  # Root bindings
+    root*: Dictionary               # Root bindings
     trueVal*: Node
     falseVal*: Node
     nilVal*: Node
@@ -50,7 +44,7 @@ type
 
   # We want to distinguish different activations
   BlokActivation* = ref object of Activation
-    context*: Context  # Local context, this is where we put named args etc
+    locals*: Dictionary  # Local Dictionary, this is where we put named args etc
   FunkActivation* = ref object of BlokActivation
   ParenActivation* = ref object of Activation
   RootActivation* = ref object of BlokActivation
@@ -109,8 +103,8 @@ proc newNimProc*(prok: ProcType, infix: bool, arity: int): NimProc =
 proc newFunk*(body: Blok, infix: bool, parent: Activation): Funk =
   Funk(nodes: body.nodes, infix: infix, parent: parent)
 
-proc newRootActivation(root: Context): RootActivation =
-  RootActivation(body: newBlok(), context: root)
+proc newRootActivation(root: Dictionary): RootActivation =
+  RootActivation(body: newBlok(), locals: root)
 
 proc newActivation*(funk: Funk): FunkActivation =
   FunkActivation(body: funk)
@@ -128,10 +122,10 @@ iterator stack(ni: Interpreter): Activation =
     yield activation
     activation = activation.parent
 
-method hasContext(self: Activation): bool =
+method hasLocals(self: Activation): bool =
   true
   
-method hasContext(self: ParenActivation): bool =
+method hasLocals(self: ParenActivation): bool =
   false
 
 method outer(self: Activation): Activation =
@@ -145,12 +139,12 @@ method outer(self: FunkActivation): Activation =
   # closure.
   Funk(self.body).parent
 
-# Walk contexts for lookups and binds. Skips parens since they do not have
-# a Context and uses outer() that will let Funks go to their "lexical parent"
-iterator contextWalk(first: Activation): Activation =
+# Walk dictionaries for lookups and binds. Skips parens since they do not have
+# locals and uses outer() that will let Funks go to their "lexical parent"
+iterator dictionaryWalk(first: Activation): Activation =
   var activation = first
   while activation.notNil:
-    while not activation.hasContext():
+    while not activation.hasLocals():
       activation = activation.outer()
     yield activation
     activation = activation.outer()
@@ -160,7 +154,7 @@ iterator contextWalk(first: Activation): Activation =
 iterator callerWalk(first: Activation): Activation =
   var activation = first
   # First skip over immediate paren activations
-  while not activation.hasContext():
+  while not activation.hasLocals():
     activation = activation.parent
   # Then pick parent
   activation = activation.parent
@@ -169,7 +163,7 @@ iterator callerWalk(first: Activation): Activation =
     yield activation
     activation = activation.parent
     # Skip paren activations
-    while not activation.hasContext():
+    while not activation.hasLocals():
       activation = activation.parent
 
 # Textual dump for debugging
@@ -190,14 +184,14 @@ method dump(self: FunkActivation) =
   echo($self.body)
   if self.pos < self.len:
     echo "POS(" & $self.pos & "): " & $self.body[self.pos]
-  echo($self.context)
+  echo($self.locals)
 
 method dump(self: BlokActivation) =
   echo "BLOKACTIVATION"
   echo($self.body)
   if self.pos < self.len:
     echo "POS(" & $self.pos & "): " & $self.body[self.pos]
-  echo($self.context)
+  echo($self.locals)
   
 proc dump(ni: Interpreter) =
   echo "STACK:"
@@ -335,11 +329,11 @@ method lookup(self: Activation, key: string): Binding =
   nil
 
 method lookup(self: BlokActivation, key: string): Binding =
-  if self.context.notNil:
-    return self.context.lookup(key)
+  if self.locals.notNil:
+    return self.locals.lookup(key)
 
 proc lookup(ni: Interpreter, key: string): Binding =
-  for activation in contextWalk(ni.currentActivation):
+  for activation in dictionaryWalk(ni.currentActivation):
     let hit = activation.lookup(key)
     if hit.notNil:
       return hit
@@ -350,7 +344,7 @@ proc lookupLocal(ni: Interpreter, key: string): Binding =
 proc lookupParent(ni: Interpreter, key: string): Binding =
   # Silly way of skipping to get to parent
   var inParent = false
-  for activation in contextWalk(ni.currentActivation):
+  for activation in dictionaryWalk(ni.currentActivation):
     if inParent:
       return activation.lookup(key)
     else:
@@ -360,13 +354,13 @@ method makeBinding(self: Activation, key: string, val: Node): Binding =
   nil
 
 method makeBinding(self: BlokActivation, key: string, val: Node): Binding =
-  if self.context.isNil:
-    self.context = newContext()
-  return self.context.makeBinding(key, val)
+  if self.locals.isNil:
+    self.locals = newDictionary()
+  return self.locals.makeBinding(key, val)
 
 proc makeBinding(ni: Interpreter, key: string, val: Node): Binding =
-  # Bind in first activation with a context
-  for activation in contextWalk(ni.currentActivation):
+  # Bind in first activation with locals
+  for activation in dictionaryWalk(ni.currentActivation):
     return activation.makeBinding(key, val)
 
 proc setBinding(ni: Interpreter, word: Word, value: Node): Binding =
@@ -426,7 +420,7 @@ template nimPrim(name: string, infix: bool, arity: int, body: stmt): stmt {.imme
     proc (ni: Interpreter): Node = body, infix, arity))
 
 proc newInterpreter*(): Interpreter =
-  result = Interpreter(root: newContext())
+  result = Interpreter(root: newDictionary())
   # Singletons
   result.trueVal = newValue(true)
   result.falseVal = newValue(false)
@@ -770,7 +764,7 @@ method eval(self: Blok, ni: Interpreter): Node =
 method eval(self: Value, ni: Interpreter): Node =
   self
 
-method eval(self: Context, ni: Interpreter): Node =
+method eval(self: Dictionary, ni: Interpreter): Node =
   self
 
 method eval(self: Binding, ni: Interpreter): Node =

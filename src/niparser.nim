@@ -66,12 +66,11 @@ type
   Blok* = ref object of Composite
   Curly* = ref object of Composite
   
-  # An "object" in Rebol terminology, named slots of Nodes.
-  # They are also used as our internal namespaces and so on.
-  Context* = ref object of Node
+  # A Dictionary.
+  Dictionary* = ref object of Node
     bindings*: ref Table[string, Binding]  
 
-  # Contexts holds Bindings. This way we, when forming a closure we can lookup
+  # Dictionarys holds Bindings. This way we, when forming a closure we can lookup
   # a word to get the Binding and from then on simply set/get the val on the
   # Binding instead.
   Binding* = ref object of Node
@@ -104,7 +103,7 @@ method `$`*(self: Node): string =
 method `$`*(self: Binding): string =
   $self.key & " = " & $self.val
 
-method `$`*(self: Context): string =
+method `$`*(self: Dictionary): string =
   result = "{"
   for k,v in self.bindings:
     result.add($v & " ")
@@ -189,11 +188,11 @@ proc add*(self: Composite, n: openarray[Node]) =
 proc removeLast*(self: Composite) =
   system.delete(self.nodes,self.nodes.high)
 
-# Context lookups
-proc lookup*(self: Context, key: string): Binding =
+# Dictionary lookups
+proc lookup*(self: Dictionary, key: string): Binding =
   self.bindings[key]
 
-proc makeBinding*(self: Context, key: string, val: Node): Binding =
+proc makeBinding*(self: Dictionary, key: string, val: Node): Binding =
   result = Binding(key: key, val: val)
   self.bindings[key] = result
 
@@ -201,8 +200,8 @@ proc makeBinding*(self: Context, key: string, val: Node): Binding =
 proc raiseParseException(msg: string) =
   raise newException(ParseException, msg)
 
-proc newContext*(): Context =
-  Context(bindings: newTable[string, Binding]())
+proc newDictionary*(): Dictionary =
+  Dictionary(bindings: newTable[string, Binding]())
 
 proc newEvalWord*(s: string): EvalWord =
   EvalWord(word: s)
