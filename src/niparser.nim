@@ -57,6 +57,7 @@ type
     value*: string
   BoolVal* = ref object of Value
     value*: bool
+  UndefVal* = ref object of Value
   NilVal* = ref object of Value
 
   Composite* = ref object of Node
@@ -123,6 +124,9 @@ method `$`*(self: BoolVal): string =
 
 method `$`*(self: NilVal): string =
   "nil"
+
+method `$`*(self: UndefVal): string =
+  "undef"
 
 proc `$`*(self: seq[Node]): string =
   self.map(proc(n: Node): string = $n).join(" ")
@@ -259,6 +263,9 @@ proc newValue*(v: bool): BoolVal =
 
 proc newNilVal*(): NilVal =
   NilVal()
+
+proc newUndefVal*(): UndefVal =
+  UndefVal()
 
 # Methods for the base value parsers
 method parseValue*(self: ValueParser, s: string): Node {.procvar.} =

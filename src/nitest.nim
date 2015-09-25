@@ -99,6 +99,11 @@ when true:
   assert(run("x = 5 eval x") == "5") # But we can eval it
   assert(run("f = func [3 + 4] f") == "7") # Functions are evaluated though
   
+  # Nil vs undef
+  assert(run("eval x") == "undef")
+  assert(run("x = 5 x = undef eval x") == "undef")
+  assert(run("x = 5 x = nil eval x") == "nil")
+  
   # Precedence and basic math
   assert(run("3 * 4") == "12")
   assert(run("3 + 1.5") == "4.5")
@@ -185,7 +190,7 @@ when true:
   assert(run("x = [3 4] x next x next") == "4")
   assert(run("x = [3 4] x next x end?") == "false")
   assert(run("x = [3 4] x next x next x end?") == "true")
-  assert(run("x = [3 4] x next x next x next") == "nil")
+  assert(run("x = [3 4] x next x next x next") == "undef")
   assert(run("x = [3 4] x next x next x prev") == "4")  
   assert(run("x = [3 4] x next x next x prev x prev") == "3")  
   assert(run("x = [3 4] x pos") == "0")
@@ -244,10 +249,10 @@ when true:
 
   # . and ..
   assert(run("d = 5 do [eval ^d]") == "5")
-  assert(run("d = 5 do [eval ^.d]") == "nil")
+  assert(run("d = 5 do [eval ^.d]") == "undef")
   assert(run("d = 5 do [eval ^..d]") == "5")
   assert(run("d = 5 do [eval d]") == "5")
-  assert(run("d = 5 do [eval .d]") == "nil")
+  assert(run("d = 5 do [eval .d]") == "undef")
   assert(run("d = 5 do [eval ..d]") == "5")
   # Scoped assignment doesn't work yet
   #assert(run("d = 5 do [ .d = 3 ..d + .d]") == "8")

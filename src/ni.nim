@@ -15,6 +15,7 @@ type
     root*: Dictionary               # Root bindings
     trueVal*: Node
     falseVal*: Node
+    undefVal*: Node
     nilVal*: Node
 
   RuntimeException* = object of Exception
@@ -425,9 +426,11 @@ proc newInterpreter*(): Interpreter =
   result.trueVal = newValue(true)
   result.falseVal = newValue(false)
   result.nilVal = newNilVal()
+  result.undefVal = newUndefVal()
   let root = result.root
   discard root.makeBinding("false", result.falseVal)
   discard root.makeBinding("true", result.trueVal)
+  discard root.makeBinding("undef", result.undefVal)
   discard root.makeBinding("nil", result.nilVal)
    
   # Primitives in Nim
@@ -510,13 +513,13 @@ proc newInterpreter*(): Interpreter =
   nimPrim("next", true, 1):
     let comp = Composite(evalArgInfix(ni))
     if comp.pos == comp.nodes.len:
-      return ni.nilVal
+      return ni.undefVal
     result = comp[comp.pos]
     inc(comp.pos)
   nimPrim("prev", true, 1):
     let comp = Composite(evalArgInfix(ni))
     if comp.pos == 0:
-      return ni.nilVal
+      return ni.undefVal
     dec(comp.pos)
     result = comp[comp.pos]
   nimPrim("end?", true, 1):
@@ -665,32 +668,32 @@ method eval(self: Word, ni: Interpreter): Node =
 method eval(self: GetWord, ni: Interpreter): Node =
   ## Look up only
   let hit = ni.lookup(self.word)
-  if hit.isNil: ni.nilVal else: hit.val
+  if hit.isNil: ni.undefVal else: hit.val
 
 method eval(self: GetLocalWord, ni: Interpreter): Node =
   ## Look up only
   let hit = ni.lookupLocal(self.word)
-  if hit.isNil: ni.nilVal else: hit.val
+  if hit.isNil: ni.undefVal else: hit.val
 
 method eval(self: GetParentWord, ni: Interpreter): Node =
   ## Look up only
   let hit = ni.lookupParent(self.word)
-  if hit.isNil: ni.nilVal else: hit.val
+  if hit.isNil: ni.undefVal else: hit.val
 
 method eval(self: EvalWord, ni: Interpreter): Node =
   ## Look up only
   let hit = ni.lookup(self.word)
-  if hit.isNil: ni.nilVal else: hit.val.eval(ni)
+  if hit.isNil: ni.undefVal else: hit.val.eval(ni)
 
 method eval(self: EvalLocalWord, ni: Interpreter): Node =
   ## Look up only
   let hit = ni.lookupLocal(self.word)
-  if hit.isNil: ni.nilVal else: hit.val.eval(ni)
+  if hit.isNil: ni.undefVal else: hit.val.eval(ni)
 
 method eval(self: EvalParentWord, ni: Interpreter): Node =
   ## Look up only
   let hit = ni.lookupParent(self.word)
-  if hit.isNil: ni.nilVal else: hit.val.eval(ni)
+  if hit.isNil: ni.undefVal else: hit.val.eval(ni)
 
 method eval(self: LitWord, ni: Interpreter): Node =
   ## The word itself
