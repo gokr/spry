@@ -159,6 +159,8 @@ when true:
   assert(run("3.0 == 4.0") == "false")
   assert(run("4 == 4.0") == "true")
   assert(run("4.0 == 4") == "true")
+  assert(run("4.0 != 4") == "false")
+  assert(run("4.1 != 4") == "true")
   assert(run("\"abc\" == \"abc\"") == "true")
   assert(run("\"abc\" == \"AAA\"") == "false")
   assert(run("true == true") == "true")

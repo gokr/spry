@@ -453,6 +453,7 @@ proc newInterpreter*(): Interpreter =
   nimPrim("<=", true, 2):  evalArgInfix(ni) <= evalArg(ni)
   nimPrim(">=", true, 2):  evalArgInfix(ni) >= evalArg(ni)
   nimPrim("==", true, 2):  evalArgInfix(ni) == evalArg(ni)
+  nimPrim("!=", true, 2):  newValue(not (BoolVal(evalArgInfix(ni) == evalArg(ni))).value)
 
   # Booleans
   nimPrim("not", false, 1): newValue(not BoolVal(evalArg(ni)).value)
