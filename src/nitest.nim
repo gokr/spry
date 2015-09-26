@@ -93,6 +93,10 @@ when true:
   # Which will evaluate
   assert(run("do func [3 + 4]") == "7")
   
+  # Dictionary
+  assert(run("{}") == "{}")
+  assert(run("{a = 1 b = 2}") == "{a = 1 b = 2}")
+  
   # Assignment is a prim
   assert(run("x = 5") == "5")
   assert(run("x = 5 x") == "x") # Peculiarity, a word is not evaluated by default

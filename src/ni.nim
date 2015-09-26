@@ -48,6 +48,7 @@ type
     locals*: Dictionary  # Local Dictionary, this is where we put named args etc
   FunkActivation* = ref object of BlokActivation
   ParenActivation* = ref object of Activation
+  CurlyActivation* = ref object of BlokActivation
   RootActivation* = ref object of BlokActivation
 
 # Extending Ni from other modules, these callbacks will be called when
@@ -116,6 +117,10 @@ proc newActivation*(body: Blok): Activation =
 proc newActivation*(body: Paren): ParenActivation =
   ParenActivation(body: body)
 
+proc newActivation*(body: Curly): CurlyActivation =
+  result = CurlyActivation(body: body)
+  result.locals = newDictionary()
+
 # Stack iterator walking parent refs
 iterator stack(ni: Interpreter): Activation =
   var activation = ni.currentActivation
@@ -176,6 +181,12 @@ method dump(self: Activation) =
 
 method dump(self: ParenActivation) =
   echo "PARENACTIVATION"
+  echo($self.body)
+  if self.pos < self.len:
+    echo "POS(" & $self.pos & "): " & $self.body[self.pos]
+
+method dump(self: CurlyActivation) =
+  echo "CURLYACTIVATION"
   echo($self.body)
   if self.pos < self.len:
     echo "POS(" & $self.pos & "): " & $self.body[self.pos]
@@ -659,6 +670,9 @@ method canEval*(self: GetArgWord, ni: Interpreter):bool =
 method canEval*(self: Paren, ni: Interpreter):bool =
   true
 
+method canEval*(self: Curly, ni: Interpreter):bool =
+  true
+
 # The heart of the interpreter - eval
 method eval(self: Node, ni: Interpreter): Node =
   raiseRuntimeException("Should not happen")
@@ -757,7 +771,12 @@ method eval(self: Funk, ni: Interpreter): Node =
 
 method eval(self: Paren, ni: Interpreter): Node =
   newActivation(self).eval(ni)
- 
+
+method eval(self: Curly, ni: Interpreter): Node =
+  let activation = newActivation(self)
+  discard activation.eval(ni)
+  return activation.locals
+  
 proc evalDo(self: Node, ni: Interpreter): Node =
   newActivation(Blok(self)).eval(ni)
 

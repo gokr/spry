@@ -106,8 +106,13 @@ method `$`*(self: Binding): string =
 
 method `$`*(self: Dictionary): string =
   result = "{"
+  var first = true
   for k,v in self.bindings:
-    result.add($v & " ")
+    if first:
+      result.add($v)
+      first = false
+    else:
+      result.add(" " & $v)
   return result & "}"
 
 method `$`*(self: IntVal): string =
