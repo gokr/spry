@@ -95,23 +95,44 @@ method hash(self: Word): Hash =
   self.word.hash
 
 method `==`(self: Word, other: Node): bool = 
-  self.word == Word(other).word
+  other of Word and (self.word == Word(other).word)
 
 method hash(self: IntVal): Hash =
   self.value.hash
 
-method hash(self: StringVal): Hash =
-  self.value.hash
-  
+method `==`(self: IntVal, other: Node): bool =
+  other of IntVal and (self.value == IntVal(other).value)
+
 method hash(self: FloatVal): Hash =
   self.value.hash
 
+method `==`(self: FloatVal, other: Node): bool =
+  other of FloatVal and (self.value == FloatVal(other).value)
+
+method hash(self: StringVal): Hash =
+  self.value.hash
+
+method `==`(self: StringVal, other: Node): bool =
+  other of StringVal and (self.value == StringVal(other).value)
+
+method hash(self: BoolVal): Hash =
+  self.value.hash
+
+method `==`(self: BoolVal, other: Node): bool =
+  other of BoolVal and (self.value == BoolVal(other).value)
+  
 method hash(self: NilVal): Hash =
   hash(1)
 
+method `==`(self: Nilval, other: Node): bool =
+  other of NilVal
+
 method hash(self: UndefVal): Hash =
   hash(2)
-  
+
+method `==`(self: Undefval, other: Node): bool =
+  other of UndefVal
+
 
 # Utilities I would like to have in stdlib
 template isEmpty*[T](a: openArray[T]): bool =

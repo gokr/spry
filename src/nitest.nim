@@ -99,7 +99,12 @@ when true:
   assert(run("{a = 1 b = \"hey\"}") == "{a = 1 b = \"hey\"}")
   assert(run("{a = {d = (3 + 4) e = (5 + 6)}}") == "{a = {d = 7 e = 11}}")
   assert(run("{a = 3} at: 'a") == "3")
-  #assert(run("{3 = 4 6 = 1} at: 6") == "1")
+  assert(run("{3 = 4 6 = 1} at: 6") == "1") # int, In Ni any Node can be a key!
+  assert(run("{\"hey\" = 4 true = 1 6.0 = 8} at: \"hey\"") == "4") # string
+  assert(run("{\"hey\" = 4 true = 1 6.0 = nil} at: 6.0") == "nil") # float
+  #assert(run("{undef = 8} at: undef") == "8") # undef humm...
+  #assert(run("{nil = 4} at: nil") == "4") # nil  humm...
+  #assert(run("{true = false} at: true") == "false") # nil humm..
   assert(run("dict = {a = 3} dict at: 'a put: 5 dict at: 'a") == "5")
   
   # Assignment is a prim

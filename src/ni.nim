@@ -95,7 +95,8 @@ method `$`*(self: Funk): string =
 
 # Indexing Composites
 proc `[]`(self: Dictionary, key: Node): Node =
-  self.bindings[key].val
+  if self.bindings.hasKey(key):
+    return self.bindings[key].val
 
 proc `[]`(self: SeqComposite, key: Node): Node =
   self.nodes[IntVal(key).value]
@@ -399,12 +400,12 @@ proc makeBinding(ni: Interpreter, key: Node, val: Node): Binding =
   for activation in dictionaryWalk(ni.currentActivation):
     return activation.makeBinding(key, val)
 
-proc setBinding(ni: Interpreter, word: Word, value: Node): Binding =
-  result = ni.lookup(word)
+proc setBinding(ni: Interpreter, key: Node, value: Node): Binding =
+  result = ni.lookup(key)
   if result.notNil:
     result.val = value
   else:
-    result = ni.makeBinding(word, value)
+    result = ni.makeBinding(key, value)
 
 method infix(self: Node): bool {.base.} =
   false
@@ -479,7 +480,7 @@ proc newInterpreter*(): Interpreter =
   # Primitives in Nim
   nimPrim("=", true, 2):
     result = evalArg(ni) # Perhaps we could make it eager here? Pulling in more?
-    discard ni.setBinding(Word(argInfix(ni)), result)
+    discard ni.setBinding(argInfix(ni), result)
     
   # Basic math
   nimPrim("+", true, 2):  evalArgInfix(ni) + evalArg(ni)
