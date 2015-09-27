@@ -43,7 +43,7 @@ addParserExtension(extendParser)
 # Extending the Interpreter with a Nim primitive word
 #######################################################################
 
-method evalReduce(self: Composite, ni: Interpreter): Node =
+method evalReduce(self: SeqComposite, ni: Interpreter): Node =
   ## Evaluate all nodes in the block and return a new block with all results
   var collect = newSeq[Node]()
   let current = newActivation(Blok(self))
@@ -65,11 +65,11 @@ method evalReduce(self: Composite, ni: Interpreter): Node =
 
 # This is a primitive we want to add, like do but calling proc above
 proc primReduce*(ni: Interpreter): Node =
-  Composite(evalArg(ni)).evalReduce(ni)
+  SeqComposite(evalArg(ni)).evalReduce(ni)
 
 # This proc does the work extending an Interpreter instance
 proc extendInterpreter(ni: Interpreter) {.procvar.} =
-  discard ni.root.makeBinding("reduce", newNimProc(primReduce, false, 1))
+  ni.root.makeWord("reduce", newNimProc(primReduce, false, 1))
   
 ## Register our extension proc in Ni so it gets called every time a new
 ## Interpreter is instantiated

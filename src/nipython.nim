@@ -7,7 +7,7 @@ proc primPython*(ni: Interpreter): Node =
 
 # This proc does the work extending an Interpreter instance
 proc extendInterpreter(ni: Interpreter) {.procvar.} =
-  discard ni.root.makeBinding("python", newNimProc(primPython, false, 1))
+  ni.root.makeWord("python", newNimProc(primPython, false, 1))
   
 addInterpreterExtension(extendInterpreter)
 

@@ -18,8 +18,6 @@ type
     undefVal*: Node
     nilVal*: Node
 
-  RuntimeException* = object of Exception
-
   # Node type to hold Nim primitive procs
   ProcType* = proc(ni: Interpreter): Node
   NimProc* = ref object of Node
@@ -41,11 +39,11 @@ type
     returned*: bool                 # Mark return
     parent*: Activation
     pos*: int          # Which node we are at
-    body*: Composite   # The composite representing code (Blok, Paren, Funk)
+    body*: SeqComposite   # The composite representing code (Blok, Paren, Funk)
 
   # We want to distinguish different activations
   BlokActivation* = ref object of Activation
-    locals*: Dictionary  # Local Dictionary, this is where we put named args etc
+    locals*: Dictionary  # This is where we put named args and locals
   FunkActivation* = ref object of BlokActivation
   ParenActivation* = ref object of Activation
   CurlyActivation* = ref object of BlokActivation
@@ -61,7 +59,7 @@ proc addInterpreterExtension*(prok: InterpreterExt) =
 
 # Forward declarations to make Nim happy
 proc funk*(ni: Interpreter, body: Blok, infix: bool): Node
-method eval*(self: Node, ni: Interpreter): Node
+method eval*(self: Node, ni: Interpreter): Node {.base.}
 proc evalDo*(self: Node, ni: Interpreter): Node
 
 # String representations
@@ -81,14 +79,46 @@ method `$`*(self: Funk): string =
     return result & "(" & $self.arity & ")" & "[" & $self.nodes & "]"
   else:
     return "[" & $self.nodes & "]"
-    
-# Base stuff for accessing
-proc `[]`(self: Composite, i: int): Node =
-  self.nodes[i]
 
-proc `[]=`(self: Composite, i: int, n: Node) =
-  self.nodes[i] = n
-  
+# Base stuff for accessing
+#proc `[]`(self: SeqComposite, key: int): Node =
+#  self.nodes[key]
+
+#proc `[]`(self: Dictionary, key: Node): Node =
+#  self.bindings[key].val
+
+#proc `[]=`(self: SeqComposite, key: int, val: Node) =
+#  self.nodes[key] = val
+
+#proc `[]=`(self: Dictionary, key: Node, val: Node) =
+#  discard self.makeBinding(key, val)
+
+# Indexing Composites
+proc `[]`(self: Dictionary, key: Node): Node =
+  self.bindings[key].val
+
+proc `[]`(self: SeqComposite, key: Node): Node =
+  self.nodes[IntVal(key).value]
+
+proc `[]`(self: SeqComposite, key: IntVal): Node =
+  self.nodes[key.value]
+
+proc `[]`(self: SeqComposite, key: int): Node =
+  self.nodes[key]
+
+proc `[]=`(self: Dictionary, key, val: Node) =
+  discard self.makeBinding(key, val)
+
+proc `[]=`(self: SeqComposite, key, val: Node) =
+  self.nodes[IntVal(key).value] = val
+
+proc `[]=`(self: SeqComposite, key: IntVal, val: Node) =
+  self.nodes[key.value] = val
+
+proc `[]=`(self: SeqComposite, key: int, val: Node) =
+  self.nodes[key] = val
+
+# Indexing Activaton
 proc `[]`(self: Activation, i: int): Node =
   self.body.nodes[i]
 
@@ -96,9 +126,6 @@ proc len(self: Activation): int =
   self.body.nodes.len
 
 # Constructor procs
-proc raiseRuntimeException*(msg: string) =
-  raise newException(RuntimeException, msg)
-
 proc newNimProc*(prok: ProcType, infix: bool, arity: int): NimProc =
   NimProc(prok: prok, infix: infix, arity: arity)
 
@@ -128,13 +155,13 @@ iterator stack(ni: Interpreter): Activation =
     yield activation
     activation = activation.parent
 
-method hasLocals(self: Activation): bool =
+method hasLocals(self: Activation): bool {.base.} =
   true
   
 method hasLocals(self: ParenActivation): bool =
   false
 
-method outer(self: Activation): Activation =
+method outer(self: Activation): Activation {.base.} =
   # Just go caller parent, which works for Paren and Blok since they are
   # not lexical closures.
   self.parent
@@ -173,7 +200,7 @@ iterator callerWalk(first: Activation): Activation =
       activation = activation.parent
 
 # Textual dump for debugging
-method dump(self: Activation) =
+method dump(self: Activation) {.base.} =
   echo "ACTIVATION"
   echo($self.body)
   if self.pos < self.len:
@@ -213,7 +240,7 @@ proc dump(ni: Interpreter) =
   echo "========================================"
 
 # Methods supporting the Nim math primitives with coercions
-method `+`(a: Node, b: Node): Node {.inline.} =
+method `+`(a: Node, b: Node): Node {.inline,base.} =
   raiseRuntimeException("Can not evaluate " & $a & " + " & $b)
 method `+`(a: IntVal, b: IntVal): Node {.inline.} =
   newValue(a.value + b.value)
@@ -224,7 +251,7 @@ method `+`(a: FloatVal, b: IntVal): Node {.inline.} =
 method `+`(a: FloatVal, b: FloatVal): Node {.inline.} =
   newValue(a.value + b.value)
 
-method `-`(a: Node, b: Node): Node {.inline.} =
+method `-`(a: Node, b: Node): Node {.inline,base.} =
   raiseRuntimeException("Can not evaluate " & $a & " - " & $b)
 method `-`(a: IntVal, b: IntVal): Node {.inline.} =
   newValue(a.value - b.value)
@@ -235,7 +262,7 @@ method `-`(a: FloatVal, b: IntVal): Node {.inline.} =
 method `-`(a: FloatVal, b: FloatVal): Node {.inline.} =
   newValue(a.value - b.value)
 
-method `*`(a: Node, b: Node): Node {.inline.} =
+method `*`(a: Node, b: Node): Node {.inline,base.} =
   raiseRuntimeException("Can not evaluate " & $a & " * " & $b)
 method `*`(a: IntVal, b: IntVal): Node {.inline.} =
   newValue(a.value * b.value)
@@ -246,7 +273,7 @@ method `*`(a: FloatVal, b: IntVal): Node {.inline.} =
 method `*`(a: FloatVal, b: FloatVal): Node {.inline.} =
   newValue(a.value * b.value)
 
-method `/`(a: Node, b: Node): Node {.inline.} =
+method `/`(a: Node, b: Node): Node {.inline,base.} =
   raiseRuntimeException("Can not evaluate " & $a & " / " & $b)
 method `/`(a: IntVal, b: IntVal): Node {.inline.} =
   newValue(a.value / b.value)
@@ -257,7 +284,7 @@ method `/`(a: FloatVal, b: IntVal): Node {.inline.} =
 method `/`(a,b: FloatVal): Node {.inline.} =
   newValue(a.value / b.value)
 
-method `<`(a: Node, b: Node): Node {.inline.} =
+method `<`(a: Node, b: Node): Node {.inline,base.} =
   raiseRuntimeException("Can not evaluate " & $a & " < " & $b)
 method `<`(a: IntVal, b: IntVal): Node {.inline.} =
   newValue(a.value < b.value)
@@ -270,7 +297,7 @@ method `<`(a,b: FloatVal): Node {.inline.} =
 method `<`(a,b: StringVal): Node {.inline.} =
   newValue(a.value < b.value)
 
-method `<=`(a: Node, b: Node): Node {.inline.} =
+method `<=`(a: Node, b: Node): Node {.inline,base.} =
   raiseRuntimeException("Can not evaluate " & $a & " <= " & $b)
 method `<=`(a: IntVal, b: IntVal): Node {.inline.} =
   newValue(a.value <= b.value)
@@ -285,7 +312,7 @@ method `<=`(a,b: StringVal): Node {.inline.} =
 method `<=`(a, b: BoolVal): Node {.inline.} =
   newValue(a.value <= b.value)
 
-method `==`(a: Node, b: Node): Node {.inline.} =
+method `==`(a: Node, b: Node): Node {.inline,base.} =
   raiseRuntimeException("Can not evaluate " & $a & " == " & $b)
 method `==`(a: IntVal, b: IntVal): Node {.inline.} =
   newValue(a.value == b.value)
@@ -300,16 +327,13 @@ method `==`(a,b: StringVal): Node {.inline.} =
 method `==`(a, b: BoolVal): Node {.inline.} =
   newValue(a.value == b.value)
 
-method `&`(a: Node, b: Node): Node {.inline.} =
+method `&`(a: Node, b: Node): Node {.inline,base.} =
   raiseRuntimeException("Can not evaluate " & $a & " & " & $b)
 method `&`(a, b: StringVal): Node {.inline.} =
   newValue(a.value & b.value)
-method `&`(a, b: Composite): Node {.inline.} =
+method `&`(a, b: SeqComposite): Node {.inline.} =
   a.add(b.nodes)
   return a
-
-proc `[]`(a: Composite, b: IntVal): Node {.inline.} =
-  a[b.value]
 
 # Support procs for eval()
 template pushActivation*(ni: Interpreter, activation: Activation) =
@@ -329,31 +353,31 @@ proc next*(self: Activation): Node {.inline.} =
     result = self[self.pos]
     inc(self.pos)
 
-method doReturn*(self: Activation, ni: Interpreter) =
+method doReturn*(self: Activation, ni: Interpreter) {.base.} =
   ni.currentActivation = self.parent
   ni.currentActivation.returned = true
 
 method doReturn*(self: FunkActivation, ni: Interpreter) =
   ni.currentActivation = Funk(self.body).parent
 
-method lookup(self: Activation, key: string): Binding =
+method lookup(self: Activation, key: Node): Binding {.base.} =
   # Base implementation needed for dynamic dispatch to work
   nil
 
-method lookup(self: BlokActivation, key: string): Binding =
+method lookup(self: BlokActivation, key: Node): Binding =
   if self.locals.notNil:
     return self.locals.lookup(key)
 
-proc lookup(ni: Interpreter, key: string): Binding =
+proc lookup(ni: Interpreter, key: Node): Binding =
   for activation in dictionaryWalk(ni.currentActivation):
     let hit = activation.lookup(key)
     if hit.notNil:
       return hit
 
-proc lookupLocal(ni: Interpreter, key: string): Binding =
+proc lookupLocal(ni: Interpreter, key: Node): Binding =
   return ni.currentActivation.lookup(key)
 
-proc lookupParent(ni: Interpreter, key: string): Binding =
+proc lookupParent(ni: Interpreter, key: Node): Binding =
   # Silly way of skipping to get to parent
   var inParent = false
   for activation in dictionaryWalk(ni.currentActivation):
@@ -362,27 +386,27 @@ proc lookupParent(ni: Interpreter, key: string): Binding =
     else:
       inParent = true
 
-method makeBinding(self: Activation, key: string, val: Node): Binding =
+method makeBinding(self: Activation, key: Node, val: Node): Binding {.base.} =
   nil
 
-method makeBinding(self: BlokActivation, key: string, val: Node): Binding =
+method makeBinding(self: BlokActivation, key: Node, val: Node): Binding =
   if self.locals.isNil:
     self.locals = newDictionary()
   return self.locals.makeBinding(key, val)
 
-proc makeBinding(ni: Interpreter, key: string, val: Node): Binding =
+proc makeBinding(ni: Interpreter, key: Node, val: Node): Binding =
   # Bind in first activation with locals
   for activation in dictionaryWalk(ni.currentActivation):
     return activation.makeBinding(key, val)
 
 proc setBinding(ni: Interpreter, word: Word, value: Node): Binding =
-  result = ni.lookup(word.word)
+  result = ni.lookup(word)
   if result.notNil:
     result.val = value
   else:
-    result = ni.makeBinding(word.word, value)
+    result = ni.makeBinding(word, value)
 
-method infix(self: Node): bool =
+method infix(self: Node): bool {.base.} =
   false
 
 method infix(self: Funk): bool =
@@ -428,8 +452,11 @@ proc evalArg*(ni: Interpreter): Node =
 
 # A template reducing boilerplate for registering nim primitives
 template nimPrim(name: string, infix: bool, arity: int, body: stmt): stmt {.immediate, dirty.} =
-  discard root.makeBinding(name, newNimProc(
+  root.makeWord(name, newNimProc(
     proc (ni: Interpreter): Node = body, infix, arity))
+
+template makeWord*(self: Dictionary, word: string, value: Node) =
+  discard self.makeBinding(newEvalWord(word), value)
 
 proc newInterpreter*(): Interpreter =
   result = Interpreter(root: newDictionary())
@@ -439,10 +466,10 @@ proc newInterpreter*(): Interpreter =
   result.nilVal = newNilVal()
   result.undefVal = newUndefVal()
   let root = result.root
-  discard root.makeBinding("false", result.falseVal)
-  discard root.makeBinding("true", result.trueVal)
-  discard root.makeBinding("undef", result.undefVal)
-  discard root.makeBinding("nil", result.nilVal)
+  root.makeWord("false", result.falseVal)
+  root.makeWord("true", result.trueVal)
+  root.makeWord("undef", result.undefVal)
+  root.makeWord("nil", result.nilVal)
   
   # Lookups
   nimPrim("?", true, 1):
@@ -496,66 +523,79 @@ proc newInterpreter*(): Interpreter =
   # generally associate peek with lookahead.
   # Idea here: Use xxx? for infix funcs, arity 1, returning booleans
   # ..and xxx! for infix funcs arity 0.
-  nimPrim("len", true, 1):  newValue(Composite(evalArgInfix(ni)).nodes.len) # Called length in Rebol
-  nimPrim("at:", true, 2):   Composite(evalArgInfix(ni))[IntVal(evalArg(ni))]
-  nimPrim("at:put:", true, 3): # Called poke in Rebol
-    result = evalArgInfix(ni);
-    Composite(result)[IntVal(evalArg(ni)).value] = evalArg(ni)
-  nimPrim("read", true, 1): # Called at in Rebol
-    let comp = Composite(evalArgInfix(ni))
+  nimPrim("len", true, 1):
+    newValue(SeqComposite(evalArgInfix(ni)).nodes.len)
+  nimPrim("at:", true, 2):
+    ## Ugly, but I can't get [] to work as methods...
+    let comp = evalArgInfix(ni)
+    if comp of SeqComposite:
+      return SeqComposite(comp)[evalArg(ni)]
+    elif comp of Dictionary:
+      return Dictionary(comp)[evalArg(ni)]
+  nimPrim("at:put:", true, 3):
+    let comp = evalArgInfix(ni)
+    let key = evalArg(ni)
+    let val = evalArg(ni)
+    if comp of SeqComposite:
+      SeqComposite(comp)[key] = val
+    elif comp of Dictionary:
+      Dictionary(comp)[key] = val
+    return comp
+  nimPrim("read", true, 1):
+    let comp = SeqComposite(evalArgInfix(ni))
     comp[comp.pos]
-  nimPrim("write:", true, 2): # Called change in Rebol
+  nimPrim("write:", true, 2):
     result = evalArgInfix(ni)
-    let comp = Composite(result)
+    let comp = SeqComposite(result)
     comp[comp.pos] = evalArg(ni)
   nimPrim("add:", true, 2): 
     result = evalArgInfix(ni)
-    let comp = Composite(result)
+    let comp = SeqComposite(result)
     comp.add(evalArg(ni))
   nimPrim("removeLast", true, 1):
     result = evalArgInfix(ni)
-    let comp = Composite(result)
+    let comp = SeqComposite(result)
     comp.removeLast()
   
   # Positioning
-  nimPrim("reset", true, 1):  Composite(evalArgInfix(ni)).pos = 0 # Called change in Rebol
-  nimPrim("pos", true, 1):    newValue(Composite(evalArgInfix(ni)).pos) # ? in Rebol 
+  nimPrim("reset", true, 1):  SeqComposite(evalArgInfix(ni)).pos = 0 # Called change in Rebol
+  nimPrim("pos", true, 1):    newValue(SeqComposite(evalArgInfix(ni)).pos) # ? in Rebol 
   nimPrim("pos:", true, 2):    # ? in Rebol
     result = evalArgInfix(ni)
-    let comp = Composite(result)
+    let comp = SeqComposite(result)
     comp.pos = IntVal(evalArg(ni)).value
  
   # Streaming
   nimPrim("next", true, 1):
-    let comp = Composite(evalArgInfix(ni))
+    let comp = SeqComposite(evalArgInfix(ni))
     if comp.pos == comp.nodes.len:
       return ni.undefVal
     result = comp[comp.pos]
     inc(comp.pos)
   nimPrim("prev", true, 1):
-    let comp = Composite(evalArgInfix(ni))
+    let comp = SeqComposite(evalArgInfix(ni))
     if comp.pos == 0:
       return ni.undefVal
     dec(comp.pos)
     result = comp[comp.pos]
   nimPrim("end?", true, 1):
-    let comp = Composite(evalArgInfix(ni))
+    let comp = SeqComposite(evalArgInfix(ni))
     newValue(comp.pos == comp.nodes.len)
 
   # These are like in Rebol/Smalltalk but we use infix like in Smalltalk
-  nimPrim("first", true, 1):  Composite(evalArgInfix(ni))[0]
-  nimPrim("second", true, 1): Composite(evalArgInfix(ni))[1]
-  nimPrim("third", true, 1):  Composite(evalArgInfix(ni))[2]
-  nimPrim("fourth", true, 1): Composite(evalArgInfix(ni))[3]
-  nimPrim("fifth", true, 1):  Composite(evalArgInfix(ni))[4]
+  nimPrim("first", true, 1):  SeqComposite(evalArgInfix(ni))[0]
+  nimPrim("second", true, 1): SeqComposite(evalArgInfix(ni))[1]
+  nimPrim("third", true, 1):  SeqComposite(evalArgInfix(ni))[2]
+  nimPrim("fourth", true, 1): SeqComposite(evalArgInfix(ni))[3]
+  nimPrim("fifth", true, 1):  SeqComposite(evalArgInfix(ni))[4]
   nimPrim("last", true, 1):
-    let nodes = Composite(evalArgInfix(ni)).nodes
+    let nodes = SeqComposite(evalArgInfix(ni)).nodes
     nodes[nodes.high]
 
   #discard root.makeBinding("bind", newNimProc(primBind, false, 1))
   nimPrim("func", false, 1):    ni.funk(Blok(evalArg(ni)), false)
   nimPrim("funci", false, 1):   ni.funk(Blok(evalArg(ni)), true)
-  nimPrim("do", false, 1):      Composite(evalArg(ni)).evalDo(ni)
+  nimPrim("do", false, 1):      SeqComposite(evalArg(ni)).evalDo(ni)
   nimPrim("eval", false, 1):    evalArg(ni)
   nimPrim("parse", false, 1):   newParser().parse(StringVal(evalArg(ni)).value)
 
@@ -568,37 +608,37 @@ proc newInterpreter*(): Interpreter =
     evalArg(ni)
   nimPrim("if", false, 2):
     if BoolVal(evalArg(ni)).value:
-      return Composite(evalArg(ni)).evalDo(ni)
+      return SeqComposite(evalArg(ni)).evalDo(ni)
     else:
       discard arg(ni) # Consume the block
       return ni.nilVal
   nimPrim("ifelse", false, 3):
     if BoolVal(evalArg(ni)).value:
-      let res = Composite(evalArg(ni)).evalDo(ni)
+      let res = SeqComposite(evalArg(ni)).evalDo(ni)
       discard arg(ni) # Consume second block
       return res
     else:
       discard arg(ni) # Consume first block
-      return Composite(evalArg(ni)).evalDo(ni)
+      return SeqComposite(evalArg(ni)).evalDo(ni)
   nimPrim("timesRepeat:", true, 2):
     let times = IntVal(evalArgInfix(ni)).value
-    let fn = Composite(evalArg(ni))
+    let fn = SeqComposite(evalArg(ni))
     for i in 1 .. times:
       result = fn.evalDo(ni)
       # Or else non local returns don't work :)
       if ni.currentActivation.returned:
         return
   nimPrim("whileTrue:", true, 2):
-    let blk1 = Composite(evalArgInfix(ni))
-    let blk2 = Composite(evalArg(ni))
+    let blk1 = SeqComposite(evalArgInfix(ni))
+    let blk2 = SeqComposite(evalArg(ni))
     while BoolVal(blk1.evalDo(ni)).value:
       result = blk2.evalDo(ni)
       # Or else non local returns don't work :)
       if ni.currentActivation.returned:
         return
   nimPrim("whileFalse:", true, 2):
-    let blk1 = Composite(evalArgInfix(ni))
-    let blk2 = Composite(evalArg(ni))
+    let blk1 = SeqComposite(evalArgInfix(ni))
+    let blk2 = SeqComposite(evalArg(ni))
     while not BoolVal(blk1.evalDo(ni)).value:
       result = blk2.evalDo(ni)
       # Or else non local returns don't work :)
@@ -608,14 +648,14 @@ proc newInterpreter*(): Interpreter =
   # This is hard, because evalDo of fn wants to pull its argument from  
   # the parent activation, but there is none here. Hmmm.
   #nimPrim("do:", true, 2):
-  #  let comp = Composite(evalArgInfix(ni))
-  #  let blk = Composite(evalArg(ni))
+  #  let comp = SeqComposite(evalArgInfix(ni))
+  #  let blk = SeqComposite(evalArg(ni))
   #  for node in comp.nodes:
   #    result = blk.evalDo(node, ni)
 
   # Parallel
   #nimPrim("parallel", true, 1):
-  #  let comp = Composite(evalArgInfix(ni))
+  #  let comp = SeqComposite(evalArgInfix(ni))
   #  parallel:
   #    for node in comp.nodes:
   #      let blk = Blok(node)
@@ -642,11 +682,11 @@ proc atEnd*(ni: Interpreter): bool {.inline.} =
 proc funk*(ni: Interpreter, body: Blok, infix: bool): Node =
   result = newFunk(body, infix, ni.currentActivation)
 
-method canEval*(self: Node, ni: Interpreter):bool =
+method canEval*(self: Node, ni: Interpreter):bool {.base.} =
   false
 
 method canEval*(self: EvalWord, ni: Interpreter):bool =
-  let binding = ni.lookup(self.word)
+  let binding = ni.lookup(self)
   if binding.isNil:
     return false
   else:
@@ -679,39 +719,39 @@ method eval(self: Node, ni: Interpreter): Node =
 
 method eval(self: Word, ni: Interpreter): Node =
   ## Look up
-  let binding = ni.lookup(self.word)
+  let binding = ni.lookup(self)
   if binding.isNil:
-    raiseRuntimeException("Word not found: " & self.word)
+    raiseRuntimeException("Word not found: " & $self)
   return binding.val.eval(ni)
 
 method eval(self: GetWord, ni: Interpreter): Node =
   ## Look up only
-  let hit = ni.lookup(self.word)
+  let hit = ni.lookup(self)
   if hit.isNil: ni.undefVal else: hit.val
 
 method eval(self: GetLocalWord, ni: Interpreter): Node =
   ## Look up only
-  let hit = ni.lookupLocal(self.word)
+  let hit = ni.lookupLocal(self)
   if hit.isNil: ni.undefVal else: hit.val
 
 method eval(self: GetParentWord, ni: Interpreter): Node =
   ## Look up only
-  let hit = ni.lookupParent(self.word)
+  let hit = ni.lookupParent(self)
   if hit.isNil: ni.undefVal else: hit.val
 
 method eval(self: EvalWord, ni: Interpreter): Node =
   ## Look up only
-  let hit = ni.lookup(self.word)
+  let hit = ni.lookup(self)
   if hit.isNil: ni.undefVal else: hit.val.eval(ni)
 
 method eval(self: EvalLocalWord, ni: Interpreter): Node =
   ## Look up only
-  let hit = ni.lookupLocal(self.word)
+  let hit = ni.lookupLocal(self)
   if hit.isNil: ni.undefVal else: hit.val.eval(ni)
 
 method eval(self: EvalParentWord, ni: Interpreter): Node =
   ## Look up only
-  let hit = ni.lookupParent(self.word)
+  let hit = ni.lookupParent(self)
   if hit.isNil: ni.undefVal else: hit.val.eval(ni)
 
 method eval(self: LitWord, ni: Interpreter): Node =
@@ -780,7 +820,7 @@ method eval(self: Curly, ni: Interpreter): Node =
 proc evalDo(self: Node, ni: Interpreter): Node =
   newActivation(Blok(self)).eval(ni)
 
-method evalRootDo(self: Node, ni: Interpreter): Node =
+proc evalRootDo(self: Node, ni: Interpreter): Node =
   ni.rootActivation.body = Blok(self)
   ni.rootActivation.pos = 0
   ni.rootActivation.eval(ni)
@@ -799,14 +839,14 @@ method eval(self: Binding, ni: Interpreter): Node =
 
 proc eval*(ni: Interpreter, code: string): Node =
   ## Evaluate code in a new activation
-  Composite(newParser().parse(code)).evalDo(ni)
+  SeqComposite(newParser().parse(code)).evalDo(ni)
   
 proc evalRoot*(ni: Interpreter, code: string): Node =
   ## Evaluate code in the root activation
   # First pop the root activation
   ni.popActivation()
   # This will push it back and... pop it too
-  result = Composite(newParser().parse(code)).evalRootDo(ni)
+  result = SeqComposite(newParser().parse(code)).evalRootDo(ni)
   # ...so we need to put it back
   ni.pushActivation(ni.rootActivation)
 

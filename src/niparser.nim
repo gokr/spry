@@ -2,7 +2,7 @@
 #
 # Copyright (c) 2015 Göran Krampe
 
-import strutils, sequtils, tables, nimprof
+import strutils, sequtils, tables, hashes, nimprof
 
 type
   ParseException* = object of Exception
@@ -60,24 +60,58 @@ type
   UndefVal* = ref object of Value
   NilVal* = ref object of Value
 
+  # Abstract
   Composite* = ref object of Node
+  SeqComposite* = ref object of Node
     nodes*: seq[Node]
     pos*: int
-  Paren* = ref object of Composite
-  Blok* = ref object of Composite
-  Curly* = ref object of Composite
-  
-  # A Dictionary.
-  Dictionary* = ref object of Node
-    bindings*: ref Table[string, Binding]  
+ 
+  # Concrete
+  Paren* = ref object of SeqComposite
+  Blok* = ref object of SeqComposite
+  Curly* = ref object of SeqComposite  
+  Dictionary* = ref object of Composite
+    bindings*: ref OrderedTable[Node, Binding]  
 
-  # Dictionarys holds Bindings. This way we, when forming a closure we can lookup
-  # a word to get the Binding and from then on simply set/get the val on the
-  # Binding instead.
+  # Dictionaries currently holds Bindings instead of the value directly.
+  # This way we we can later reify Binding
+  # so we can hold it and set/get its value without lookup
   Binding* = ref object of Node
-    key*: string
+    key*: Node
     val*: Node
 
+  RuntimeException* = object of Exception
+
+proc raiseRuntimeException*(msg: string) =
+  raise newException(RuntimeException, msg)
+
+method hash(self: Node): Hash {.base.} = 
+  raiseRuntimeException("Nodes need to implement hash") 
+
+method `==`(self, other: Node): bool {.base.} = 
+  raiseRuntimeException("Nodes need to implement ==") 
+
+method hash(self: Word): Hash =
+  self.word.hash
+
+method `==`(self: Word, other: Node): bool = 
+  self.word == Word(other).word
+
+method hash(self: IntVal): Hash =
+  self.value.hash
+
+method hash(self: StringVal): Hash =
+  self.value.hash
+  
+method hash(self: FloatVal): Hash =
+  self.value.hash
+
+method hash(self: NilVal): Hash =
+  hash(1)
+
+method hash(self: UndefVal): Hash =
+  hash(2)
+  
 
 # Utilities I would like to have in stdlib
 template isEmpty*[T](a: openArray[T]): bool =
@@ -97,7 +131,7 @@ proc addParserExtension*(prok: ParserExt) =
   parserExts.add(prok)
 
 # Ni representations
-method `$`*(self: Node): string =
+method `$`*(self: Node): string {.base.} =
   # Fallback if missing
   echo repr(self)
 
@@ -179,7 +213,7 @@ method `$`*(self: KeyWord): string =
   "KEYWORD(" & $self.keys & " " & $self.args & ")"
 
 # Human string representations
-method form*(self: Node): string =
+method form*(self: Node): string {.base.} =
   # Default is to use $
   $self
 
@@ -188,20 +222,20 @@ method form*(self: StringVal): string =
   $self.value
 
 # AST manipulation
-proc add*(self: Composite, n: Node) =
+proc add*(self: SeqComposite, n: Node) =
   self.nodes.add(n)
 
-proc add*(self: Composite, n: openarray[Node]) =
+proc add*(self: SeqComposite, n: openarray[Node]) =
   self.nodes.add(n)
   
-proc removeLast*(self: Composite) =
+proc removeLast*(self: SeqComposite) =
   system.delete(self.nodes,self.nodes.high)
 
 # Dictionary lookups
-proc lookup*(self: Dictionary, key: string): Binding =
+proc lookup*(self: Dictionary, key: Node): Binding =
   self.bindings[key]
 
-proc makeBinding*(self: Dictionary, key: string, val: Node): Binding =
+proc makeBinding*(self: Dictionary, key: Node, val: Node): Binding =
   result = Binding(key: key, val: val)
   self.bindings[key] = result
 
@@ -210,7 +244,7 @@ proc raiseParseException(msg: string) =
   raise newException(ParseException, msg)
 
 proc newDictionary*(): Dictionary =
-  Dictionary(bindings: newTable[string, Binding]())
+  Dictionary(bindings: newOrderedTable[Node, Binding]())
 
 proc newEvalWord*(s: string): EvalWord =
   EvalWord(word: s)
@@ -273,7 +307,7 @@ proc newUndefVal*(): UndefVal =
   UndefVal()
 
 # Methods for the base value parsers
-method parseValue*(self: ValueParser, s: string): Node {.procvar.} =
+method parseValue*(self: ValueParser, s: string): Node {.procvar,base.} =
   nil
 
 method parseValue*(self: IntValueParser, s: string): Node {.procvar.} =
@@ -293,15 +327,15 @@ method parseValue(self: StringValueParser, s: string): Node {.procvar.} =
   if s.len > 1 and s[0] == '"' and s[^1] == '"':
     result = newValue(s[1..^2])
 
-method prefixLength(self: ValueParser): int = 0
+method prefixLength(self: ValueParser): int {.base.} = 0
 
-method tokenReady(self: ValueParser, token: string, ch: char): string =
+method tokenReady(self: ValueParser, token: string, ch: char): string {.base.} =
   ## Return true if self wants to take over parsing a literal
   ## and deciding when its complete. This is used for delimited literals
   ## that can contain whitespace. Otherwise parseValue is needed.
   nil
 
-method tokenStart(self: ValueParser, token: string, ch: char): bool =
+method tokenStart(self: ValueParser, token: string, ch: char): bool {.base.} =
   false
 
 method prefixLength(self: StringValueParser): int = 1
@@ -330,7 +364,7 @@ proc newParser*(): Parser =
 proc len(self: Node): int =
   0
 
-proc len(self: Composite): int =
+proc len(self: SeqComposite): int =
   self.nodes.len
 
 proc addKey(self: KeyWord, key: string) =
@@ -370,15 +404,15 @@ proc closeKeyword(self: Parser) =
   let keyword = self.currentKeyword()
   discard self.stack.pop()
   let nodes = keyword.produceNodes()
-  Composite(self.top).removeLast()
-  Composite(self.top).add(nodes)
+  SeqComposite(self.top).removeLast()
+  SeqComposite(self.top).add(nodes)
   
 proc doAddNode(self: Parser, node: Node) =
   # If we are collecting a keyword, we get nil until its ready
   let keyword = self.currentKeyword()
   if keyword.isNil:
     # Then we are not parsing a keyword
-    Composite(self.top).add(node)
+    SeqComposite(self.top).add(node)
   else:
     if keyword.inBalance():
       self.closeKeyword()

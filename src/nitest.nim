@@ -96,6 +96,11 @@ when true:
   # Dictionary
   assert(run("{}") == "{}")
   assert(run("{a = 1 b = 2}") == "{a = 1 b = 2}")
+  assert(run("{a = 1 b = \"hey\"}") == "{a = 1 b = \"hey\"}")
+  assert(run("{a = {d = (3 + 4) e = (5 + 6)}}") == "{a = {d = 7 e = 11}}")
+  assert(run("{a = 3} at: 'a") == "3")
+  #assert(run("{3 = 4 6 = 1} at: 6") == "1")
+  assert(run("dict = {a = 3} dict at: 'a put: 5 dict at: 'a") == "5")
   
   # Assignment is a prim
   assert(run("x = 5") == "5")
@@ -187,7 +192,6 @@ when true:
   assert(run("[3 4] second") == "4")
   assert(run("[3 4] last") == "4")
   assert(run("[3 4] at: 0") == "3")
-  assert(run("[3 4] at: 1") == "4")
   assert(run("[3 4] at: 1") == "4")
   assert(run("[3 4] at: 0 put: 5") == "[5 4]")
   assert(run("x = [3 4] x at: 1 put: 5 eval x") == "[3 5]")
