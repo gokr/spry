@@ -353,7 +353,19 @@ when true:
   ]
   [1 2 3 4] select: [:each > 2]
   """) == "[3 4]")
-    
+  
+  # Reflection
+  # The word locals gives access to the local Dictionary
+  assert(run("d = 5 locals") == "{d = 5}")
+  assert(run("d = 5 locals at: 'd") == "5")
+  assert(run("locals at: 'd put: 5 d + 2") == "7")
+  assert(run("do [a = 1 b = 2 locals]") == "{a = 1 b = 2}")
+  
+  # The word activation gives access to the current activation record
+  assert(run("activation") == "Activation([activation]|1)")
+  
+  # The word self gives access to the closest outer object
+  assert(run("self") == "undef")
 
 when true:
   # Demonstrate extension from extend.nim

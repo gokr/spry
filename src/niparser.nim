@@ -2,7 +2,7 @@
 #
 # Copyright (c) 2015 Göran Krampe
 
-import strutils, sequtils, tables, hashes, nimprof
+import strutils, sequtils, tables, hashes
 
 type
   ParseException* = object of Exception
@@ -34,13 +34,13 @@ type
   LitWord* = ref object of Word  
 
   EvalWord* = ref object of EvalW
-  EvalLocalWord* = ref object of EvalW
-  EvalParentWord* = ref object of EvalW
+  EvalSelfWord* = ref object of EvalW
+  EvalOuterWord* = ref object of EvalW
   EvalArgWord* = ref object of EvalW
 
   GetWord* = ref object of GetW
-  GetLocalWord* = ref object of GetW
-  GetParentWord* = ref object of GetW
+  GetSelfWord* = ref object of GetW
+  GetOuterWord* = ref object of GetW
   GetArgWord* = ref object of GetW
   
   # And support for keyword syntactic sugar, only used during parsing
@@ -197,19 +197,19 @@ method `$`*(self: Word): string =
 method `$`*(self: EvalWord): string =
   self.word
 
-method `$`*(self: EvalLocalWord): string =
+method `$`*(self: EvalSelfWord): string =
   "." & self.word
 
-method `$`*(self: EvalParentWord): string =
+method `$`*(self: EvalOuterWord): string =
   ".." & self.word
 
 method `$`*(self: GetWord): string =
   "^" & self.word
 
-method `$`*(self: GetLocalWord): string =
+method `$`*(self: GetSelfWord): string =
   "^." & self.word
 
-method `$`*(self: GetParentWord): string =
+method `$`*(self: GetOuterWord): string =
   "^.." & self.word
 
 method `$`*(self: LitWord): string =
@@ -270,20 +270,20 @@ proc newDictionary*(): Dictionary =
 proc newEvalWord*(s: string): EvalWord =
   EvalWord(word: s)
 
-proc newEvalLocalWord*(s: string): EvalLocalWord =
-  EvalLocalWord(word: s)
+proc newEvalSelfWord*(s: string): EvalSelfWord =
+  EvalSelfWord(word: s)
 
-proc newEvalParentWord*(s: string): EvalParentWord =
-  EvalParentWord(word: s)
+proc newEvalOuterWord*(s: string): EvalOuterWord =
+  EvalOuterWord(word: s)
 
 proc newGetWord*(s: string): GetWord =
   GetWord(word: s)
 
-proc newGetLocalWord*(s: string): GetLocalWord =
-  GetLocalWord(word: s)
+proc newGetSelfWord*(s: string): GetSelfWord =
+  GetSelfWord(word: s)
 
-proc newGetParentWord*(s: string): GetParentWord =
-  GetParentWord(word: s)
+proc newGetOuterWord*(s: string): GetOuterWord =
+  GetOuterWord(word: s)
 
 proc newLitWord*(s: string): LitWord =
   LitWord(word: s)
@@ -478,11 +478,11 @@ proc newWordOrValue(self: Parser): Node =
       if len > 2:
         if token[2] == '.':
           if len > 3:
-            return newGetParentWord(token[3..^1])
+            return newGetOuterWord(token[3..^1])
           else:
             raiseParseException("Malformed parent lookup word, missing at least 1 character")
         else:
-          return newGetLocalWord(token[2..^1])
+          return newGetSelfWord(token[2..^1])
       else:
         raiseParseException("Malformed local lookup word, missing at least 1 character")
     else:
@@ -513,11 +513,11 @@ proc newWordOrValue(self: Parser): Node =
     if len > 1:
       if token[1] == '.':
         if len > 2:
-          return newEvalParentWord(token[2..^1])
+          return newEvalOuterWord(token[2..^1])
         else:
           raiseParseException("Malformed parent eval word, missing at least 1 character")
       else:
-        return newEvalLocalWord(token[1..^1])
+        return newEvalSelfWord(token[1..^1])
     else:
       raiseParseException("Malformed local eval word, missing at least 1 character")
   else:

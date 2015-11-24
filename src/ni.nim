@@ -2,7 +2,7 @@
 #
 # Copyright (c) 2015 Göran Krampe
 
-import strutils, sequtils, tables, nimprof, typetraits #, threadpool
+import strutils, sequtils, tables #, typetraits #, threadpool
 import niparser
 
 #{.experimental.}
@@ -33,7 +33,7 @@ type
   # The activation record used by the Interpreter.
   # This is a so called Spaghetti Stack with only a parent pointer so that they
   # can get garbage collected if not referenced by any other record anymore.
-  Activation* = ref object of RootObj
+  Activation* = ref object of Node  # It's a Node since we can reflect on it!
     last*: Node                     # Remember for infix
     infixArg*: Node                 # Used to hold the infix arg, if pulled
     returned*: bool                 # Mark return
@@ -79,6 +79,9 @@ method `$`*(self: Funk): string =
     return result & "(" & $self.arity & ")" & "[" & $self.nodes & "]"
   else:
     return "[" & $self.nodes & "]"
+
+method `$`*(self: Activation): string =
+  return "Activation(" & $self.body & "|" & $self.pos & ")"
 
 # Base stuff for accessing
 #proc `[]`(self: SeqComposite, key: int): Node =
@@ -155,6 +158,11 @@ iterator stack(ni: Interpreter): Activation =
   while activation.notNil:
     yield activation
     activation = activation.parent
+
+proc getLocals(self: BlokActivation): Dictionary =
+  if self.locals.isNil:
+    self.locals = newDictionary()
+  self.locals
 
 method hasLocals(self: Activation): bool {.base.} =
   true
@@ -391,9 +399,7 @@ method makeBinding(self: Activation, key: Node, val: Node): Binding {.base.} =
   nil
 
 method makeBinding(self: BlokActivation, key: Node, val: Node): Binding =
-  if self.locals.isNil:
-    self.locals = newDictionary()
-  return self.locals.makeBinding(key, val)
+  self.getLocals().makeBinding(key, val)
 
 proc makeBinding(ni: Interpreter, key: Node, val: Node): Binding =
   # Bind in first activation with locals
@@ -461,6 +467,7 @@ template makeWord*(self: Dictionary, word: string, value: Node) =
 
 proc newInterpreter*(): Interpreter =
   result = Interpreter(root: newDictionary())
+
   # Singletons
   result.trueVal = newValue(true)
   result.falseVal = newValue(false)
@@ -471,6 +478,18 @@ proc newInterpreter*(): Interpreter =
   root.makeWord("true", result.trueVal)
   root.makeWord("undef", result.undefVal)
   root.makeWord("nil", result.nilVal)
+
+  # Reflection words
+  # Access to current Activation
+  nimPrim("activation", false, 0):
+    ni.currentActivation
+  # Access to closest scope
+  nimPrim("locals", false, 0):
+    for activation in dictionaryWalk(ni.currentActivation):
+      return BlokActivation(activation).getLocals()
+  # Access to closest object
+  nimPrim("self", false, 0):
+    ni.undefVal
   
   # Lookups
   nimPrim("?", true, 1):
@@ -730,12 +749,12 @@ method eval(self: GetWord, ni: Interpreter): Node =
   let hit = ni.lookup(self)
   if hit.isNil: ni.undefVal else: hit.val
 
-method eval(self: GetLocalWord, ni: Interpreter): Node =
+method eval(self: GetSelfWord, ni: Interpreter): Node =
   ## Look up only
   let hit = ni.lookupLocal(self)
   if hit.isNil: ni.undefVal else: hit.val
 
-method eval(self: GetParentWord, ni: Interpreter): Node =
+method eval(self: GetOuterWord, ni: Interpreter): Node =
   ## Look up only
   let hit = ni.lookupParent(self)
   if hit.isNil: ni.undefVal else: hit.val
@@ -745,12 +764,12 @@ method eval(self: EvalWord, ni: Interpreter): Node =
   let hit = ni.lookup(self)
   if hit.isNil: ni.undefVal else: hit.val.eval(ni)
 
-method eval(self: EvalLocalWord, ni: Interpreter): Node =
+method eval(self: EvalSelfWord, ni: Interpreter): Node =
   ## Look up only
   let hit = ni.lookupLocal(self)
   if hit.isNil: ni.undefVal else: hit.val.eval(ni)
 
-method eval(self: EvalParentWord, ni: Interpreter): Node =
+method eval(self: EvalOuterWord, ni: Interpreter): Node =
   ## Look up only
   let hit = ni.lookupParent(self)
   if hit.isNil: ni.undefVal else: hit.val.eval(ni)
