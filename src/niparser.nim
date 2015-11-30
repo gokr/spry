@@ -155,9 +155,9 @@ proc addParserExtension*(prok: ParserExt) =
 method `$`*(self: Node): string {.base.} =
   # Fallback if missing
   when defined(js):
-	  echo "repr not available in js"
-	else:
-	  repr(self)
+    echo "repr not available in js"
+  else:
+    repr(self)
 
 method `$`*(self: Binding): string =
   $self.key & " = " & $self.val
