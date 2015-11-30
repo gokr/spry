@@ -154,7 +154,10 @@ proc addParserExtension*(prok: ParserExt) =
 # Ni representations
 method `$`*(self: Node): string {.base.} =
   # Fallback if missing
-  echo repr(self)
+  when defined(js):
+	  echo "repr not available in js"
+	else:
+	  repr(self)
 
 method `$`*(self: Binding): string =
   $self.key & " = " & $self.val
@@ -254,7 +257,7 @@ proc removeLast*(self: SeqComposite) =
 
 # Dictionary lookups
 proc lookup*(self: Dictionary, key: Node): Binding =
-  self.bindings[key]
+  self.bindings.getOrDefault(key)
 
 proc makeBinding*(self: Dictionary, key: Node, val: Node): Binding =
   result = Binding(key: key, val: val)
@@ -398,11 +401,9 @@ proc inBalance(self: KeyWord): bool =
   return self.args.len == self.keys.len
 
 proc produceNodes(self: KeyWord): seq[Node] =
-  #echo "PRODUCE NODES"
   result = newSeq[Node]()
   result.add(newEvalWord(self.keys.join()))
   result.add(self.args)
-  #echo repr(result)
 
 template top(self: Parser): Node =
   self.stack[self.stack.high]
@@ -608,7 +609,7 @@ proc parse*(self: Parser, str: string): Node =
   self.top
 
 
-when isMainModule:
+when isMainModule and not defined(js):
   # Just run a given file as argument, the hash-bang trick works also
   import os
   let fn = commandLineParams()[0]

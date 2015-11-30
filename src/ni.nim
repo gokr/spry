@@ -683,7 +683,8 @@ proc newInterpreter*(): Interpreter =
 
   # Debugging
   nimPrim("dump", false, 0):    dump(ni)
-  nimPrim("repr", false, 1):    newValue(repr(evalArg(ni)))
+  when not defined(js): # There is no repr support in js backend
+    nimPrim("repr", false, 1):    newValue(repr(evalArg(ni)))
   
   # Some scripting prims
   nimPrim("quit", false, 1):    quit(IntVal(evalArg(ni)).value)
@@ -870,7 +871,8 @@ proc evalRoot*(ni: Interpreter, code: string): Node =
   # ...so we need to put it back
   ni.pushActivation(ni.rootActivation)
 
-when isMainModule:
+
+when isMainModule and not defined(js):
   # Just run a given file as argument, the hash-bang trick works also
   import os
   let fn = commandLineParams()[0]
