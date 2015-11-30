@@ -43,7 +43,7 @@ addParserExtension(extendParser)
 # Extending the Interpreter with a Nim primitive word
 #######################################################################
 
-method evalReduce(self: SeqComposite, ni: Interpreter): Node =
+proc evalReduce(self: SeqComposite, ni: Interpreter): Node =
   ## Evaluate all nodes in the block and return a new block with all results
   var collect = newSeq[Node]()
   let current = newActivation(Blok(self))
