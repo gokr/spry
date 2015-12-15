@@ -1,3 +1,5 @@
 nimcache
 profile_*
 ni.pro*
+bin/ni
+bin/nirepl
