@@ -1,4 +1,4 @@
-nim c -r nitest
+nim js -r -d:release -d:nodejs nitest
 if [ $? -ne 0 ]; then
   echo "TEST FAILED"
   exit 1
