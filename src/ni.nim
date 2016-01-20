@@ -127,7 +127,9 @@ proc `[]`(self: Activation, i: int): Node =
   self.body.nodes[i]
 
 proc len(self: Activation): int =
-  self.body.nodes.len
+  result = 0
+  if self.body != nil and self.body.nodes != nil:
+    result = self.body.nodes.len
 
 # Constructor procs
 proc newNimProc*(prok: ProcType, infix: bool, arity: int): NimProc =
