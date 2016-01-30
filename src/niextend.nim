@@ -69,7 +69,7 @@ proc primReduce*(ni: Interpreter): Node =
 
 # This proc does the work extending an Interpreter instance
 proc extendInterpreter(ni: Interpreter) {.procvar.} =
-  ni.root.makeWord("reduce", newNimProc(primReduce, false, 1))
+  ni.makeWord("reduce", newNimProc(primReduce, false, 1))
   
 ## Register our extension proc in Ni so it gets called every time a new
 ## Interpreter is instantiated

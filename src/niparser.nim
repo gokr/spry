@@ -25,6 +25,7 @@ type
 
   # Nodes form an AST which we later eval directly using Interpreter
   Node* = ref object of RootObj
+    tags*: seq[string]
   Word* = ref object of Node
     word*: string  
   GetW* = ref object of Word
@@ -234,7 +235,9 @@ method `$`*(self: Curly): string =
   "{" & $self.nodes & "}"
 
 method `$`*(self: KeyWord): string =
-  "KEYWORD(" & $self.keys & " " & $self.args & ")"
+  result = ""
+  for i in 0 .. self.keys.len - 1:
+    result = result & self.keys[i] & " " & $self.args[i]
 
 # Human string representations
 method form*(self: Node): string {.base.} =
@@ -572,7 +575,7 @@ proc parse*(self: Parser, str: string): Node =
           # Comments are not included in the AST
           of '#':
             self.addNode()
-            while not (str[pos] == '\l'):
+            while (pos < str.len) and (str[pos] != '\l'):
               inc pos
           # Paren
           of '(':

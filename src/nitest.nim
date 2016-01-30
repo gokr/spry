@@ -1,4 +1,4 @@
-import ni, niparser, niextend
+import ni, niparser, niextend, nimath
 
 # Some helpers for tests below
 proc show(code: string): string =
@@ -13,6 +13,8 @@ proc run(code: string): string =
 
 # A bunch of tests for Parser
 when true:
+  # Comments
+  assert(show("3 + 4 # foo") == "[3 + 4]")         # Comment
   # The different kinds of words
   assert(show("one") == "[one]")        # Eval word  
   assert(show(".one") == "[.one]")      # Eval word, only resolve locally
@@ -117,6 +119,7 @@ when true:
   assert(run("eval x") == "undef")
   assert(run("x ?") == "false")
   assert(run("x = 1 x ?") == "true")
+  assert(run("x = nil x ?") == "true")
   assert(run("x = 1 if (x ?) [12]") == "12")
   assert(run("x = 1 x = undef x ?") == "false")
   assert(run("x = 5 x = undef eval x") == "undef")
@@ -231,16 +234,16 @@ when true:
   assert(run("ifelse (3 > 4) [true] [false]") == "false")
   assert(run("ifelse (4 > 3) [true] [false]") == "true")
   
-  # loops
-  assert(run("x = 0 5 timesRepeat: [x = (x + 1)] eval x") == "5")
-  assert(run("x = 0 0 timesRepeat: [x = (x + 1)] eval x") == "0")
-  assert(run("x = 0 5 timesRepeat: [x = (x + 1)] eval x") == "5")
-  assert(run("x = 0 [x > 5] whileFalse: [x = (x + 1)] eval x") == "6")
-  assert(run("x = 10 [x > 5] whileTrue: [x = (x - 1)] eval x") == "5")
+  # loops, eva will 
+  assert(run("x = 0 5 timesRepeat: [x = (x + 1)] eva x") == "5")
+  assert(run("x = 0 0 timesRepeat: [x = (x + 1)] eva x") == "0")
+  assert(run("x = 0 5 timesRepeat: [x = (x + 1)] eva x") == "5")
+  assert(run("x = 0 [x > 5] whileFalse: [x = (x + 1)] eva x") == "6")
+  assert(run("x = 10 [x > 5] whileTrue: [x = (x - 1)] eva x") == "5")
   
   # func
   assert(run("z = func [3 + 4] z") == "7")
-  assert(run("x = func [3 + 4] eval ^x") == "[3 + 4]")
+  assert(run("x = func [3 + 4] eva ^x") == "[3 + 4]")
   assert(run("x = func [3 + 4] 'x") == "'x")
   assert(run("x = func [3 + 4] ^x write: 5 x") == "9")
   assert(run("x = func [3 + 4 return 1 8 + 9] x") == "1")
@@ -360,12 +363,25 @@ when true:
   assert(run("d = 5 locals at: 'd") == "5")
   assert(run("locals at: 'd put: 5 d + 2") == "7")
   assert(run("do [a = 1 b = 2 locals]") == "{a = 1 b = 2}")
+  assert(run("do [a = 1 b = 2 (c = 3 (locals)]") == "{a = 1 b = 2 c = 3}")
   
+  # The word self gives access to the local Object
+  #assert(run("x = object {a = 1 foo = funci [self at: 'a]} x foo") == "1")
+  #assert(run("x = object {a = 1 foo = funci [.a]} x foo") == "1")
+ 
   # The word activation gives access to the current activation record
   assert(run("activation") == "Activation([activation]|1)")
   
   # The word self gives access to the closest outer object
   assert(run("self") == "undef")
+
+  # Add and check tag
+  assert(run("x = 3 tag x 'num tag? x 'num") == "true")
+  assert(run("x = 3 tag x 'num tag? x 'bum") == "false")
+  assert(run("x = 3 tag? x 'bum") == "false")
+  
+  # Ni math
+  assert(run("10.0 sin") == "-0.5440211108893698")
 
 when true:
   # Demonstrate extension from extend.nim

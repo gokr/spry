@@ -10,7 +10,7 @@
 # to Ni itself so that it can be written fully in Ni.
 
 import os, strutils
-import ni, niparser
+import ni, niparser, nimath
 
 import nipython
 
@@ -39,6 +39,7 @@ proc main() =
   while true:
     var line: string
     if suspended:
+      stdout.write(">>> ")
       line = stdin.readLine()
     else:
       if fileLines.len == 0:
@@ -78,6 +79,7 @@ proc main() =
         stdout.write(output & "\n")
       except:
         echo "Oops, sorry about that: " & getCurrentExceptionMsg() & "\n"
+        echo getStackTrace()
     else:
       lines.add(line)
 

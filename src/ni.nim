@@ -60,7 +60,7 @@ proc addInterpreterExtension*(prok: InterpreterExt) =
 # Forward declarations to make Nim happy
 proc funk*(ni: Interpreter, body: Blok, infix: bool): Node
 method eval*(self: Node, ni: Interpreter): Node {.base.}
-proc evalDo*(self: Node, ni: Interpreter): Node
+method evalDo*(self: Node, ni: Interpreter): Node {.base.}
 
 # String representations
 method `$`*(self: NimProc): string =
@@ -84,17 +84,6 @@ method `$`*(self: Activation): string =
   return "Activation(" & $self.body & "|" & $self.pos & ")"
 
 # Base stuff for accessing
-#proc `[]`(self: SeqComposite, key: int): Node =
-#  self.nodes[key]
-
-#proc `[]`(self: Dictionary, key: Node): Node =
-#  self.bindings[key].val
-
-#proc `[]=`(self: SeqComposite, key: int, val: Node) =
-#  self.nodes[key] = val
-
-#proc `[]=`(self: Dictionary, key: Node, val: Node) =
-#  discard self.makeBinding(key, val)
 
 # Indexing Composites
 proc `[]`(self: Dictionary, key: Node): Node =
@@ -364,7 +353,8 @@ proc next*(self: Activation): Node {.inline.} =
 
 method doReturn*(self: Activation, ni: Interpreter) {.base.} =
   ni.currentActivation = self.parent
-  ni.currentActivation.returned = true
+  if ni.currentActivation.notNil:
+    ni.currentActivation.returned = true
 
 method doReturn*(self: FunkActivation, ni: Interpreter) =
   ni.currentActivation = Funk(self.body).parent
@@ -456,41 +446,63 @@ proc evalArg*(ni: Interpreter): Node =
   ## Pull next argument from activation and eval
   ni.currentActivation.next().eval(ni)
 
+proc makeWord*(self: Interpreter, word: string, value: Node) =
+  discard self.root.makeBinding(newEvalWord(word), value)
 
 # A template reducing boilerplate for registering nim primitives
-template nimPrim(name: string, infix: bool, arity: int, body: stmt): stmt {.immediate, dirty.} =
-  root.makeWord(name, newNimProc(
+template nimPrim*(name: string, infix: bool, arity: int, body: stmt): stmt {.immediate, dirty.} =
+  ni.makeWord(name, newNimProc(
     proc (ni: Interpreter): Node = body, infix, arity))
 
-template makeWord*(self: Dictionary, word: string, value: Node) =
-  discard self.makeBinding(newEvalWord(word), value)
-
 proc newInterpreter*(): Interpreter =
-  result = Interpreter(root: newDictionary())
+  let ni = Interpreter(root: newDictionary())
+  result = ni
 
   # Singletons
-  result.trueVal = newValue(true)
-  result.falseVal = newValue(false)
-  result.nilVal = newNilVal()
-  result.undefVal = newUndefVal()
-  let root = result.root
-  root.makeWord("false", result.falseVal)
-  root.makeWord("true", result.trueVal)
-  root.makeWord("undef", result.undefVal)
-  root.makeWord("nil", result.nilVal)
+  ni.trueVal = newValue(true)
+  ni.falseVal = newValue(false)
+  ni.nilVal = newNilVal()
+  ni.undefVal = newUndefVal()
+  ni.makeWord("false", ni.falseVal)
+  ni.makeWord("true", ni.trueVal)
+  ni.makeWord("undef", ni.undefVal)
+  ni.makeWord("nil", ni.nilVal)
 
   # Reflection words
   # Access to current Activation
   nimPrim("activation", false, 0):
     ni.currentActivation
+
   # Access to closest scope
   nimPrim("locals", false, 0):
     for activation in dictionaryWalk(ni.currentActivation):
       return BlokActivation(activation).getLocals()
+
   # Access to closest object
   nimPrim("self", false, 0):
     ni.undefVal
+    
+  # Creation of Ni types without literal syntax
+  nimPrim("object", false, 1):
+    ni.undefVal
   
+  # Tags
+  nimPrim("tag", false, 2):
+    let result = evalArg(ni)
+    let tag = Word(evalArg(ni)).word
+    if result.tags.isNil:
+      result.tags = newSeq[string]()
+    result.tags.add(tag)
+  nimPrim("tag?", false, 2):
+    let node = evalArg(ni)
+    let tag = Word(evalArg(ni)).word
+    if node.tags.isNil:
+      return ni.falseVal
+    if node.tags.contains(tag):
+      return ni.trueVal
+    else:
+      return ni.falseVal
+    
   # Lookups
   nimPrim("?", true, 1):
     let val = evalArgInfix(ni)
@@ -615,13 +627,18 @@ proc newInterpreter*(): Interpreter =
   #discard root.makeBinding("bind", newNimProc(primBind, false, 1))
   nimPrim("func", false, 1):    ni.funk(Blok(evalArg(ni)), false)
   nimPrim("funci", false, 1):   ni.funk(Blok(evalArg(ni)), true)
-  nimPrim("do", false, 1):      SeqComposite(evalArg(ni)).evalDo(ni)
-  nimPrim("eval", false, 1):    evalArg(ni)
+  nimPrim("do", false, 1):      evalArg(ni).evalDo(ni)
+  nimPrim("^", false, 1):       arg(ni)
+  nimPrim("eva", false, 1):     evalArg(ni)
+  nimPrim("eval", false, 1):    evalArg(ni).eval(ni)
   nimPrim("parse", false, 1):   newParser().parse(StringVal(evalArg(ni)).value)
 
   # IO
   nimPrim("echo", false, 1):    echo(form(evalArg(ni)))
- 
+  nimPrim("probe", false, 1):
+    result = arg(ni)
+    echo(form(result))
+
   # Control structures
   nimPrim("return", false, 1):
     ni.currentActivation.returned = true
@@ -690,12 +707,12 @@ proc newInterpreter*(): Interpreter =
   nimPrim("quit", false, 1):    quit(IntVal(evalArg(ni)).value)
 
   # Create and push root activation
-  result.rootActivation = newRootActivation(root)
-  result.pushActivation(result.rootActivation)
+  ni.rootActivation = newRootActivation(ni.root)
+  ni.pushActivation(ni.rootActivation)
   
   # Call registered extension procs to the interpreter
   for ex in interpreterExts:
-    ex(result)
+    ex(ni)
 
 proc atEnd*(ni: Interpreter): bool {.inline.} =
   return ni.currentActivation.atEnd
@@ -837,9 +854,19 @@ method eval(self: Curly, ni: Interpreter): Node =
   let activation = newActivation(self)
   discard activation.eval(ni)
   return activation.locals
-  
-proc evalDo(self: Node, ni: Interpreter): Node =
-  newActivation(Blok(self)).eval(ni)
+
+method evalDo(self: Node, ni: Interpreter): Node =
+  raiseRuntimeException("Do only works for sequences")
+
+method evalDo(self: Blok, ni: Interpreter): Node =
+  newActivation(self).eval(ni)
+
+method evalDo(self: Paren, ni: Interpreter): Node =
+  newActivation(self).eval(ni)
+
+method evalDo(self: Curly, ni: Interpreter): Node =
+  # Calling do on a curly doesn't do the locals trick
+  newActivation(self).eval(ni)
 
 proc evalRootDo(self: Node, ni: Interpreter): Node =
   ni.rootActivation.body = Blok(self)
