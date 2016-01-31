@@ -740,9 +740,11 @@ method canEval*(self: NimProc, ni: Interpreter):bool =
   true
 
 method canEval*(self: EvalArgWord, ni: Interpreter):bool =
+  # Since arg words have a side effect they are "actions"
   true
 
 method canEval*(self: GetArgWord, ni: Interpreter):bool =
+  # Since arg words have a side effect they are "actions"
   true
 
 method canEval*(self: Paren, ni: Interpreter):bool =
@@ -793,8 +795,8 @@ method eval(self: EvalOuterWord, ni: Interpreter): Node =
   if hit.isNil: ni.undefVal else: hit.val.eval(ni)
 
 method eval(self: LitWord, ni: Interpreter): Node =
-  ## The word itself
-  self
+  ## Evaluating a LitWord means creating a new word by stripping off \'
+  newWord(self.word)
 
 method eval(self: EvalArgWord, ni: Interpreter): Node =
   var arg: Node
@@ -869,6 +871,7 @@ method evalDo(self: Curly, ni: Interpreter): Node =
   newActivation(self).eval(ni)
 
 proc evalRootDo(self: Node, ni: Interpreter): Node =
+  # Evaluate a node in the root activation
   ni.rootActivation.body = Blok(self)
   ni.rootActivation.pos = 0
   ni.rootActivation.eval(ni)

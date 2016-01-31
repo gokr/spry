@@ -450,18 +450,8 @@ proc push(self: Parser, n: Node) =
     self.doAddNode(n)
   self.stack.add(n)
 
-proc newWordOrValue(self: Parser): Node =
-  ## Decide what to make, a word or value
-  let token = self.token
-  self.token = ""
-  
-  # Try all valueParsers...
-  for p in self.valueParsers:
-    let valueOrNil = p.parseValue(token)
-    if valueOrNil.notNil:
-      return valueOrNil
 
-  # Then it must be a word
+proc newWord(self: Parser, token: string): Node =
   let len = token.len
   let first = token[0]
  
@@ -500,16 +490,20 @@ proc newWordOrValue(self: Parser): Node =
       return newLitWord(token[1..^1])
   
   # All keywords end with ":"
-  if token[^1] == ':' and len > 1:
-    if self.currentKeyword().isNil:
-      # Then its the first key we parse, push a KeyWord
-      self.push(newKeyWord())
-    if self.currentKeyword().inBalance():
-      # keys and args balance so far, so we can add a new key
-      self.currentKeyword().addKey(token)
+  if len > 1 and token[^1] == ':':
+    if self.isNil:
+      # We have no parser, this is a call from the interpreter
+      return newEvalWord(token)
     else:
-      raiseParseException("Malformed keyword syntax, expecting an argument")
-    return nil
+      if self.currentKeyword().isNil:
+        # Then its the first key we parse, push a KeyWord
+        self.push(newKeyWord())
+      if self.currentKeyword().inBalance():
+        # keys and args balance so far, so we can add a new key
+        self.currentKeyword().addKey(token)
+      else:
+        raiseParseException("Malformed keyword syntax, expecting an argument")
+      return nil
   
   # A regular eval word then, possibly prefixed with . or ..
   if first == '.':
@@ -527,6 +521,22 @@ proc newWordOrValue(self: Parser): Node =
   else:
     return newEvalWord(token)
 
+template newWord*(token: string): Node =
+  newWord(nil, token)
+
+proc newWordOrValue(self: Parser): Node =
+  ## Decide what to make, a word or value
+  let token = self.token
+  self.token = ""
+  
+  # Try all valueParsers...
+  for p in self.valueParsers:
+    let valueOrNil = p.parseValue(token)
+    if valueOrNil.notNil:
+      return valueOrNil
+
+  # Then it must be a word
+  return newWord(self, token)
 
 proc addNode(self: Parser) =
   # If there is a token we figure out what to make of it
