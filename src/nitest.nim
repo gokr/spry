@@ -23,8 +23,14 @@ when true:
   assert(show("^.one") == "[^.one]")    # Lookup word, only resolve locally
   assert(show("^..one") == "[^..one]")  # Lookup word, start resolve in parent
   assert(show(":one") == "[:one]")      # Arg word, pulls in from caller
-  assert(show(":'one") == "[:'one]")    # Arg word, pulls in without eval
+  assert(show(":^one") == "[:^one]")    # Arg word, pulls in without eval
   assert(show("'one") == "['one]")      # Literal word
+  assert(show("'.one") == "['.one]")      # Literal word
+  assert(show("'..one") == "['..one]")      # Literal word
+  assert(show("'^..one") == "['^..one]")      # Literal word
+  assert(show("':one") == "[':one]")      # Literal word
+  assert(show("':^one") == "[':^one]")      # Literal word
+  assert(show("''one") == "[''one]")      # Literal word
   assert(show("a at: 1 put: 2") == "[a at:put: 1 2]")  # Keyword syntactic sugar
   
   assert(show("""
@@ -77,8 +83,9 @@ when true:
   
   # But we need to use func to make a closure from it
   assert(run("func [3 + 4]") == "[3 + 4]")
-  # Which will evaluate
-  assert(run("do func [3 + 4]") == "7")
+
+  # Which will evaluate itself when being evaluated
+  assert(run("foo = func [3 + 4] foo") == "7")
   
   # Dictionary
   assert(run("{}") == "{}")
@@ -235,8 +242,12 @@ when true:
   # Its a non local return so it returns all the way, thus it works deep down
   assert(run("x = func [3 + 4 do [ 2 + 3 return 1 1 + 1] 8 + 9] x") == "1")
   
-  # Testing ^ word
+  # Testing ^ word that prevents evaluation, like quote in Lisp
   assert(run("x = ^(3 + 4) ^x at: 2") == "4")
+
+  # Testing literal word evaluation into the real word  
+  assert(run("eva 'a") == "a")
+  assert(run("eva ':^a") == ":^a")
   
   # func args
   assert(run("do [:a] 5") == "5")
