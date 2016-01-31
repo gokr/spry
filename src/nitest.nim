@@ -37,8 +37,9 @@ blue""") == "[red green blue]")
   assert(show("+11") == "[11]")
   assert(show("-11") == "[-11]")
 
-  # String
+  # String with basic escapes using Nim's escape/unescape
   assert(show("\"garf\"") == "[\"garf\"]")
+  assert(show("\"ga\\\"rf\"") == "[\"ga\\\"rf\"]")
   
   # Just nesting and mixing
   assert(show("one :two") == "[one :two]")
@@ -59,22 +60,6 @@ blue""") == "[red green blue]")
 
   assert(show(">") == "[>]")
   assert(show("10.30") == "[10.3]")
-    
-  # A real Rebol code sample, but with assignment words replaced with "=" assignment
-  assert(show("""loop 10 [print "hello"]
-
-if time > 10:30 [send jim news]
-
-sites = [
-    http://www.rebol.com [save %reb.html data]
-    http://www.cnn.com   [print data]
-    ftp://www.amiga.com  [send cs@org.foo data]
-]
-
-foreach [site action] sites [
-    data = read site
-    do action
-]""") == """[loop 10 [print "hello"] if time > 10:30 [send jim news] sites = [http://www.rebol.com [save %reb.html data] http://www.cnn.com [print data] ftp://www.amiga.com [send cs@org.foo data]] foreach [site action] sites [data = read site do action]]""")
 
 # Tests for Interpreter
 when true:
@@ -249,6 +234,9 @@ when true:
   assert(run("x = func [3 + 4 return 1 8 + 9] x") == "1")
   # Its a non local return so it returns all the way, thus it works deep down
   assert(run("x = func [3 + 4 do [ 2 + 3 return 1 1 + 1] 8 + 9] x") == "1")
+  
+  # Testing ^ word
+  assert(run("x = ^(3 + 4) ^x at: 2") == "4")
   
   # func args
   assert(run("do [:a] 5") == "5")

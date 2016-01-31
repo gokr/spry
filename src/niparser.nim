@@ -20,8 +20,8 @@ type
   # Basic value parsers included by default, true false and nil are instead
   # regular system words referring to singleton values
   IntValueParser = ref object of ValueParser
-  StringValueParser = ref object of ValueParser
   FloatValueParser = ref object of ValueParser
+  StringValueParser = ref object of ValueParser
 
   # Nodes form an AST which we later eval directly using Interpreter
   Node* = ref object of RootObj
@@ -181,7 +181,7 @@ method `$`*(self: FloatVal): string =
   $self.value
 
 method `$`*(self: StringVal): string =
-  "\"" & self.value & "\""
+  escape(self.value)
 
 method `$`*(self: BoolVal): string =
   $self.value
@@ -350,9 +350,9 @@ method parseValue*(self: FloatValueParser, s: string): Node {.procvar.} =
     return nil
 
 method parseValue(self: StringValueParser, s: string): Node {.procvar.} =
-  # If it ends and starts with '"' then ok, no escapes yet
+  # If it ends and starts with '"' then ok
   if s.len > 1 and s[0] == '"' and s[^1] == '"':
-    result = newValue(s[1..^2])
+    result = newValue(unescape(s))
 
 method prefixLength(self: ValueParser): int {.base.} = 0
 
