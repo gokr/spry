@@ -1,4 +1,17 @@
-import ni, niparser, niextend, nimath
+import nivm, niparser
+
+import niextend, nimath, niio, nidebug, nios, nithread, nipython
+
+proc newVM(): Interpreter =
+  var ni = newInterpreter()
+  ni.addExtend()
+  ni.addMath()
+  ni.addOS()
+  ni.addIO()
+  ni.addThread()
+  ni.addPython()
+  ni.addDebug()
+  return ni
 
 # Some helpers for tests below
 proc show(code: string): string =
@@ -6,7 +19,7 @@ proc show(code: string): string =
   echo("RESULT:" & $result)
   echo("---------------------")
 proc run(code: string): string =
-  result = $newInterpreter().eval(code)
+  result = $newVM().eval(code)
   echo("RESULT:" & result)
   echo("---------------------")
 
@@ -42,7 +55,12 @@ blue""") == "[red green blue]")
   assert(show("11") == "[11]")
   assert(show("+11") == "[11]")
   assert(show("-11") == "[-11]")
-
+  assert(show("1_000_000") == "[1000000]")
+  
+  # And floats
+  assert(show("1.0e3") == "[1000.0]")
+  assert(show("10.30") == "[10.3]")
+  
   # String with basic escapes using Nim's escape/unescape
   assert(show("\"garf\"") == "[\"garf\"]")
   assert(show("\"ga\\\"rf\"") == "[\"ga\\\"rf\"]")
@@ -63,9 +81,7 @@ blue""") == "[red green blue]")
   assert(show("[3 < 4] whileTrue: [5 timesRepeat: [echo 42]]") == "[[3 < 4] whileTrue: [5 timesRepeat: [echo 42]]]")
   assert(show("[3 4] at: [1 2 [hey]] put: [5 timesRepeat: [echo 42]]") == "[[3 4] at:put: [1 2 [hey]] [5 timesRepeat: [echo 42]]]")
 
-
   assert(show(">") == "[>]")
-  assert(show("10.30") == "[10.3]")
 
 # Tests for Interpreter
 when true:
@@ -133,7 +149,10 @@ when true:
 
   # Strings
   assert(run("\"ab[c\"") == "\"ab[c\"")
-  assert(run("\"ab\" & \"cd\"") == "\"abcd\"")
+
+  # Concatenation
+  assert(run("\"ab\", \"cd\"") == "\"abcd\"")
+  assert(run("[1] , [2 3]") == "[1 2 3]")
 
   # Set and get variables
   assert(run("x = 4 5 + x") == "9")
@@ -186,8 +205,8 @@ when true:
   
 
   # Block indexing and positioning
-  assert(run("[3 4] len") == "2")
-  assert(run("[] len") == "0")
+  assert(run("[3 4] size") == "2")
+  assert(run("[] size") == "0")
   assert(run("[3 4] first") == "3")
   assert(run("[3 4] second") == "4")
   assert(run("[3 4] last") == "4")
@@ -210,7 +229,7 @@ when true:
   assert(run("x = [3 4] x write: 5") == "[5 4]")
   assert(run("x = [3 4] x add: 5 eval x") == "[3 4 5]")
   assert(run("x = [3 4] x removeLast eval x") == "[3]")
-  assert(run("[3 4] & [5 6]") == "[3 4 5 6]")
+  assert(run("[3 4], [5 6]") == "[3 4 5 6]")
 
   # Data as code
   assert(run("code = [1 + 2 + 3] code at: 2 put: 10 do code") == "14")
@@ -264,7 +283,7 @@ when true:
   assert(run("d = 5 do [:^x] d") == "d")
   # x will be a Word, need val and key prims to access it!
   #assert(run("a = \"ab\" do [:'x & \"c\"] a") == "\"ac\"") # x becomes "a"
-  assert(run("a = \"ab\" do [:x & \"c\"] a") == "\"abc\"") # x becomes "ab"
+  assert(run("a = \"ab\" do [:x , \"c\"] a") == "\"abc\"") # x becomes "ab"
 
   # . and ..
   assert(run("d = 5 do [eval ^d]") == "5")
@@ -380,6 +399,7 @@ when true:
   assert(run("x = 3 tag? x 'bum") == "false")
   
   # Ni math
+  assert(run("10 fac") == "3628800")
   assert(run("10.0 sin") == "-0.5440211108893698")
 
 when true:

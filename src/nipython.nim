@@ -1,4 +1,4 @@
-import ni, niparser, python
+import nivm, niparser, python
 
 proc primPython*(ni: Interpreter): Node =
   Py_Initialize()
@@ -6,8 +6,6 @@ proc primPython*(ni: Interpreter): Node =
   Py_Finalize()
 
 # This proc does the work extending an Interpreter instance
-proc extendInterpreter(ni: Interpreter) {.procvar.} =
+proc addPython*(ni: Interpreter) =
   ni.makeWord("python", newNimProc(primPython, false, 1))
-  
-addInterpreterExtension(extendInterpreter)
 

@@ -29,7 +29,7 @@ echo [true false nil]
 # Ni uses square brackets a lot (just like Smalltalk/Self) for control structures
 # but also for making ordered sequences like "[1 2 3]" and such a sequence is
 # called a "block".
-echo([1 2 3] len)
+echo([1 2 3] size)
 # pause
 
 # Parenthesis can also be used to control evalation

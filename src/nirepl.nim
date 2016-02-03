@@ -9,14 +9,26 @@
 # And this one is minimalistic intentionally, and... we should add enough
 # to Ni itself so that it can be written fully in Ni.
 
+# Stuff the REPL needs
 import os, strutils
-import ni, niparser, nimath
 
-import nipython
+# Basic Ni
+import nivm, niparser
+
+# Ni extra modules
+import niextend, nimath, nios, niio, nithread, nipython, nidebug
 
 proc main() =
   # Let's create a Ni interpreter. It also holds all state.
   let ni = newInterpreter()
+  ni.addExtend()
+  ni.addMath()
+  ni.addOS()
+  ni.addIO()
+  ni.addThread()
+  ni.addPython()
+  ni.addDebug()
+
   var
     lines, stashed, fileLines = newSeq[string]()
     suspended: bool = true

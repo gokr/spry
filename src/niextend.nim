@@ -1,4 +1,4 @@
-import ni, niparser
+import nivm, niparser
 # Example extending Ni with multiline string literals similar to Nim but using
 # triple single quotes ''' ... ''' and no skipping whitespace/newline after
 # the first delimiter. Its just an example, adding support for """ was harder
@@ -68,10 +68,6 @@ proc primReduce*(ni: Interpreter): Node =
   SeqComposite(evalArg(ni)).evalReduce(ni)
 
 # This proc does the work extending an Interpreter instance
-proc extendInterpreter(ni: Interpreter) {.procvar.} =
+proc addExtend*(ni: Interpreter) =
   ni.makeWord("reduce", newNimProc(primReduce, false, 1))
-  
-## Register our extension proc in Ni so it gets called every time a new
-## Interpreter is instantiated
-addInterpreterExtension(extendInterpreter)
 

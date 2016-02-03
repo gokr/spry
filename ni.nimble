@@ -1,6 +1,6 @@
 [Package]
 name          = "ni"
-version       = "0.2"
+version       = "0.3"
 author        = "Göran Krampe"
 description   = "Rebol-ish dynamic language in Nim"
 license       = "MIT"

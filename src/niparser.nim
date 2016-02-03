@@ -7,7 +7,7 @@ import strutils, sequtils, tables, hashes
 type
   ParseException* = object of Exception
 
-  # The recursive descent parser builds a Node tree using a stack for nested blocks
+  # The iterative parser builds a Node tree using a stack for nested blocks
   Parser* = ref object
     token: string                       # Collects characters into a token
     stack: seq[Node]                    # Lexical stack of block Nodes
@@ -248,16 +248,6 @@ method form*(self: StringVal): string =
   # No surrounding ""
   $self.value
 
-# AST manipulation
-proc add*(self: SeqComposite, n: Node) =
-  self.nodes.add(n)
-
-proc add*(self: SeqComposite, n: openarray[Node]) =
-  self.nodes.add(n)
-  
-proc removeLast*(self: SeqComposite) =
-  system.delete(self.nodes,self.nodes.high)
-
 # Dictionary lookups
 proc lookup*(self: Dictionary, key: Node): Binding =
   self.bindings.getOrDefault(key)
@@ -307,10 +297,16 @@ proc newBlok*(nodes: seq[Node]): Blok =
   Blok(nodes: nodes)
   
 proc newBlok*(): Blok =
-  newBlok(newSeq[Node]())
+  Blok(nodes: newSeq[Node]())
+
+proc newParen*(nodes: seq[Node]): Paren =
+  Paren(nodes: nodes)
 
 proc newParen*(): Paren =
   Paren(nodes: newSeq[Node]())
+
+proc newCurly*(nodes: seq[Node]): Curly =
+  Curly(nodes: nodes)
 
 proc newCurly*(): Curly =
   Curly(nodes: newSeq[Node]())
@@ -332,6 +328,28 @@ proc newNilVal*(): NilVal =
 
 proc newUndefVal*(): UndefVal =
   UndefVal()
+
+# AST manipulation
+proc add*(self: SeqComposite, n: Node) =
+  self.nodes.add(n)
+
+proc add*(self: SeqComposite, n: openarray[Node]) =
+  self.nodes.add(n)
+
+method concat*(self: SeqComposite, nodes: seq[Node]): SeqComposite {.base.} =
+  raiseRuntimeException("Should not happen..." & $self & " " & $nodes)
+
+method concat*(self: Blok, nodes: seq[Node]): SeqComposite =
+  newBlok(self.nodes.concat(nodes))
+
+method concat*(self: Paren, nodes: seq[Node]): SeqComposite =
+  newParen(self.nodes.concat(nodes))
+
+method concat*(self: Curly, nodes: seq[Node]): SeqComposite =
+  newCurly(self.nodes.concat(nodes))
+  
+proc removeLast*(self: SeqComposite) =
+  system.delete(self.nodes,self.nodes.high)
 
 # Methods for the base value parsers
 method parseValue*(self: ValueParser, s: string): Node {.procvar,base.} =
@@ -620,7 +638,6 @@ proc parse*(self: Parser, str: string): Node =
   if self.currentKeyword().notNil:
     self.closeKeyword()
   self.top
-
 
 when isMainModule and not defined(js):
   # Just run a given file as argument, the hash-bang trick works also
