@@ -39,22 +39,22 @@ install:
     if [ ! -x ~/.nimble/bin/nimble ]; then
       git clone --depth 1 https://github.com/nim-lang/nimble.git
       cd nimble
-      nim c -r src/nimble install
+      ../nim-$BRANCH/bin/nim c -r src/nimble install
     else
       cd nimble
       git fetch origin
       if ! git merge FETCH_HEAD | grep "Already up-to-date"; then
-        nim c -r src/nimble install
+        ../nim-$BRANCH/bin/nim c -r src/nimble install
       fi
     fi
-    # Refresh list
-    nimble refresh
 before_script:
-    - export PATH="nim-$BRANCH/bin${PATH:+:$PATH}"
-    - export PATH=".nimble/bin${PATH:+:$PATH}"
+    - export PATH=$PATH:$PWD/nim-$BRANCH/bin
+    - export PATH=$PATH:$PWD/.nimble/bin
 script:
     # Let nimble get dependencies
+    - nimble refresh
     - nimble c src/nitest
+		# Test
     - cd src && ./test.sh
     # Optional: build docs.
     # nim doc --docSeeSrcUrl:https://github.com/AUTHOR/MYPROJECT/blob/master --project MYFILE.nim
