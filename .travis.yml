@@ -1,0 +1,66 @@
+# Copied from https://github.com/nim-lang/Nim/wiki/TravisCI
+language: c
+env:
+  # Build and test against the master and devel branches of Nim
+  - BRANCH=master
+  - BRANCH=devel
+compiler:
+  # Build and test using both gcc and clang
+  - gcc
+  - clang
+matrix:
+  allow_failures:
+    # Ignore failures when building against the devel Nim branch
+    - env: BRANCH=devel
+  fast_finish: true
+install:
+  - |
+    if [ ! -x nim-$BRANCH/bin/nim ]; then
+      git clone -b $BRANCH --depth 1 git://github.com/nim-lang/nim nim-$BRANCH/
+      cd nim-$BRANCH
+      git clone -b $BRANCH --depth 1 git://github.com/nim-lang/csources csources/
+      cd csources
+      sh build.sh
+      cd ..
+      rm -rf csources
+      bin/nim c koch
+      ./koch boot -d:release
+    else
+      cd nim-$BRANCH
+      git fetch origin
+      if ! git merge FETCH_HEAD | grep "Already up-to-date"; then
+        bin/nim c koch
+        ./koch boot -d:release
+      fi
+    fi
+    cd ..
+    # Install nimble
+    if [ ! -x ~/.nimble/bin/nimble ]; then
+      git clone --depth 1 https://github.com/nim-lang/nimble.git
+      cd nimble
+      nim c -r src/nimble install
+    else
+      cd nimble
+      git fetch origin
+      if ! git merge FETCH_HEAD | grep "Already up-to-date"; then
+        nim c -r src/nimble install
+      fi
+    fi
+    # Refresh list
+    nimble refresh
+before_script:
+    - export PATH="nim-$BRANCH/bin${PATH:+:$PATH}"
+    - export PATH=".nimble/bin${PATH:+:$PATH}"
+script:
+    # Let nimble get dependencies
+    - nimble c src/nitest
+    - cd src && ./test.sh
+    # Optional: build docs.
+    # nim doc --docSeeSrcUrl:https://github.com/AUTHOR/MYPROJECT/blob/master --project MYFILE.nim
+cache:
+  directories:
+    - nim-master
+    - nim-devel
+branches:
+  except:
+    - gh-pages

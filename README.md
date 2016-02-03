@@ -1,27 +1,25 @@
 # Ni - We are the knights who say...
 
-This is a parser & interpreter for the Ni language, inspired by
-Rebol/Smalltalk/Self/Forth and Nim. Characteristics:
+[![nimble](https://raw.githubusercontent.com/yglukhov/nimble-tag/master/nimble_js.png)](https://github.com/yglukhov/nimble-tag)
 
-* Ni is a dynamically typed minimalistic language with a free form syntax similar to Rebol/Forth
-* The parser produces an AST which in turn is interpreted by the interpreter
-* Ni is functional in nature and has closures and non local return
-* Ni is homoiconic which means code and data has the same form
-* Ni is meant to be 100% live and support interactive development
+This is the **Ni** language, inspired by Rebol/Smalltalk/Self/Forth and Nim. Characteristics:
 
-For the moment Ni is procedural, but an object model based on cloning and
-delegation is planned.
+* A dynamically typed minimalistic language with a free form syntax similar to Rebol/Forth
+* Parser produces an AST which in turn is interpreted by the interpreter
+* Functional in nature and has closures and non local return
+* Homoiconic which means code and data has the same form
+* Meant to be 100% live and support interactive development
+
+For the moment Ni is procedural, but an object model facilitating polymorphic dispatch is planned.
 
 Here are [my articles about Ni](http://goran.krampe.se/category/ni)
 
 ## Why would I play with this?
 
-Some plausible reasons:
-
-* You love Rebol/Ren/Red but think it could perhaps be simplified, smaller and perhaps different :)
-* You love Smalltalk but can imagine using something not 100% Smalltalk-80
-* You love Smalltalk but want to play with multicore and more easily use the C/C++ eco system
-* You love Nim but want to have a scripting language designed to work with Nim
+* You love Rebol/Ren/Red but think it could perhaps be simplified, smaller and different :)
+* You love Smalltalk but can imagine a simplified Smalltalkish language 
+* You love Smalltalk but want to play with multicore or small platforms and more easily use the C/C++ eco system
+* You love Nim but want to have a dynamic language running inside Nim
 * ...or you just love freaky programming language ideas!
 
 ## Installation
