@@ -2,6 +2,8 @@
 
 [![nimble](https://raw.githubusercontent.com/yglukhov/nimble-tag/master/nimble_js.png)](https://github.com/yglukhov/nimble-tag)
 
+[![Build Status](https://travis-ci.org/gokr/ni.svg?branch=master)](https://travis-ci.org/gokr/ni)
+
 This is the **Ni** language, inspired by Rebol/Smalltalk/Self/Forth and Nim. Characteristics:
 
 * A dynamically typed minimalistic language with a free form syntax similar to Rebol/Forth
