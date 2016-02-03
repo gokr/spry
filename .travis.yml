@@ -34,17 +34,17 @@ install:
       fi
     fi
     cd ..
-    export PATH="nim-$BRANCH/bin${PATH:+:$PATH}"
+    export PATH=$PATH:$PWD/nim-$BRANCH/bin
     # Install nimble
     if [ ! -x ~/.nimble/bin/nimble ]; then
       git clone --depth 1 https://github.com/nim-lang/nimble.git
       cd nimble
-      ../nim-$BRANCH/bin/nim c -r src/nimble install
+      nim c -r src/nimble install
     else
       cd nimble
       git fetch origin
       if ! git merge FETCH_HEAD | grep "Already up-to-date"; then
-        ../nim-$BRANCH/bin/nim c -r src/nimble install
+        nim c -r src/nimble install
       fi
     fi
 before_script:
