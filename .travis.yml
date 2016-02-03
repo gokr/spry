@@ -54,7 +54,7 @@ script:
     # Let nimble get dependencies
     - nimble refresh
     - nimble c src/nitest
-		# Test
+    # Test
     - cd src && ./test.sh
     # Optional: build docs.
     # nim doc --docSeeSrcUrl:https://github.com/AUTHOR/MYPROJECT/blob/master --project MYFILE.nim
