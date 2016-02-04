@@ -15,7 +15,7 @@ matrix:
   fast_finish: true
 install:
   - |
-    cd $TRAVIS_BUILD_DIR
+    cd $TRAVIS_BUILD_DIR/..
     if [ ! -x nim-$BRANCH/bin/nim ]; then
       git clone -b $BRANCH --depth 1 git://github.com/nim-lang/nim nim-$BRANCH/
       cd nim-$BRANCH
@@ -34,8 +34,8 @@ install:
         ./koch boot -d:release
       fi
     fi
-    cd $TRAVIS_BUILD_DIR
-    export PATH=$TRAVIS_BUILD_DIR/nim-$BRANCH/bin:$PATH
+    cd $TRAVIS_BUILD_DIR/..
+    export PATH=$PWD/nim-$BRANCH/bin:$PATH
     echo $PATH
     pwd && ls
     ls .nimble/bin
@@ -51,12 +51,12 @@ install:
         nim c -r src/nimble install
       fi
     fi
+    cd ..
+    export PATH=$PWD/.nimble/bin:$PATH
 before_script:
-    - export PATH=$HOME/nim-$BRANCH/bin:$PATH
-    - export PATH=$HOME/.nimble/bin:$PATH
 script:
     # Let nimble get dependencies
-    - cd $TRAVIS_BUILD_DIR/ni
+    - cd $TRAVIS_BUILD_DIR
     - pwd && ls
     - nimble refresh
     - nimble c src/nitest
