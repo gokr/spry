@@ -4,6 +4,9 @@
 
 [![Build Status](https://travis-ci.org/gokr/ni.svg?branch=master)](https://travis-ci.org/gokr/ni)
 
+[![Join the chat at https://gitter.im/gokr/ni-lang](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/gokr/ni-lang?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
+
+
 This is the **Ni** language, inspired by Rebol/Smalltalk/Self/Forth and Nim. Characteristics:
 
 * A dynamically typed minimalistic language with a free form syntax similar to Rebol/Forth
