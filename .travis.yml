@@ -34,7 +34,7 @@ install:
       fi
     fi
     cd ..
-    export PATH=$PATH:$PWD/nim-$BRANCH/bin
+    export PATH=$HOME/nim-$BRANCH/bin:$PATH
     # Install nimble
     if [ ! -x ~/.nimble/bin/nimble ]; then
       git clone --depth 1 https://github.com/nim-lang/nimble.git
@@ -48,8 +48,8 @@ install:
       fi
     fi
 before_script:
-    - export PATH=$PATH:$PWD/nim-$BRANCH/bin
-    - export PATH=$PATH:$PWD/.nimble/bin
+    - export PATH=$HOME/nim-$BRANCH/bin:$PATH
+    - export PATH=$HOME/.nimble/bin:$PATH
 script:
     # Let nimble get dependencies
     - nimble refresh
