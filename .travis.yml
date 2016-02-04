@@ -52,6 +52,7 @@ before_script:
     - export PATH=$HOME/.nimble/bin:$PATH
 script:
     # Let nimble get dependencies
+    - pwd && ls
     - nimble refresh
     - nimble c src/nitest
     # Test
