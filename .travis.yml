@@ -15,7 +15,12 @@ matrix:
   fast_finish: true
 install:
   - |
-    cd $TRAVIS_BUILD_DIR/..
+    # We want a new GCC 4.8 instead of 4.6.x
+    sudo add-apt-repository ppa:ubuntu-toolchain-r/test -y
+    sudo apt-get update -qq
+    if [ "$CXX" = "g++" ]; then sudo apt-get install -qq g++-4.8; fi
+    if [ "$CXX" = "g++" ]; then export CXX="g++-4.8" CC="gcc-4.8"; fi
+    # Install Nim
     if [ ! -x nim-$BRANCH/bin/nim ]; then
       git clone -b $BRANCH --depth 1 git://github.com/nim-lang/nim nim-$BRANCH/
       cd nim-$BRANCH
@@ -34,28 +39,25 @@ install:
         ./koch boot -d:release
       fi
     fi
-    cd $TRAVIS_BUILD_DIR/..
+    cd ..
+    # So we can see nim compiler
     export PATH=$PWD/nim-$BRANCH/bin:$PATH
+    export PATH=$HOME/.nimble/bin:$PATH
     # Install nimble
     if [ ! -x $HOME/.nimble/bin/nimble ]; then
       git clone --depth 1 https://github.com/nim-lang/nimble.git
       cd nimble
       nim c -r src/nimble install
+      cd ..
     else
-      cd nimble
-      git fetch origin
-      if ! git merge FETCH_HEAD | grep "Already up-to-date"; then
-        nim c -r src/nimble install
-      fi
+      nimble install nimble  
     fi
-    cd ..
-    export PATH=$HOME/.nimble/bin:$PATH
 before_script:
-script:
-    # Let nimble get dependencies
     - cd $TRAVIS_BUILD_DIR
     - pwd && ls
     - nimble refresh
+script:
+    # Let nimble get dependencies
     - nimble c src/nitest
     # Test
     - cd src && ./test.sh
