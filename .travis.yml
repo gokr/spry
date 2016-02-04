@@ -13,14 +13,18 @@ matrix:
     # Ignore failures when building against the devel Nim branch
     - env: BRANCH=devel
   fast_finish: true
+before_install:
+  - sudo apt-get update -qq
+  - sudo apt-get install -qq 
 install:
   - |
     # We want a new GCC 4.8 instead of 4.6.x
+    # install gcc-4.8 with c++11 support: https://github.com/travis-ci-tester/travis-test-gcc-cxx-11
     sudo add-apt-repository ppa:ubuntu-toolchain-r/test -y
-    sudo apt-get update -qq
-    if [ "$CXX" = "g++" ]; then sudo apt-get install -qq g++-4.8; fi
-    if [ "$CXX" = "g++" ]; then export CXX="g++-4.8" CC="gcc-4.8"; fi
-    # Install Nim
+    sudo apt-get update
+    sudo apt-get install g++-4.8
+    sudo update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-4.8 90
+    sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-4.8 90    # Install Nim
     if [ ! -x nim-$BRANCH/bin/nim ]; then
       git clone -b $BRANCH --depth 1 git://github.com/nim-lang/nim nim-$BRANCH/
       cd nim-$BRANCH
