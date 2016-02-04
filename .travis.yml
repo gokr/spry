@@ -36,6 +36,10 @@ install:
     fi
     cd $HOME
     export PATH=$HOME/nim-$BRANCH/bin:$PATH
+    echo $PATH
+    pwd && ls
+    echo $HOME
+    ls .nimble/bin
     # Install nimble
     if [ ! -x $HOME/.nimble/bin/nimble ]; then
       git clone --depth 1 https://github.com/nim-lang/nimble.git
