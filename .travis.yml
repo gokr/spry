@@ -16,6 +16,7 @@ matrix:
 install:
   - |
     if [ ! -x nim-$BRANCH/bin/nim ]; then
+      cd $HOME
       git clone -b $BRANCH --depth 1 git://github.com/nim-lang/nim nim-$BRANCH/
       cd nim-$BRANCH
       git clone -b $BRANCH --depth 1 git://github.com/nim-lang/csources csources/
@@ -33,8 +34,8 @@ install:
         ./koch boot -d:release
       fi
     fi
-    cd ..
-    export PATH=$PWD/nim-$BRANCH/bin:$PATH
+    cd $HOME
+    export PATH=$HOME/nim-$BRANCH/bin:$PATH
     # Install nimble
     if [ ! -x $HOME/.nimble/bin/nimble ]; then
       git clone --depth 1 https://github.com/nim-lang/nimble.git
@@ -52,6 +53,7 @@ before_script:
     - export PATH=$HOME/.nimble/bin:$PATH
 script:
     # Let nimble get dependencies
+    - cd $HOME/ni
     - pwd && ls
     - nimble refresh
     - nimble c src/nitest
