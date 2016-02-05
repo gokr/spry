@@ -3,20 +3,41 @@
 # Copyright (c) 2015 Göran Krampe
 
 # I am not fond of REPLs, since I think they are silly dumb approximations
-# of the real thing - a fully live environment like Smalltalk.
+# of the real thing - a fully live environment like Smalltalk!
 #
 # But ok, its nice as a starter and for going through a tutorial :)
-# And this one is minimalistic intentionally, and... we should add enough
-# to Ni itself so that it can be written fully in Ni.
 
-# Stuff the REPL needs
 import os, strutils
+when defined(readLine):
+  import rdstdin
+  when not defined(Windows):
+    import linenoise
 
 # Basic Ni
 import nivm, niparser
 
-# Ni extra modules
+# Ni extra modules, as much as possible!
 import niextend, nimath, nios, niio, nithread, nipython, nidebug
+
+const Prompt = ">>> "
+
+when defined(readLine) and not defined(Windows):
+  const HistoryFile = ".nirepl-history"
+  # Load existing history file
+  discard historyLoad(HistoryFile)
+  # Makes sure editing wraps for long lines?
+  setMultiLine(1)
+
+proc getLine(prompt: string): string =
+  # Using line editing
+  when defined(readLine):
+    result = readLineFromStdin(prompt)
+    when not defined(Windows):
+      discard historySave(HistoryFile)
+  else:
+    # Primitive fallback
+    stdout.write(prompt)
+    result = stdin.readline()
 
 proc main() =
   # Let's create a Ni interpreter. It also holds all state.
@@ -51,8 +72,7 @@ proc main() =
   while true:
     var line: string
     if suspended:
-      stdout.write(">>> ")
-      line = stdin.readLine()
+      line = getLine(Prompt)
     else:
       if fileLines.len == 0:
         quit 0
@@ -61,8 +81,7 @@ proc main() =
       fileLines.delete(0)
       # Logic for pausing
       if line.strip() == "# pause":
-        stdout.write("         <Hit enter to eval or s = suspend>\n")
-        var enter = stdin.readLine()
+        var enter = getLine("         <Hit enter to eval or s = suspend>\n" & Prompt)
         if enter.strip() == "s":
           stdout.write("         <Suspended, c = continue>\n")
           stashed = lines
