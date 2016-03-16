@@ -1,6 +1,6 @@
 import nivm, niparser
 
-import niextend, nimath, niio, nidebug, nios, nithread, nipython
+import niextend, nimath, niio, nidebug, nios, nithread, nipython, nioo
 
 proc newVM(): Interpreter =
   var ni = newInterpreter()
@@ -11,6 +11,7 @@ proc newVM(): Interpreter =
   ni.addThread()
   ni.addPython()
   ni.addDebug()
+  ni.addOO()
   return ni
 
 # Some helpers for tests below
@@ -201,7 +202,15 @@ when true:
   assert(run("\"abc\" == \"abc\"") == "true")
   assert(run("\"abc\" == \"AAA\"") == "false")
   assert(run("true == true") == "true")
+  assert(run("false == false") == "true")
   assert(run("false == true") == "false")
+  assert(run("true == false") == "false")
+  
+# Will cause type exceptions
+#  assert(run("false == 4") == "false")
+#  assert(run("4 == false") == "false")
+#  assert(run("\"ab\" == 4") == "false")
+#  assert(run("4 == \"ab\"") == "false")
   
 
   # Block indexing and positioning
@@ -230,6 +239,12 @@ when true:
   assert(run("x = [3 4] x add: 5 eval x") == "[3 4 5]")
   assert(run("x = [3 4] x removeLast eval x") == "[3]")
   assert(run("[3 4], [5 6]") == "[3 4 5 6]")
+  assert(run("[3 4] contains: 3") == "true")
+  assert(run("[3 4] contains: 8") == "false")
+  assert(run("[false bum 3.14 4] contains: 'bum") == "true")
+  assert(run("[1 2 true 4] contains: 'false") == "false") # Note that block contains words, not values
+  assert(run("[1 2 true 4] contains: 'true") == "true")
+  assert(run("x = false b = [] b add: x b contains: x") == "true")
 
   # Data as code
   assert(run("code = [1 + 2 + 3] code at: 2 put: 10 do code") == "14")
@@ -375,6 +390,17 @@ when true:
   [1 2 3 4] select: [:each > 2]
   """) == "[3 4]")
   
+  # Implementing collect: as do: and map:
+  assert(run("""
+  map: = funci [:blk :lambda
+    result = []
+    blk reset
+    [blk end?] whileFalse: [
+      result add: (do lambda (blk next)) ]
+    return result ]
+  [1 2 3 4] map: [:x * 2]
+  """) == "[2 4 6 8]")
+  
   # Reflection
   # The word locals gives access to the local Dictionary
   assert(run("d = 5 locals") == "{d = 5}")
@@ -394,13 +420,20 @@ when true:
   assert(run("self") == "undef")
 
   # Add and check tag
-  assert(run("x = 3 tag x 'num tag? x 'num") == "true")
-  assert(run("x = 3 tag x 'num tag? x 'bum") == "false")
-  assert(run("x = 3 tag? x 'bum") == "false")
+  assert(run("x = 3 x tag: 'num x tag? 'num") == "true")
+  assert(run("x = 3 x tag: 'num x tag? 'bum") == "false")
+  assert(run("x = 3 x tag? 'bum") == "false")
+  assert(run("x = 3 x tags: [bum num] x tags") == "[bum num]")
+  assert(run("x = 3 x tags: [bum num] x tag? 'bum") == "true")
+  assert(run("x = 3 x tags: [bum num] x tag? 'lum") == "false")
   
   # Ni math
   assert(run("10 fac") == "3628800")
   assert(run("10.0 sin") == "-0.5440211108893698")
+
+  # Ni OO
+  assert(run("p = polyfunc [:a + 1]") == "[:a + 1]")
+  assert(run("p = polyfunc [:a + 1] 2 p") == "3")
 
 when true:
   # Demonstrate extension from extend.nim

@@ -258,8 +258,6 @@ method `<=`(a,b: FloatVal): Node {.inline.} =
   newValue(a.value <= b.value)
 method `<=`(a,b: StringVal): Node {.inline.} =
   newValue(a.value <= b.value)
-method `<=`(a, b: BoolVal): Node {.inline.} =
-  newValue(a.value <= b.value)
 
 method `==`(a: Node, b: Node): Node {.inline,base.} =
   raiseRuntimeException("Can not evaluate " & $a & " == " & $b)
@@ -269,13 +267,13 @@ method `==`(a: IntVal, b: FloatVal): Node {.inline.} =
   newValue(a.value.float == b.value)
 method `==`(a: FloatVal, b: IntVal): Node {.inline.} =
   newValue(a.value == b.value.float)
-method `==`(a,b: FloatVal): Node {.inline.} =
+method `==`(a, b: FloatVal): Node {.inline.} =
   newValue(a.value == b.value)
-method `==`(a,b: StringVal): Node {.inline.} =
+method `==`(a, b: StringVal): Node {.inline.} =
   newValue(a.value == b.value)
 method `==`(a, b: BoolVal): Node {.inline.} =
   newValue(a.value == b.value)
-
+  
 method `&`(a: Node, b: Node): Node {.inline,base.} =
   raiseRuntimeException("Can not evaluate " & $a & " & " & $b)
 method `&`(a, b: StringVal): Node {.inline.} =
@@ -400,6 +398,12 @@ proc evalArg*(ni: Interpreter): Node =
 proc makeWord*(self: Interpreter, word: string, value: Node) =
   discard self.root.makeBinding(newEvalWord(word), value)
 
+proc boolVal(val: bool, ni: Interpreter): Node =
+  if val:
+    result = ni.trueVal
+  else:
+    result = ni.falseVal
+
 # A template reducing boilerplate for registering nim primitives
 template nimPrim*(name: string, infix: bool, arity: int, body: stmt): stmt {.immediate, dirty.} =
   ni.makeWord(name, newNimProc(
@@ -438,22 +442,27 @@ proc newInterpreter*(): Interpreter =
     ni.undefVal
   
   # Tags
-  nimPrim("tag", false, 2):
-    result = evalArg(ni)
-    let tag = Word(evalArg(ni)).word
+  nimPrim("tag:", true, 2):
+    result = evalArgInfix(ni)
+    let tag = evalArg(ni)
     if result.tags.isNil:
-      result.tags = newSeq[string]()
+      result.tags = newBlok()
     result.tags.add(tag)
-  nimPrim("tag?", false, 2):
-    let node = evalArg(ni)
-    let tag = Word(evalArg(ni)).word
+  nimPrim("tag?", true, 2):
+    let node = evalArgInfix(ni)
+    let tag = evalArg(ni)
     if node.tags.isNil:
       return ni.falseVal
-    if node.tags.contains(tag):
-      return ni.trueVal
-    else:
+    return boolVal(node.tags.contains(tag), ni)
+  nimPrim("tags", true, 1):
+    let node = evalArgInfix(ni)
+    if node.tags.isNil:
       return ni.falseVal
-    
+    return node.tags
+  nimPrim("tags:", true, 2):
+    result = evalArgInfix(ni)
+    result.tags = Blok(evalArg(ni))
+
   # Lookups
   nimPrim("?", true, 1):
     let val = evalArgInfix(ni)
@@ -476,7 +485,7 @@ proc newInterpreter*(): Interpreter =
   nimPrim("<=", true, 2):  evalArgInfix(ni) <= evalArg(ni)
   nimPrim(">=", true, 2):  evalArgInfix(ni) >= evalArg(ni)
   nimPrim("==", true, 2):  evalArgInfix(ni) == evalArg(ni)
-  nimPrim("!=", true, 2):  newValue(not (BoolVal(evalArgInfix(ni) == evalArg(ni))).value)
+  nimPrim("!=", true, 2):  newValue(not BoolVal(evalArgInfix(ni) == evalArg(ni)).value)
 
   # Booleans
   nimPrim("not", false, 1): newValue(not BoolVal(evalArg(ni)).value)
@@ -498,7 +507,7 @@ proc newInterpreter*(): Interpreter =
       return Blok(val).concat(SeqComposite(evalArg(ni)).nodes)
     elif val of Paren:
       return Paren(val).concat(SeqComposite(evalArg(ni)).nodes)
-    elif val of Blok:
+    elif val of Curly:
       return Curly(val).concat(SeqComposite(evalArg(ni)).nodes)
 
   # Conversions
@@ -564,7 +573,10 @@ proc newInterpreter*(): Interpreter =
     result = evalArgInfix(ni)
     let comp = SeqComposite(result)
     comp.removeLast()
-  
+  nimPrim("contains:", true, 2):
+    let comp = SeqComposite(evalArgInfix(ni))
+    newValue(comp.contains(evalArg(ni)))
+    
   # Positioning
   nimPrim("reset", true, 1):  SeqComposite(evalArgInfix(ni)).pos = 0 # Called change in Rebol
   nimPrim("pos", true, 1):    newValue(SeqComposite(evalArgInfix(ni)).pos) # ? in Rebol 

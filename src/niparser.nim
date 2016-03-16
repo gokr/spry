@@ -25,7 +25,7 @@ type
 
   # Nodes form an AST which we later eval directly using Interpreter
   Node* = ref object of RootObj
-    tags*: seq[string]
+    tags*: Blok
   Word* = ref object of Node
     word*: string  
   GetW* = ref object of Word
@@ -57,7 +57,9 @@ type
   StringVal* = ref object of Value
     value*: string
   BoolVal* = ref object of Value
-    value*: bool
+  TrueVal* = ref object of BoolVal
+  FalseVal* = ref object of BoolVal
+  
   UndefVal* = ref object of Value
   NilVal* = ref object of Value
 
@@ -86,52 +88,79 @@ type
 proc raiseRuntimeException*(msg: string) =
   raise newException(RuntimeException, msg)
 
-method hash(self: Node): Hash {.base.} = 
+method hash*(self: Node): Hash {.base.} = 
   raiseRuntimeException("Nodes need to implement hash") 
 
-method `==`(self, other: Node): bool {.base.} = 
+method `==`*(self, other: Node): bool {.base.} = 
   raiseRuntimeException("Nodes need to implement ==") 
 
-method hash(self: Word): Hash =
+method hash*(self: Word): Hash =
   self.word.hash
 
-method `==`(self: Word, other: Node): bool = 
+method `==`*(self: Word, other: Node): bool = 
   other of Word and (self.word == Word(other).word)
 
-method hash(self: IntVal): Hash =
+method hash*(self: IntVal): Hash =
   self.value.hash
 
-method `==`(self: IntVal, other: Node): bool =
+method `==`*(self: IntVal, other: Node): bool =
   other of IntVal and (self.value == IntVal(other).value)
 
-method hash(self: FloatVal): Hash =
+method hash*(self: FloatVal): Hash =
   self.value.hash
 
-method `==`(self: FloatVal, other: Node): bool =
+method `==`*(self: FloatVal, other: Node): bool =
   other of FloatVal and (self.value == FloatVal(other).value)
 
-method hash(self: StringVal): Hash =
+method hash*(self: StringVal): Hash =
   self.value.hash
 
-method `==`(self: StringVal, other: Node): bool =
+method `==`*(self: StringVal, other: Node): bool =
   other of StringVal and (self.value == StringVal(other).value)
 
-method hash(self: BoolVal): Hash =
-  self.value.hash
-
-method `==`(self: BoolVal, other: Node): bool =
-  other of BoolVal and (self.value == BoolVal(other).value)
-  
-method hash(self: NilVal): Hash =
+method hash*(self: TrueVal): Hash =
   hash(1)
 
-method `==`(self: Nilval, other: Node): bool =
+method hash*(self: FalseVal): Hash =
+  hash(0)
+
+method value*(self: BoolVal): bool {.base.} =
+  true
+
+method value*(self: FalseVal): bool =
+  false
+
+method `==`*(self, other: TrueVal): bool =
+  true
+
+method `==`*(self, other: FalseVal): bool =
+  true
+
+method `==`*(self: TrueVal, other: FalseVal): bool =
+  false
+
+method `==`*(self: FalseVal, other: TrueVal): bool =
+  false
+
+#method `==`*(self: BoolVal, other: Node): bool =
+#  other of BoolVal and (self == BoolVal(other))
+
+#method `==`*(other: Node, self: BoolVal): bool =
+#  other of BoolVal and (self == BoolVal(other))
+
+#method `==`*(other, self: BoolVal): bool =
+#  self == other
+
+method hash*(self: NilVal): Hash =
+  hash(1)
+
+method `==`*(self: Nilval, other: Node): bool =
   other of NilVal
 
-method hash(self: UndefVal): Hash =
+method hash*(self: UndefVal): Hash =
   hash(2)
 
-method `==`(self: Undefval, other: Node): bool =
+method `==`*(self: Undefval, other: Node): bool =
   other of UndefVal
 
 
@@ -183,8 +212,11 @@ method `$`*(self: FloatVal): string =
 method `$`*(self: StringVal): string =
   escape(self.value)
 
-method `$`*(self: BoolVal): string =
-  $self.value
+method `$`*(self: TrueVal): string =
+  "true"
+
+method `$`*(self: FalseVal): string =
+  "false"
 
 method `$`*(self: NilVal): string =
   "nil"
@@ -321,8 +353,11 @@ proc newValue*(v: string): StringVal =
   StringVal(value: v)
 
 proc newValue*(v: bool): BoolVal =
-  BoolVal(value: v)
-
+  if v:
+    TrueVal()
+  else:
+    FalseVal()
+    
 proc newNilVal*(): NilVal =
   NilVal()
 
@@ -335,6 +370,9 @@ proc add*(self: SeqComposite, n: Node) =
 
 proc add*(self: SeqComposite, n: openarray[Node]) =
   self.nodes.add(n)
+
+proc contains*(self: SeqComposite, n: Node): bool =
+  self.nodes.contains(n)
 
 method concat*(self: SeqComposite, nodes: seq[Node]): SeqComposite {.base.} =
   raiseRuntimeException("Should not happen..." & $self & " " & $nodes)
