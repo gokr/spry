@@ -1,5 +1,6 @@
 nimcache
 profile_*
 ni.pro*
+.nirepl-history
 bin/ni
 bin/nirepl
