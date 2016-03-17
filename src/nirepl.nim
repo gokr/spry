@@ -64,8 +64,7 @@ proc main() =
       for line in lines(fn):
         fileLines.add(line)
 
-  echo "We are the knights who say... Ni! Enter shrubbary... eh, code and"
-  echo "an empty line will evaluate previous lines, so hit enter twice."
+  echo "An empty line will evaluate previous lines, so hit enter twice."
   # We collect lines until an empty line is entered, easy way to enter
   # multiline code.
 
@@ -81,9 +80,9 @@ proc main() =
       fileLines.delete(0)
       # Logic for pausing
       if line.strip() == "# pause":
-        var enter = getLine("         <Hit enter to eval or s = suspend>\n" & Prompt)
+        var enter = getLine("         <enter = eval, s = suspend>")
         if enter.strip() == "s":
-          stdout.write("         <Suspended, c = continue>\n")
+          stdout.write("         <suspended, c = continue>\n")
           stashed = lines
           lines = newSeq[string]()
           suspended = true
