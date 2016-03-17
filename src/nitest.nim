@@ -104,7 +104,7 @@ when true:
   # Which will evaluate itself when being evaluated
   assert(run("foo = func [3 + 4] foo") == "7")
   
-  # Dictionary
+  # Map
   assert(run("{}") == "{}")
   assert(run("{a = 1 b = 2}") == "{a = 1 b = 2}")
   assert(run("{a = 1 b = \"hey\"}") == "{a = 1 b = \"hey\"}")
@@ -402,7 +402,7 @@ when true:
   """) == "[2 4 6 8]")
   
   # Reflection
-  # The word locals gives access to the local Dictionary
+  # The word locals gives access to the local Map
   assert(run("d = 5 locals") == "{d = 5}")
   assert(run("d = 5 locals at: 'd") == "5")
   assert(run("locals at: 'd put: 5 d + 2") == "7")
@@ -422,6 +422,7 @@ when true:
   # Add and check tag
   assert(run("x = 3 x tag: 'num x tag? 'num") == "true")
   assert(run("x = 3 x tag: 'num x tag? 'bum") == "false")
+  assert(run("x = 3 x tag: 'num x tags") == "[num]")
   assert(run("x = 3 x tag? 'bum") == "false")
   assert(run("x = 3 x tags: [bum num] x tags") == "[bum num]")
   assert(run("x = 3 x tags: [bum num] x tag? 'bum") == "true")

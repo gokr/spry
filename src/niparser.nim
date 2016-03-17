@@ -73,7 +73,7 @@ type
   Paren* = ref object of SeqComposite
   Blok* = ref object of SeqComposite
   Curly* = ref object of SeqComposite  
-  Dictionary* = ref object of Composite
+  Map* = ref object of Composite
     bindings*: ref OrderedTable[Node, Binding]  
 
   # Dictionaries currently holds Bindings instead of the value directly.
@@ -192,7 +192,7 @@ method `$`*(self: Node): string {.base.} =
 method `$`*(self: Binding): string =
   $self.key & " = " & $self.val
 
-method `$`*(self: Dictionary): string =
+method `$`*(self: Map): string =
   result = "{"
   var first = true
   for k,v in self.bindings:
@@ -280,11 +280,11 @@ method form*(self: StringVal): string =
   # No surrounding ""
   $self.value
 
-# Dictionary lookups
-proc lookup*(self: Dictionary, key: Node): Binding =
+# Map lookups
+proc lookup*(self: Map, key: Node): Binding =
   self.bindings.getOrDefault(key)
 
-proc makeBinding*(self: Dictionary, key: Node, val: Node): Binding =
+proc makeBinding*(self: Map, key: Node, val: Node): Binding =
   result = Binding(key: key, val: val)
   self.bindings[key] = result
 
@@ -292,8 +292,8 @@ proc makeBinding*(self: Dictionary, key: Node, val: Node): Binding =
 proc raiseParseException(msg: string) =
   raise newException(ParseException, msg)
 
-proc newDictionary*(): Dictionary =
-  Dictionary(bindings: newOrderedTable[Node, Binding]())
+proc newMap*(): Map =
+  Map(bindings: newOrderedTable[Node, Binding]())
 
 proc newEvalWord*(s: string): EvalWord =
   EvalWord(word: s)

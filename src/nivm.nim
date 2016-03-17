@@ -10,7 +10,7 @@ type
   Interpreter* = ref object
     currentActivation*: Activation  # Execution spaghetti stack
     rootActivation*: RootActivation # The first one
-    root*: Dictionary               # Root bindings
+    root*: Map               # Root bindings
     trueVal*: Node
     falseVal*: Node
     undefVal*: Node
@@ -41,7 +41,7 @@ type
 
   # We want to distinguish different activations
   BlokActivation* = ref object of Activation
-    locals*: Dictionary  # This is where we put named args and locals
+    locals*: Map  # This is where we put named args and locals
   FunkActivation* = ref object of BlokActivation
   ParenActivation* = ref object of Activation
   CurlyActivation* = ref object of BlokActivation
@@ -77,7 +77,7 @@ method `$`*(self: Activation): string =
 # Base stuff for accessing
 
 # Indexing Composites
-proc `[]`*(self: Dictionary, key: Node): Node =
+proc `[]`*(self: Map, key: Node): Node =
   if self.bindings.hasKey(key):
     return self.bindings[key].val
 
@@ -90,7 +90,7 @@ proc `[]`*(self: SeqComposite, key: IntVal): Node =
 proc `[]`*(self: SeqComposite, key: int): Node =
   self.nodes[key]
 
-proc `[]=`*(self: Dictionary, key, val: Node) =
+proc `[]=`*(self: Map, key, val: Node) =
   discard self.makeBinding(key, val)
 
 proc `[]=`*(self: SeqComposite, key, val: Node) =
@@ -116,7 +116,7 @@ proc newNimProc*(prok: ProcType, infix: bool, arity: int): NimProc =
 proc newFunk*(body: Blok, infix: bool, parent: Activation): Funk =
   Funk(nodes: body.nodes, infix: infix, parent: parent)
 
-proc newRootActivation(root: Dictionary): RootActivation =
+proc newRootActivation(root: Map): RootActivation =
   RootActivation(body: newBlok(), locals: root)
 
 proc newActivation*(funk: Funk): FunkActivation =
@@ -130,7 +130,7 @@ proc newActivation*(body: Paren): ParenActivation =
 
 proc newActivation*(body: Curly): CurlyActivation =
   result = CurlyActivation(body: body)
-  result.locals = newDictionary()
+  result.locals = newMap()
 
 # Stack iterator walking parent refs
 iterator stack*(ni: Interpreter): Activation =
@@ -139,9 +139,9 @@ iterator stack*(ni: Interpreter): Activation =
     yield activation
     activation = activation.parent
 
-proc getLocals(self: BlokActivation): Dictionary =
+proc getLocals(self: BlokActivation): Map =
   if self.locals.isNil:
-    self.locals = newDictionary()
+    self.locals = newMap()
   self.locals
 
 method hasLocals(self: Activation): bool {.base.} =
@@ -161,9 +161,9 @@ method outer(self: FunkActivation): Activation =
   # closure.
   Funk(self.body).parent
 
-# Walk dictionaries for lookups and binds. Skips parens since they do not have
+# Walk maps for lookups and binds. Skips parens since they do not have
 # locals and uses outer() that will let Funks go to their "lexical parent"
-iterator dictionaryWalk(first: Activation): Activation =
+iterator mapWalk(first: Activation): Activation =
   var activation = first
   while activation.notNil:
     while not activation.hasLocals():
@@ -317,7 +317,7 @@ method lookup(self: BlokActivation, key: Node): Binding =
     return self.locals.lookup(key)
 
 proc lookup(ni: Interpreter, key: Node): Binding =
-  for activation in dictionaryWalk(ni.currentActivation):
+  for activation in mapWalk(ni.currentActivation):
     let hit = activation.lookup(key)
     if hit.notNil:
       return hit
@@ -328,7 +328,7 @@ proc lookupLocal(ni: Interpreter, key: Node): Binding =
 proc lookupParent(ni: Interpreter, key: Node): Binding =
   # Silly way of skipping to get to parent
   var inParent = false
-  for activation in dictionaryWalk(ni.currentActivation):
+  for activation in mapWalk(ni.currentActivation):
     if inParent:
       return activation.lookup(key)
     else:
@@ -342,7 +342,7 @@ method makeBinding(self: BlokActivation, key: Node, val: Node): Binding =
 
 proc makeBinding(ni: Interpreter, key: Node, val: Node): Binding =
   # Bind in first activation with locals
-  for activation in dictionaryWalk(ni.currentActivation):
+  for activation in mapWalk(ni.currentActivation):
     return activation.makeBinding(key, val)
 
 proc setBinding(ni: Interpreter, key: Node, value: Node): Binding =
@@ -410,7 +410,7 @@ template nimPrim*(name: string, infix: bool, arity: int, body: stmt): stmt {.imm
     proc (ni: Interpreter): Node = body, infix, arity))
 
 proc newInterpreter*(): Interpreter =
-  let ni = Interpreter(root: newDictionary())
+  let ni = Interpreter(root: newMap())
   result = ni
 
   # Singletons
@@ -430,7 +430,7 @@ proc newInterpreter*(): Interpreter =
 
   # Access to closest scope
   nimPrim("locals", false, 0):
-    for activation in dictionaryWalk(ni.currentActivation):
+    for activation in mapWalk(ni.currentActivation):
       return BlokActivation(activation).getLocals()
 
   # Access to closest object
@@ -547,16 +547,16 @@ proc newInterpreter*(): Interpreter =
     let comp = evalArgInfix(ni)
     if comp of SeqComposite:
       return SeqComposite(comp)[evalArg(ni)]
-    elif comp of Dictionary:
-      return Dictionary(comp)[evalArg(ni)]
+    elif comp of Map:
+      return Map(comp)[evalArg(ni)]
   nimPrim("at:put:", true, 3):
     let comp = evalArgInfix(ni)
     let key = evalArg(ni)
     let val = evalArg(ni)
     if comp of SeqComposite:
       SeqComposite(comp)[key] = val
-    elif comp of Dictionary:
-      Dictionary(comp)[key] = val
+    elif comp of Map:
+      Map(comp)[key] = val
     return comp
   nimPrim("read", true, 1):
     let comp = SeqComposite(evalArgInfix(ni))
@@ -860,7 +860,7 @@ method eval(self: Blok, ni: Interpreter): Node =
 method eval(self: Value, ni: Interpreter): Node =
   self
 
-method eval(self: Dictionary, ni: Interpreter): Node =
+method eval(self: Map, ni: Interpreter): Node =
   self
 
 method eval(self: Binding, ni: Interpreter): Node =
