@@ -17,7 +17,7 @@ when defined(readLine):
 import nivm, niparser
 
 # Ni extra modules, as much as possible!
-import niextend, nimath, nios, niio, nithread, nipython, nidebug
+import niextend, nimath, nios, niio, nithread, nipython, nioo, nidebug
 
 const Prompt = ">>> "
 
@@ -48,6 +48,7 @@ proc main() =
   ni.addIO()
   ni.addThread()
   ni.addPython()
+  ni.addOO()
   ni.addDebug()
 
   var

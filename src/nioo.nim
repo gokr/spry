@@ -16,7 +16,7 @@ proc addOO*(ni: Interpreter) =
   nimPrim("polyfunc", false, 1):    ni.polyfunk(Blok(evalArg(ni)))
   
   # OO Ni suppport code
-  discard ni.eval """
+  discard ni.evalRoot """
   # Convenience func to create a tagged func
   -> = funci [:tags :blk (func blk) tags: tags]
 """
