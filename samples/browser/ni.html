@@ -1,0 +1,10 @@
+<html><body>
+<script type="text/javascript" src="ni.js"></script>
+<script type="text/javascript">
+document.body.appendChild(
+  document.createTextNode(
+    nieval("factorial = func [ifelse (:n > 0) [n * factorial (n - 1)] [1]] factorial 12")
+  )
+);
+</script>
+</body></html>
