@@ -1,15 +1,13 @@
 # Ni interpreter doing eval in a browser.
 # Can be evolved into a trivial REPL-in-a-browser.
 
-import nivm, niparser
+import nivm, niparser, nidebug
 
-proc newVM*(): Interpreter =
-  result = newInterpreter()
-  # Add extra modules
-  #result.addExtend()
+var vm = newInterpreter()
+vm.addDebug()
 
 proc nieval*(code: cstring): cstring {.exportc.} =
-  $newVM().eval($code)
+  $vm.evalRoot($code)
 
 when isMainModule and not defined(js):
   echo nieval("3 + 4")

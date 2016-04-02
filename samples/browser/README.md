@@ -8,8 +8,8 @@ To also minify try:
   minify -o fact.js fact.js
 
 
-Trivial example of a REPL base
-==============================
+Trivial example of a REPL
+=========================
 Run makeni.sh and then open ni.html in a browser.
 
 To also minify try:
