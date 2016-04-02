@@ -1,6 +1,6 @@
 import nivm, niparser, python
 
-proc primPython*(ni: Interpreter): Node =
+proc primPython*(ni: Interpreter): niparser.Node =
   Py_Initialize()
   discard PyRun_SimpleString(StringVal(evalArg(ni)).value)
   Py_Finalize()
