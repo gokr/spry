@@ -34,7 +34,7 @@ install:
     tar xzf r131.tar.gz
     cd lz4-r131
     sudo make install
-
+    sudo ldconfig
     if [ ! -x nim-$BRANCH/bin/nim ]; then
       git clone -b $BRANCH --depth 1 git://github.com/nim-lang/nim nim-$BRANCH/
       cd nim-$BRANCH
