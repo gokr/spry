@@ -609,8 +609,9 @@ proc parse*(self: Parser, str: string): Node =
   var pos = 0
   self.stack = @[]
   self.token = ""
-  # Wrap code in a block, well, ok... then we can just call primDo on it.
-  self.push(newBlok())
+  # Wrap code in a block and later return last element as result.
+  var blok = newBlok()
+  self.push(blok)
   # Parsing is done in a single pass char by char, recursive descent
   while pos < str.len:
     ch = str[pos]
@@ -677,7 +678,7 @@ proc parse*(self: Parser, str: string): Node =
   self.addNode()
   if self.currentKeyword().notNil:
     self.closeKeyword()
-  self.top
+  blok.nodes[^1]
 
 when isMainModule and not defined(js):
   # Just run a given file as argument, the hash-bang trick works also

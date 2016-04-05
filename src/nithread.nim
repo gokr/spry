@@ -2,7 +2,7 @@ import nivm, niparser, nimath, nios, niio
 import threadpool
 
 # Ni threading
-proc spawnDo(node: Node) {.gcsafe.} =
+proc spawnDo(node: Blok) {.gcsafe.} =
   let ni = newInterpreter()
   ni.addMath()
   ni.addOS()
@@ -11,4 +11,4 @@ proc spawnDo(node: Node) {.gcsafe.} =
 
 proc addThread*(ni: Interpreter) =
   nimPrim("spawn", false, 1):
-    spawn spawnDo(evalArg(ni))
+    spawn spawnDo(Blok(evalArg(ni)))

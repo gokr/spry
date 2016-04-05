@@ -20,8 +20,13 @@ proc show(code: string): string =
   result = $newParser().parse(code)
   echo("RESULT:" & $result)
   echo("---------------------")
+proc identical(code: string) =
+  var result = $newParser().parse(code)
+  echo("RESULT:" & $result)
+  echo("---------------------")
+  assert(result == code)
 proc run(code: string): string =
-  result = $newVM().eval(code)
+  result = $newVM().evalRoot("[" & code & "]")
   echo("RESULT:" & result)
   echo("---------------------")
 
@@ -29,74 +34,76 @@ proc run(code: string): string =
 # A bunch of tests for Parser
 when true:
   # Comments
-  assert(show("3 + 4 # foo") == "[3 + 4]")         # Comment
+  assert(show("[3 + 4 # foo]") == "[3 + 4]")  # Comment
   # The different kinds of words
-  assert(show("one") == "[one]")        # Eval word
-  assert(show(".one") == "[.one]")      # Eval word, only resolve locally
-  assert(show("..one") == "[..one]")    # Eval word, start resolve in parent
-  assert(show("^one") == "[^one]")      # Lookup word
-  assert(show("^.one") == "[^.one]")    # Lookup word, only resolve locally
-  assert(show("^..one") == "[^..one]")  # Lookup word, start resolve in parent
-  assert(show(":one") == "[:one]")      # Arg word, pulls in from caller
-  assert(show(":^one") == "[:^one]")    # Arg word, pulls in without eval
-  assert(show("'one") == "['one]")      # Literal word
-  assert(show("'.one") == "['.one]")      # Literal word
-  assert(show("'..one") == "['..one]")      # Literal word
-  assert(show("'^..one") == "['^..one]")      # Literal word
-  assert(show("':one") == "[':one]")      # Literal word
-  assert(show("':^one") == "[':^one]")      # Literal word
-  assert(show("''one") == "[''one]")      # Literal word
-  assert(show("a at: 1 put: 2") == "[a at:put: 1 2]")  # Keyword syntactic sugar
+  identical("one")        # Eval word
+  identical(".one")       # Eval word, only resolve locally
+  identical("..one")      # Eval word, start resolve in parent
+  identical("^one")       # Lookup word
+  identical("^.one")      # Lookup word, only resolve locally
+  identical("^..one")     # Lookup word, start resolve in parent
+  identical(":one")       # Arg word, pulls in from caller
+  identical(":^one")      # Arg word, pulls in without eval
+  identical("'one")       # Literal word
+  identical("'.one")      # Literal word
+  identical("'..one")     # Literal word
+  identical("'^..one")    # Literal word
+  identical("':one")      # Literal word
+  identical("':^one")     # Literal word
+  identical("''one")      # Literal word
+  assert(show("[a at: 1 put: 2]") == "[a at:put: 1 2]")  # Keyword syntactic sugar
 
   assert(show("""
+[
 red
 green
-blue""") == "[red green blue]")
+blue
+]""") == "[red green blue]")
 
   # The most trivial datatype, integer!
-  assert(show("11") == "[11]")
-  assert(show("+11") == "[11]")
-  assert(show("-11") == "[-11]")
-  assert(show("1_000_000") == "[1000000]")
+  assert(show("11") == "11")
+  assert(show("+11") == "11")
+  assert(show("-11") == "-11")
+  assert(show("1_000_000") == "1000000")
 
   # And floats
-  assert(show("1.0e3") == "[1000.0]")
-  assert(show("10.30") == "[10.3]")
+  assert(show("1.0e3") == "1000.0")
+  assert(show("10.30") == "10.3")
 
   # String with basic escapes using Nim's escape/unescape
-  assert(show("\"garf\"") == "[\"garf\"]")
-  assert(show("\"ga\\\"rf\"") == "[\"ga\\\"rf\"]")
+  assert(show("\"garf\"") == "\"garf\"")
+  assert(show("\"ga\\\"rf\"") == "\"ga\\\"rf\"")
 
   # Just nesting and mixing
-  assert(show("one :two") == "[one :two]")
-  assert(show("[]") == "[[]]")
-  assert(show("()") == "[()]")
-  assert(show("{}") == "[{}]")
-  assert(show("one two [three]") == "[one two [three]]")
-  assert(show("one (two) {four [three] five}") == "[one (two) {four [three] five}]")
-  assert(show(":one [:two ['three]]") == "[:one [:two ['three]]]")
-  assert(show(":one [123 -4['three]+5]") == "[:one [123 -4 ['three] 5]]")
+  assert(show("[one :two]") == "[one :two]")
+  assert(show("[]") == "[]")
+  assert(show("()") == "()")
+  assert(show("{}") == "{}")
+  assert(show("[one two [three]]") == "[one two [three]]")
+  assert(show("[one (two) {four [three] five}]") == "[one (two) {four [three] five}]")
+  assert(show("[:one [:two ['three]]]") == "[:one [:two ['three]]]")
+  assert(show("[:one [123 -4['three]+5]]") == "[:one [123 -4 ['three] 5]]")
 
   # Keyword syntax sugar
-  assert(show("[1 2] at: 0 put: 1") == "[[1 2] at:put: 0 1]")
-  assert(show("4 timesRepeat: [echo 34]") == "[4 timesRepeat: [echo 34]]")
-  assert(show("[3 < 4] whileTrue: [5 timesRepeat: [echo 42]]") == "[[3 < 4] whileTrue: [5 timesRepeat: [echo 42]]]")
-  assert(show("[3 4] at: [1 2 [hey]] put: [5 timesRepeat: [echo 42]]") == "[[3 4] at:put: [1 2 [hey]] [5 timesRepeat: [echo 42]]]")
+  assert(show("[[1 2] at: 0 put: 1]") == "[[1 2] at:put: 0 1]")
+  assert(show("[4 timesRepeat: [echo 34]]") == "[4 timesRepeat: [echo 34]]")
+  assert(show("[[3 < 4] whileTrue: [5 timesRepeat: [echo 42]]]") == "[[3 < 4] whileTrue: [5 timesRepeat: [echo 42]]]")
+  assert(show("[[3 4] at: [1 2 [hey]] put: [5 timesRepeat: [echo 42]]]") == "[[3 4] at:put: [1 2 [hey]] [5 timesRepeat: [echo 42]]]")
 
-  assert(show(">") == "[>]")
+  assert(show(">") == ">")
 
 # Tests for Interpreter
 when true:
   # Parse properly, show renders the Node tree
-  assert(show("3 + 4") == "[3 + 4]")
+  assert(show("[3 + 4]") == "[3 + 4]")
   # And run
   assert(run("3 + 4") == "7")
 
   # A block is just a block, no evaluation
-  assert(show("[3 + 4]") == "[[3 + 4]]")
+  assert(show("[3 + 4]") == "[3 + 4]")
 
   # But we can use do to evaluate it
-  assert(show("do [3 + 4]") == "[do [3 + 4]]")
+  assert(show("[do [3 + 4]]") == "[do [3 + 4]]")
   assert(run("do [4 + 3]") == "7")
 
   # But we need to use func to make a closure from it
@@ -165,8 +172,8 @@ when true:
   assert(run("x = 1 do [x = (x + 1)] eval x") == "2")
 
   # Use parse word
-  assert(run("parse \"3 + 4\"") == "[3 + 4]")
-  assert(run("do parse \"3 + 4\"") == "7")
+  assert(run("parse \"[3 + 4]\"") == "[3 + 4]")
+  assert(run("do parse \"[3 + 4]\"") == "7")
 
   # Boolean
   assert(run("true") == "true")
@@ -404,8 +411,8 @@ when true:
 
   # Reflection
   # The word locals gives access to the local Map
-  assert(run("d = 5 locals") == "{d = 5}")
-  assert(run("d = 5 locals at: 'd") == "5")
+  assert(run("do [d = 5 locals]") == "{d = 5}")
+  assert(run("do [d = 5 locals at: 'd]") == "5")
   assert(run("locals at: 'd put: 5 d + 2") == "7")
   assert(run("do [a = 1 b = 2 locals]") == "{a = 1 b = 2}")
   assert(run("do [a = 1 b = 2 (c = 3 (locals)]") == "{a = 1 b = 2 c = 3}")
@@ -443,7 +450,7 @@ when true:
 
   # Ni serialize deserialize
   assert(run("serialize [1 2 3 \"abc\" {3.14}]") == "\"[1 2 3 \\\"abc\\\" {3.14}]\"")
-  assert(run("deserialize (serialize [1 2 3 \"abc\" {3.14}]) first") == "[1 2 3 \"abc\" {3.14}]")
+  assert(run("deserialize serialize [1 2 3 \"abc\" {3.14}]") == "[1 2 3 \"abc\" {3.14}]")
 
   # Ni IO
   assert(run("(deserialize readFile \"data.ni\") first first") == "121412")
@@ -451,7 +458,7 @@ when true:
 
 when true:
   # Demonstrate extension from extend.nim
-  assert(show("'''abc'''") == "[\"abc\"]")
+  assert(show("'''abc'''") == "\"abc\"")
   assert(run("reduce [1 + 2 3 + 4]") == "[3 7]")
 
 

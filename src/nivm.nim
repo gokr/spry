@@ -849,12 +849,12 @@ method evalDo(self: Curly, ni: Interpreter): Node =
   # Calling do on a curly doesn't do the locals trick
   newActivation(self).eval(ni)
 
-proc evalRootDo*(self: Node, ni: Interpreter): Node =
+proc evalRootDo*(self: Blok, ni: Interpreter): Node =
   # Evaluate a node in the root activation
   # Ugly... First pop the root activation
   ni.popActivation()
   # This will push it back and... pop it too
-  ni.rootActivation.body = Blok(self)
+  ni.rootActivation.body = self
   ni.rootActivation.pos = 0
   result = ni.rootActivation.eval(ni)
   # ...so we need to put it back
@@ -877,6 +877,6 @@ proc eval*(ni: Interpreter, code: string): Node =
   SeqComposite(newParser().parse(code)).evalDo(ni)
 
 proc evalRoot*(ni: Interpreter, code: string): Node =
-  ## Evaluate code in the root activationevalRootDo
-  SeqComposite(newParser().parse(code)).evalRootDo(ni)
+  ## Evaluate code in the root activation, presume it is a block
+  Blok(newParser().parse(code)).evalRootDo(ni)
 
