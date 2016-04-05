@@ -1,6 +1,6 @@
 # Copied from https://github.com/nim-lang/Nim/wiki/TravisCI
-sudo: required
-dist: trusty
+#sudo: required
+#dist: trusty
 language: c
 env:
   # Build and test against the master and devel branches of Nim
