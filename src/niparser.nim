@@ -394,14 +394,14 @@ method parseValue*(self: ValueParser, s: string): Node {.procvar,base.} =
   nil
 
 method parseValue*(self: IntValueParser, s: string): Node {.procvar.} =
-  if (s.len > 0) and (s[0].isDigit):
+  if (s.len > 0) and (s[0].isDigit or s[0]=='+' or s[0]=='-'):
     try:
       return newValue(parseInt(s))
     except ValueError:
       return nil
 
 method parseValue*(self: FloatValueParser, s: string): Node {.procvar.} =
-  if (s.len > 0) and (s[0].isDigit):
+  if (s.len > 0) and (s[0].isDigit or s[0]=='+' or s[0]=='-'):
     try:
       return newValue(parseFloat(s))
     except ValueError:
