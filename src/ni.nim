@@ -2,6 +2,10 @@
 #
 # Copyright (c) 2015 Göran Krampe
 
+# Enable when profiling
+when defined(profiler):
+  import nimprof
+
 import os
 import nivm
 import niextend, nimath, nios, niio, nithread, nipython, nidebug, nicompress
