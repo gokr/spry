@@ -16,7 +16,7 @@ type
   # Base class for pluggable value parsers
   ValueParser* = ref object of RootObj
     token: string
-  
+
   # Basic value parsers included by default, true false and nil are instead
   # regular system words referring to singleton values
   IntValueParser = ref object of ValueParser
@@ -27,12 +27,12 @@ type
   Node* = ref object of RootObj
     tags*: Blok
   Word* = ref object of Node
-    word*: string  
+    word*: string
   GetW* = ref object of Word
   EvalW* = ref object of Word
-  
+
   # These are all concrete word types
-  LitWord* = ref object of Word  
+  LitWord* = ref object of Word
 
   EvalWord* = ref object of EvalW
   EvalSelfWord* = ref object of EvalW
@@ -43,12 +43,12 @@ type
   GetSelfWord* = ref object of GetW
   GetOuterWord* = ref object of GetW
   GetArgWord* = ref object of GetW
-  
+
   # And support for keyword syntactic sugar, only used during parsing
   KeyWord* = ref object of Node
     keys*: seq[string]
     args*: seq[Node]
-  
+
   Value* = ref object of Node
   IntVal* = ref object of Value
     value*: int
@@ -59,7 +59,7 @@ type
   BoolVal* = ref object of Value
   TrueVal* = ref object of BoolVal
   FalseVal* = ref object of BoolVal
-  
+
   UndefVal* = ref object of Value
   NilVal* = ref object of Value
 
@@ -68,13 +68,13 @@ type
   SeqComposite* = ref object of Node
     nodes*: seq[Node]
     pos*: int
- 
+
   # Concrete
   Paren* = ref object of SeqComposite
   Blok* = ref object of SeqComposite
-  Curly* = ref object of SeqComposite  
+  Curly* = ref object of SeqComposite
   Map* = ref object of Composite
-    bindings*: ref OrderedTable[Node, Binding]  
+    bindings*: ref OrderedTable[Node, Binding]
 
   # Dictionaries currently holds Bindings instead of the value directly.
   # This way we we can later reify Binding
@@ -88,16 +88,16 @@ type
 proc raiseRuntimeException*(msg: string) =
   raise newException(RuntimeException, msg)
 
-method hash*(self: Node): Hash {.base.} = 
-  raiseRuntimeException("Nodes need to implement hash") 
+method hash*(self: Node): Hash {.base.} =
+  raiseRuntimeException("Nodes need to implement hash")
 
-method `==`*(self, other: Node): bool {.base.} = 
-  raiseRuntimeException("Nodes need to implement ==") 
+method `==`*(self, other: Node): bool {.base.} =
+  raiseRuntimeException("Nodes need to implement ==")
 
 method hash*(self: Word): Hash =
   self.word.hash
 
-method `==`*(self: Word, other: Node): bool = 
+method `==`*(self: Word, other: Node): bool =
   other of Word and (self.word == Word(other).word)
 
 method hash*(self: IntVal): Hash =
@@ -327,7 +327,7 @@ proc newKeyWord*(): KeyWord =
 
 proc newBlok*(nodes: seq[Node]): Blok =
   Blok(nodes: nodes)
-  
+
 proc newBlok*(): Blok =
   Blok(nodes: newSeq[Node]())
 
@@ -357,7 +357,7 @@ proc newValue*(v: bool): BoolVal =
     TrueVal()
   else:
     FalseVal()
-    
+
 proc newNilVal*(): NilVal =
   NilVal()
 
@@ -385,7 +385,7 @@ method concat*(self: Paren, nodes: seq[Node]): SeqComposite =
 
 method concat*(self: Curly, nodes: seq[Node]): SeqComposite =
   newCurly(self.nodes.concat(nodes))
-  
+
 proc removeLast*(self: SeqComposite) =
   system.delete(self.nodes,self.nodes.high)
 
@@ -394,16 +394,18 @@ method parseValue*(self: ValueParser, s: string): Node {.procvar,base.} =
   nil
 
 method parseValue*(self: IntValueParser, s: string): Node {.procvar.} =
-  try:
-    return newValue(parseInt(s)) 
-  except ValueError:
-    return nil
+  if (s.len > 0) and (s[0].isDigit):
+    try:
+      return newValue(parseInt(s))
+    except ValueError:
+      return nil
 
 method parseValue*(self: FloatValueParser, s: string): Node {.procvar.} =
-  try:
-    return newValue(parseFloat(s)) 
-  except ValueError:
-    return nil
+  if (s.len > 0) and (s[0].isDigit):
+    try:
+      return newValue(parseFloat(s))
+    except ValueError:
+      return nil
 
 method parseValue(self: StringValueParser, s: string): Node {.procvar.} =
   # If it ends and starts with '"' then ok
@@ -487,7 +489,7 @@ proc closeKeyword(self: Parser) =
   let nodes = keyword.produceNodes()
   SeqComposite(self.top).removeLast()
   SeqComposite(self.top).add(nodes)
-  
+
 proc doAddNode(self: Parser, node: Node) =
   # If we are collecting a keyword, we get nil until its ready
   let keyword = self.currentKeyword()
@@ -510,7 +512,7 @@ proc push(self: Parser, n: Node) =
 proc newWord(self: Parser, token: string): Node =
   let len = token.len
   let first = token[0]
- 
+
   # All arg words (unique for Ni) are preceded with ":"
   if first == ':' and len > 1:
     if token[1] == '^':
@@ -520,7 +522,7 @@ proc newWord(self: Parser, token: string): Node =
       return newGetArgWord(token[2..^1])
     else:
       return newEvalArgWord(token[1..^1])
- 
+
   # All lookup words are preceded with "^"
   if first == '^' and len > 1:
     if token[1] == '.':
@@ -537,14 +539,14 @@ proc newWord(self: Parser, token: string): Node =
         raiseParseException("Malformed local lookup word, missing at least 1 character")
     else:
       return newGetWord(token[1..^1])
-  
+
   # All literal words are preceded with "'"
   if first == '\'':
     if len < 2:
       raiseParseException("Malformed literal word, missing at least 1 character")
     else:
       return newLitWord(token[1..^1])
-  
+
   # All keywords end with ":"
   if len > 1 and token[^1] == ':':
     if self.isNil:
@@ -560,7 +562,7 @@ proc newWord(self: Parser, token: string): Node =
       else:
         raiseParseException("Malformed keyword syntax, expecting an argument")
       return nil
-  
+
   # A regular eval word then, possibly prefixed with . or ..
   if first == '.':
     # Local or parent
@@ -584,7 +586,7 @@ proc newWordOrValue(self: Parser): Node =
   ## Decide what to make, a word or value
   let token = self.token
   self.token = ""
-  
+
   # Try all valueParsers...
   for p in self.valueParsers:
     let valueOrNil = p.parseValue(token)
