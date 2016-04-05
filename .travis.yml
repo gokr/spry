@@ -18,6 +18,7 @@ before_install:
   - sudo apt-get install -qq 
 install:
   - |
+    sudo apt-get install liblz4-dev
     # We want a new GCC 4.8 instead of 4.6.x
     # install gcc-4.8 with c++11 support: https://github.com/travis-ci-tester/travis-test-gcc-cxx-11
     sudo add-apt-repository ppa:ubuntu-toolchain-r/test -y

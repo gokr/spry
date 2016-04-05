@@ -17,7 +17,7 @@ when defined(readLine):
 import nivm, niparser
 
 # Ni extra modules, as much as possible!
-import niextend, nimath, nios, niio, nithread, nipython, nioo, nidebug
+import niextend, nimath, nios, niio, nithread, nipython, nioo, nidebug, nicompress
 
 const Prompt = ">>> "
 
@@ -50,11 +50,12 @@ proc main() =
   ni.addPython()
   ni.addOO()
   ni.addDebug()
+  ni.addCompress()
 
   var
     lines, stashed, fileLines = newSeq[string]()
     suspended: bool = true
- 
+
   # Check if a file was given as input, if so collect lines
   # and set suspended = false which means we start out following the given
   # script instead of interactively.
@@ -91,12 +92,12 @@ proc main() =
       else:
         stdout.write(line & "\n")
 
-    # Logic to start the script again    
+    # Logic to start the script again
     if suspended and line.strip() == "c":
       lines = stashed
       suspended = false
       continue
-    
+
     # Finally time to eval
     if line.strip().len() == 0:
       let code = lines.join("\n")

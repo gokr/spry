@@ -21,13 +21,13 @@ type
   NimProc* = ref object of Node
     prok*: ProcType
     infix*: bool
-    arity*: int 
+    arity*: int
 
-  # An executable Ni function 
+  # An executable Ni function
   Funk* = ref object of Blok
     infix*: bool
     parent*: Activation
-  
+
   # The activation record used by the Interpreter.
   # This is a so called Spaghetti Stack with only a parent pointer so that they
   # can get garbage collected if not referenced by any other record anymore.
@@ -62,17 +62,17 @@ method `$`*(self: NimProc): string =
   return result & "(" & $self.arity & ")"
 
 method `$`*(self: Funk): string =
-  when false:
+  when true:
     if self.infix:
-      result = "funci"
+      result = "funci "
     else:
-      result = "func"
-    return result & "(" & $self.arity & ")" & "[" & $self.nodes & "]"
+      result = "func "
+    return result & "[" & $self.nodes & "]"
   else:
     return "[" & $self.nodes & "]"
 
 method `$`*(self: Activation): string =
-  return "Activation(" & $self.body & "|" & $self.pos & ")"
+  return "activation [" & $self.body & " " & $self.pos & "]"
 
 # Base stuff for accessing
 
@@ -146,7 +146,7 @@ proc getLocals(self: BlokActivation): Map =
 
 method hasLocals(self: Activation): bool {.base.} =
   true
-  
+
 method hasLocals(self: ParenActivation): bool =
   false
 
@@ -273,7 +273,7 @@ method `==`(a, b: StringVal): Node {.inline.} =
   newValue(a.value == b.value)
 method `==`(a, b: BoolVal): Node {.inline.} =
   newValue(a.value == b.value)
-  
+
 method `&`(a: Node, b: Node): Node {.inline,base.} =
   raiseRuntimeException("Can not evaluate " & $a & " & " & $b)
 method `&`(a, b: StringVal): Node {.inline.} =
@@ -357,7 +357,7 @@ method infix(self: Node): bool {.base.} =
 
 method infix(self: Funk): bool =
   self.infix
-  
+
 method infix(self: NimProc): bool =
   self.infix
 
@@ -436,11 +436,11 @@ proc newInterpreter*(): Interpreter =
   # Access to closest object
   nimPrim("self", false, 0):
     ni.undefVal
-    
+
   # Creation of Ni types without literal syntax
   nimPrim("object", false, 1):
     ni.undefVal
-  
+
   # Tags
   nimPrim("tag:", true, 2):
     result = evalArgInfix(ni)
@@ -467,18 +467,18 @@ proc newInterpreter*(): Interpreter =
   nimPrim("?", true, 1):
     let val = evalArgInfix(ni)
     newValue(not (val of UndefVal))
-  
+
   # Assignments
   nimPrim("=", true, 2):
     result = evalArg(ni) # Perhaps we could make it eager here? Pulling in more?
     discard ni.setBinding(argInfix(ni), result)
-    
+
   # Basic math
   nimPrim("+", true, 2):  evalArgInfix(ni) + evalArg(ni)
   nimPrim("-", true, 2):  evalArgInfix(ni) - evalArg(ni)
   nimPrim("*", true, 2):  evalArgInfix(ni) * evalArg(ni)
   nimPrim("/", true, 2):  evalArgInfix(ni) / evalArg(ni)
-  
+
   # Comparisons
   nimPrim("<", true, 2):  evalArgInfix(ni) < evalArg(ni)
   nimPrim(">", true, 2):  evalArgInfix(ni) > evalArg(ni)
@@ -527,14 +527,14 @@ proc newInterpreter*(): Interpreter =
       return newValue(toInt(FloatVal(val).value))
     else:
       raiseRuntimeException("Can not convert to int")
-      
+
   # Basic blocks
   # Rebol head/tail collides too much with Lisp IMHO so not sure what to do with
   # those.
   # at: and at:put: in Smalltalk seems to be pick/poke in Rebol.
   # change/at is similar in Rebol but work at current pos.
   # Ni uses at/put instead of pick/poke and read/write instead of change/at
-  
+
   # Left to think about is peek/poke (Rebol has no peek) and perhaps pick/drop
   # The old C64 Basic had peek/poke for memory at:/at:put: ... :) Otherwise I
   # generally associate peek with lookahead.
@@ -565,7 +565,7 @@ proc newInterpreter*(): Interpreter =
     result = evalArgInfix(ni)
     let comp = SeqComposite(result)
     comp[comp.pos] = evalArg(ni)
-  nimPrim("add:", true, 2): 
+  nimPrim("add:", true, 2):
     result = evalArgInfix(ni)
     let comp = SeqComposite(result)
     comp.add(evalArg(ni))
@@ -576,15 +576,15 @@ proc newInterpreter*(): Interpreter =
   nimPrim("contains:", true, 2):
     let comp = SeqComposite(evalArgInfix(ni))
     newValue(comp.contains(evalArg(ni)))
-    
+
   # Positioning
   nimPrim("reset", true, 1):  SeqComposite(evalArgInfix(ni)).pos = 0 # Called change in Rebol
-  nimPrim("pos", true, 1):    newValue(SeqComposite(evalArgInfix(ni)).pos) # ? in Rebol 
+  nimPrim("pos", true, 1):    newValue(SeqComposite(evalArgInfix(ni)).pos) # ? in Rebol
   nimPrim("pos:", true, 2):    # ? in Rebol
     result = evalArgInfix(ni)
     let comp = SeqComposite(result)
     comp.pos = IntVal(evalArg(ni)).value
- 
+
   # Streaming
   nimPrim("next", true, 1):
     let comp = SeqComposite(evalArgInfix(ni))
@@ -620,6 +620,12 @@ proc newInterpreter*(): Interpreter =
   nimPrim("eva", false, 1):     evalArg(ni)
   nimPrim("eval", false, 1):    evalArg(ni).eval(ni)
   nimPrim("parse", false, 1):   newParser().parse(StringVal(evalArg(ni)).value)
+
+  # serialize & deserialize
+  nimPrim("serialize", false, 1):
+    newValue($evalArg(ni))
+  nimPrim("deserialize", false, 1):
+    newParser().parse(StringVal(evalArg(ni)).value)
 
   # Control structures
   nimPrim("return", false, 1):
@@ -664,7 +670,7 @@ proc newInterpreter*(): Interpreter =
       if ni.currentActivation.returned:
         return
 
-  # This is hard, because evalDo of fn wants to pull its argument from  
+  # This is hard, because evalDo of fn wants to pull its argument from
   # the parent activation, but there is none here. Hmmm.
   #nimPrim("do:", true, 2):
   #  let comp = SeqComposite(evalArgInfix(ni))
@@ -801,7 +807,7 @@ method eval(self: GetArgWord, ni: Interpreter): Node =
 method eval(self: NimProc, ni: Interpreter): Node =
   return self.prok(ni)
 
-proc eval(current: Activation, ni: Interpreter): Node =  
+proc eval(current: Activation, ni: Interpreter): Node =
   ## This is the inner chamber of the heart :)
   ni.pushActivation(current)
   while not current.atEnd:
@@ -869,7 +875,7 @@ method eval(self: Binding, ni: Interpreter): Node =
 proc eval*(ni: Interpreter, code: string): Node =
   ## Evaluate code in a new activation
   SeqComposite(newParser().parse(code)).evalDo(ni)
-  
+
 proc evalRoot*(ni: Interpreter, code: string): Node =
   ## Evaluate code in the root activationevalRootDo
   SeqComposite(newParser().parse(code)).evalRootDo(ni)

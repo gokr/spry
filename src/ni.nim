@@ -4,7 +4,7 @@
 
 import os
 import nivm
-import niextend, nimath, nios, niio, nithread, nipython, nidebug
+import niextend, nimath, nios, niio, nithread, nipython, nidebug, nicompress
 
 var ni = newInterpreter()
 
@@ -16,6 +16,7 @@ ni.addIO()
 ni.addThread()
 ni.addPython()
 ni.addDebug()
+ni.addCompress()
 
 # Just run a given file as argument, the hash-bang trick works also
 let fn = commandLineParams()[0]

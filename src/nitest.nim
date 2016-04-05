@@ -1,6 +1,6 @@
 import nivm, niparser
 
-import niextend, nimath, niio, nidebug, nios, nithread, nipython, nioo
+import niextend, nimath, niio, nidebug, nicompress, nios, nithread, nipython, nioo
 
 proc newVM(): Interpreter =
   var ni = newInterpreter()
@@ -11,6 +11,7 @@ proc newVM(): Interpreter =
   ni.addThread()
   ni.addPython()
   ni.addDebug()
+  ni.addCompress()
   ni.addOO()
   return ni
 
@@ -30,7 +31,7 @@ when true:
   # Comments
   assert(show("3 + 4 # foo") == "[3 + 4]")         # Comment
   # The different kinds of words
-  assert(show("one") == "[one]")        # Eval word  
+  assert(show("one") == "[one]")        # Eval word
   assert(show(".one") == "[.one]")      # Eval word, only resolve locally
   assert(show("..one") == "[..one]")    # Eval word, start resolve in parent
   assert(show("^one") == "[^one]")      # Lookup word
@@ -46,7 +47,7 @@ when true:
   assert(show("':^one") == "[':^one]")      # Literal word
   assert(show("''one") == "[''one]")      # Literal word
   assert(show("a at: 1 put: 2") == "[a at:put: 1 2]")  # Keyword syntactic sugar
-  
+
   assert(show("""
 red
 green
@@ -57,15 +58,15 @@ blue""") == "[red green blue]")
   assert(show("+11") == "[11]")
   assert(show("-11") == "[-11]")
   assert(show("1_000_000") == "[1000000]")
-  
+
   # And floats
   assert(show("1.0e3") == "[1000.0]")
   assert(show("10.30") == "[10.3]")
-  
+
   # String with basic escapes using Nim's escape/unescape
   assert(show("\"garf\"") == "[\"garf\"]")
   assert(show("\"ga\\\"rf\"") == "[\"ga\\\"rf\"]")
-  
+
   # Just nesting and mixing
   assert(show("one :two") == "[one :two]")
   assert(show("[]") == "[[]]")
@@ -73,9 +74,9 @@ blue""") == "[red green blue]")
   assert(show("{}") == "[{}]")
   assert(show("one two [three]") == "[one two [three]]")
   assert(show("one (two) {four [three] five}") == "[one (two) {four [three] five}]")
-  assert(show(":one [:two ['three]]") == "[:one [:two ['three]]]")    
+  assert(show(":one [:two ['three]]") == "[:one [:two ['three]]]")
   assert(show(":one [123 -4['three]+5]") == "[:one [123 -4 ['three] 5]]")
-  
+
   # Keyword syntax sugar
   assert(show("[1 2] at: 0 put: 1") == "[[1 2] at:put: 0 1]")
   assert(show("4 timesRepeat: [echo 34]") == "[4 timesRepeat: [echo 34]]")
@@ -97,13 +98,13 @@ when true:
   # But we can use do to evaluate it
   assert(show("do [3 + 4]") == "[do [3 + 4]]")
   assert(run("do [4 + 3]") == "7")
-  
+
   # But we need to use func to make a closure from it
-  assert(run("func [3 + 4]") == "[3 + 4]")
+  assert(run("func [3 + 4]") == "func [3 + 4]")
 
   # Which will evaluate itself when being evaluated
   assert(run("foo = func [3 + 4] foo") == "7")
-  
+
   # Map
   assert(run("{}") == "{}")
   assert(run("{a = 1 b = 2}") == "{a = 1 b = 2}")
@@ -117,13 +118,13 @@ when true:
   #assert(run("{nil = 4} at: nil") == "4") # nil  humm...
   #assert(run("{true = false} at: true") == "false") # nil humm..
   assert(run("dict = {a = 3} dict at: 'a put: 5 dict at: 'a") == "5")
-  
+
   # Assignment is a prim
   assert(run("x = 5") == "5")
   assert(run("x = 5 x") == "x") # Peculiarity, a word is not evaluated by default
   assert(run("x = 5 eval x") == "5") # But we can eval it
   assert(run("f = func [3 + 4] f") == "7") # Functions are evaluated though
-  
+
   # Nil vs undef
   assert(run("eval x") == "undef")
   assert(run("x ?") == "false")
@@ -133,7 +134,7 @@ when true:
   assert(run("x = 1 x = undef x ?") == "false")
   assert(run("x = 5 x = undef eval x") == "undef")
   assert(run("x = 5 x = nil eval x") == "nil")
-  
+
   # Precedence and basic math
   assert(run("3 * 4") == "12")
   assert(run("3 + 1.5") == "4.5")
@@ -141,9 +142,9 @@ when true:
   assert(run("3 + 4 * 2") == "14") # Yeah
   assert(run("3 + (4 * 2)") == "11") # Thank god
   assert(run("3 / 2") == "1.5") # Goes to float
-  assert(run("3 / 2 * 1.2") == "1.8") # 
+  assert(run("3 / 2 * 1.2") == "1.8") #
   assert(run("3 + 3 * 1.5") == "9.0") # Goes to float
-  
+
   # And we can nest also, since a block has its own Activation
   # Note that only last result of block is used so "1 + 7" is dead code
   assert(run("5 + do [3 + do [1 + 7 1 + 9]]") == "18")
@@ -158,7 +159,7 @@ when true:
   # Set and get variables
   assert(run("x = 4 5 + x") == "9")
   assert(run("x = 1 x = x eval x") == "1")
-  assert(run("x = 4 return x") == "4")  
+  assert(run("x = 4 return x") == "4")
   assert(run("x = 1 x = (x + 2) eval x") == "3")
   assert(run("x = 4 k = do [y = (x + 3) eval y] k + x") == "11")
   assert(run("x = 1 do [x = (x + 1)] eval x") == "2")
@@ -205,13 +206,13 @@ when true:
   assert(run("false == false") == "true")
   assert(run("false == true") == "false")
   assert(run("true == false") == "false")
-  
+
 # Will cause type exceptions
 #  assert(run("false == 4") == "false")
 #  assert(run("4 == false") == "false")
 #  assert(run("\"ab\" == 4") == "false")
 #  assert(run("4 == \"ab\"") == "false")
-  
+
 
   # Block indexing and positioning
   assert(run("[3 4] size") == "2")
@@ -231,8 +232,8 @@ when true:
   assert(run("x = [3 4] x next x end?") == "false")
   assert(run("x = [3 4] x next x next x end?") == "true")
   assert(run("x = [3 4] x next x next x next") == "undef")
-  assert(run("x = [3 4] x next x next x prev") == "4")  
-  assert(run("x = [3 4] x next x next x prev x prev") == "3")  
+  assert(run("x = [3 4] x next x next x prev") == "4")
+  assert(run("x = [3 4] x next x next x prev x prev") == "3")
   assert(run("x = [3 4] x pos") == "0")
   assert(run("x = [3 4] x next x pos") == "1")
   assert(run("x = [3 4] x write: 5") == "[5 4]")
@@ -248,7 +249,7 @@ when true:
 
   # Data as code
   assert(run("code = [1 + 2 + 3] code at: 2 put: 10 do code") == "14")
-  
+
   # if and ifelse and echo
   assert(run("x = true if x [true]") == "true")
   assert(run("x = true if x [12]") == "12")
@@ -259,30 +260,30 @@ when true:
   assert(run("ifelse (3 > 4) [\"yay\"] ['ok]") == "'ok")
   assert(run("ifelse (3 > 4) [true] [false]") == "false")
   assert(run("ifelse (4 > 3) [true] [false]") == "true")
-  
-  # loops, eva will 
+
+  # loops, eva will
   assert(run("x = 0 5 timesRepeat: [x = (x + 1)] eva x") == "5")
   assert(run("x = 0 0 timesRepeat: [x = (x + 1)] eva x") == "0")
   assert(run("x = 0 5 timesRepeat: [x = (x + 1)] eva x") == "5")
   assert(run("x = 0 [x > 5] whileFalse: [x = (x + 1)] eva x") == "6")
   assert(run("x = 10 [x > 5] whileTrue: [x = (x - 1)] eva x") == "5")
-  
+
   # func
   assert(run("z = func [3 + 4] z") == "7")
-  assert(run("x = func [3 + 4] eva ^x") == "[3 + 4]")
+  assert(run("x = func [3 + 4] eva ^x") == "func [3 + 4]")
   assert(run("x = func [3 + 4] 'x") == "'x")
   assert(run("x = func [3 + 4] ^x write: 5 x") == "9")
   assert(run("x = func [3 + 4 return 1 8 + 9] x") == "1")
   # Its a non local return so it returns all the way, thus it works deep down
   assert(run("x = func [3 + 4 do [ 2 + 3 return 1 1 + 1] 8 + 9] x") == "1")
-  
+
   # Testing ^ word that prevents evaluation, like quote in Lisp
   assert(run("x = ^(3 + 4) ^x at: 2") == "4")
 
-  # Testing literal word evaluation into the real word  
+  # Testing literal word evaluation into the real word
   assert(run("eva 'a") == "a")
   assert(run("eva ':^a") == ":^a")
-  
+
   # func args
   assert(run("do [:a] 5") == "5")
   assert(run("x = func [:a a + 1] x 5") == "6")
@@ -320,20 +321,20 @@ when true:
   assert(run("xx = funci [:a + :b + b] (5 xx 4) xx 2") == "17") # 5+4+4 + 2+2
   assert(run("pick2add = funci [:block :b :c block at: b + (block at: c)] [1 2 3] pick2add 0 2") == "4") # 1+3
   assert(run("pick2add = funci [:block at: :b + (block at: :c)] [1 2 3] pick2add 0 2") == "4") # 1+3
-  
+
   # Variadic and dynamic args
   # Does not work since there is a semantic glitch - who is the argParent?
   #assert(run("sum = 0 sum-until-zero = func [[:a > 0] whileTrue: [sum = sum + a]] (sum-until-zero 1 2 3 0 4 4)") == "6")
   # This func does not pull second arg if first is < 0.
   assert(run("add = func [ if (:a < 0) [return nil] return (a + :b) ] add -4 3") == "3")
   assert(run("add = func [ if (:a < 0) [return nil] return (a + :b) ] add 1 3") == "4")
-  
+
   # Macros, they need to be able to return multipe nodes...
   assert(run("z = 5 foo = func [:^a return func [a + 10]] fupp = foo z z = 3 fupp") == "13")
-  
+
   # func closures. Creates two different funcs closing over two values of a
   assert(run("c = func [:a func [a + :b]] d = (c 2) e = (c 3) (d 1 + e 1)") == "7") # 3 + 4
-  
+
   # Ok, but now we can do arguments so...
   assert(run("""
   factorial = func [ifelse (:n > 0) [n * factorial (n - 1)] [1]]
@@ -351,7 +352,7 @@ when true:
   for 2 5 [r = (r + :i)]
   eval r
   """) == "14")
-  
+
   # Implementing Smalltalk do: in Ni
   assert(run("""
   do: = funci [:blk :fun
@@ -361,7 +362,7 @@ when true:
   r = 0 y = [1 2 3]
   y do: [r = (r + :e)]
   eval r""") == "6")
-  
+
   # Implementing detect:, note that we use the internal streaming of blocks
   # so we need to do call reset first. Also note the use of return which
   # is a non local return in Smalltalk style, so it will return from the
@@ -389,7 +390,7 @@ when true:
   ]
   [1 2 3 4] select: [:each > 2]
   """) == "[3 4]")
-  
+
   # Implementing collect: as do: and map:
   assert(run("""
   map: = funci [:blk :lambda
@@ -400,7 +401,7 @@ when true:
     return result ]
   [1 2 3 4] map: [:x * 2]
   """) == "[2 4 6 8]")
-  
+
   # Reflection
   # The word locals gives access to the local Map
   assert(run("d = 5 locals") == "{d = 5}")
@@ -408,14 +409,14 @@ when true:
   assert(run("locals at: 'd put: 5 d + 2") == "7")
   assert(run("do [a = 1 b = 2 locals]") == "{a = 1 b = 2}")
   assert(run("do [a = 1 b = 2 (c = 3 (locals)]") == "{a = 1 b = 2 c = 3}")
-  
+
   # The word self gives access to the local Object
   #assert(run("x = object {a = 1 foo = funci [self at: 'a]} x foo") == "1")
   #assert(run("x = object {a = 1 foo = funci [.a]} x foo") == "1")
- 
+
   # The word activation gives access to the current activation record
-  assert(run("activation") == "Activation([activation]|1)")
-  
+  assert(run("activation") == "activation [[activation] 1]")
+
   # The word self gives access to the closest outer object
   assert(run("self") == "undef")
 
@@ -427,20 +428,30 @@ when true:
   assert(run("x = 3 x tags: [bum num] x tags") == "[bum num]")
   assert(run("x = 3 x tags: [bum num] x tag? 'bum") == "true")
   assert(run("x = 3 x tags: [bum num] x tag? 'lum") == "false")
-  
+
   # Ni math
   assert(run("10 fac") == "3628800")
   assert(run("10.0 sin") == "-0.5440211108893698")
 
   # Ni OO
-  assert(run("p = polyfunc [:a + 1]") == "[:a + 1]")
+  assert(run("p = polyfunc [:a + 1]") == "funci [:a + 1]")
   assert(run("p = polyfunc [:a + 1] 2 p") == "3")
+
+  # Ni compress
+  assert(run("compress \"abc123\"") == "\"\\x06\\x00\\x00\\x00`abc123\"")
+  assert(run("uncompress (compress \"abc123\")") == "\"abc123\"")
+
+  # Ni serialize deserialize
+  assert(run("serialize [1 2 3 \"abc\" {3.14}]") == "\"[1 2 3 \\\"abc\\\" {3.14}]\"")
+  assert(run("deserialize (serialize [1 2 3 \"abc\" {3.14}]) first") == "[1 2 3 \"abc\" {3.14}]")
+  #assert(run("uncompress (compress \"abc123\")") == "\"abc123\"")
+
 
 when true:
   # Demonstrate extension from extend.nim
   assert(show("'''abc'''") == "[\"abc\"]")
-  assert(run("reduce [1 + 2 3 + 4]") == "[3 7]")  
-  
+  assert(run("reduce [1 + 2 3 + 4]") == "[3 7]")
+
 
 
 
