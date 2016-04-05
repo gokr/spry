@@ -444,7 +444,9 @@ when true:
   # Ni serialize deserialize
   assert(run("serialize [1 2 3 \"abc\" {3.14}]") == "\"[1 2 3 \\\"abc\\\" {3.14}]\"")
   assert(run("deserialize (serialize [1 2 3 \"abc\" {3.14}]) first") == "[1 2 3 \"abc\" {3.14}]")
-  #assert(run("uncompress (compress \"abc123\")") == "\"abc123\"")
+
+  # Ni IO
+  assert(run("(deserialize readFile \"data.ni\") first first") == "121412")
 
 
 when true:
