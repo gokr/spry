@@ -1,5 +1,7 @@
 # Ni - We are the knights who say...
 
+[![Join the chat at https://gitter.im/gokr/spry](https://badges.gitter.im/gokr/spry.svg)](https://gitter.im/gokr/spry?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
+
 [![nimble](https://raw.githubusercontent.com/yglukhov/nimble-tag/master/nimble_js.png)](https://github.com/yglukhov/nimble-tag)
 
 [![Build Status](https://travis-ci.org/gokr/ni.svg?branch=master)](https://travis-ci.org/gokr/ni)
