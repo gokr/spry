@@ -1,12 +1,12 @@
-# Core Ni
-echo "***************  Core Ni implementation **************"
+# Core Spry
+echo "***************  Core Spry implementation **************"
 cloc --exclude-dir=nimcache --read-lang-def=cloc-nim src
 echo
 echo
 echo
 
-# Ni extra modules
-#echo "***************  Ni modules  **************"
+# Spry extra modules
+#echo "***************  Spry modules  **************"
 #cloc --exclude-dir=nimcache --read-lang-def=cloc-nim src
 #echo
 #echo

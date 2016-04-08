@@ -1,7 +1,7 @@
-# Ni Language REPL
+# Interactive Spry REPL
 #
 # Copyright (c) 2015 Göran Krampe
-
+#
 # I am not fond of REPLs, since I think they are silly dumb approximations
 # of the real thing - a fully live environment like Smalltalk!
 #
@@ -13,10 +13,10 @@ when defined(readLine):
   when not defined(Windows):
     import linenoise
 
-# Basic Ni
-import nivm, niparser
+# Basic Spry
+import spryvm
 
-# Ni extra modules, as much as possible!
+# Spry extra modules, as much as possible!
 import niextend, nimath, nios, niio, nithread, nipython, nioo, nidebug, nicompress
 
 const Prompt = ">>> "
@@ -104,7 +104,7 @@ proc main() =
       lines = newSeq[string]()
       try:
         # Let the interpreter eval the code
-        var output = $ni.evalRoot(code)
+        var output = $ni.evalRoot("[" & code & "]")
         # Print any result
         if output.isNil:
           output = if suspended: "nil" else: ""

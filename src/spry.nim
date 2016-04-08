@@ -1,4 +1,4 @@
-# Ni Language executable
+# Spry Language executable
 #
 # Copyright (c) 2015 Göran Krampe
 
@@ -7,22 +7,22 @@ when defined(profiler):
   import nimprof
 
 import os
-import nivm
+import spryvm
 import niextend, nimath, nios, niio, nithread, nipython, nidebug, nicompress
 
-var ni = newInterpreter()
+var spry = newInterpreter()
 
 # Add extra modules
-ni.addExtend()
-ni.addMath()
-ni.addOS()
-ni.addIO()
-ni.addThread()
-ni.addPython()
-ni.addDebug()
-ni.addCompress()
+spry.addExtend()
+spry.addMath()
+spry.addOS()
+spry.addIO()
+spry.addThread()
+spry.addPython()
+spry.addDebug()
+spry.addCompress()
 
 # Just run a given file as argument, the hash-bang trick works also
 let fn = commandLineParams()[0]
 let code = readFile(fn)
-discard ni.eval(code)
+discard spry.eval("[" & code & "]")

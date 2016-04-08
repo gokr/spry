@@ -1,10 +1,10 @@
 [Package]
-name          = "ni"
-version       = "0.3"
+name          = "spry"
+version       = "0.4"
 author        = "Göran Krampe"
-description   = "Rebol-ish dynamic language in Nim"
+description   = "Homoiconic dynamic language in Nim"
 license       = "MIT"
-bin           = "ni,nirepl"
+bin           = "spry,ispry"
 
 srcDir        = "src"
 binDir        = "bin"

@@ -3,7 +3,7 @@ Nim
     filter remove_inline #.*$
     extension nim
     end_of_line_continuation \\$
-Ni
+Spry
     filter remove_matches ^\s*#
     filter remove_inline #.*$
-    extension ni
+    extension sy

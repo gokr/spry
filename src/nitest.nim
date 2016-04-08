@@ -1,4 +1,4 @@
-import nivm, niparser
+import spryvm
 
 import niextend, nimath, niio, nidebug, nicompress, nios, nithread, nipython, nioo
 

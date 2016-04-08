@@ -1,6 +1,6 @@
-import nivm, niparser, python
+import spryvm, python
 
-proc primPython*(ni: Interpreter): niparser.Node =
+proc primPython*(ni: Interpreter): spryvm.Node =
   Py_Initialize()
   discard PyRun_SimpleString(StringVal(evalArg(ni)).value)
   Py_Finalize()

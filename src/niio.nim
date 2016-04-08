@@ -1,4 +1,4 @@
-import nivm, niparser
+import spryvm
 
 # Ni IO module
 proc addIO*(ni: Interpreter) =

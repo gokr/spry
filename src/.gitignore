@@ -1,7 +1,6 @@
-ni
-niparser
+spry
+ispry
 nitest
-nirepl
 nimath
 nimin
 nimicro
@@ -11,4 +10,4 @@ nios
 niextend
 nipython
 nidebug
-.nirepl-history
+.ispry-history

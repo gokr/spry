@@ -1,4 +1,4 @@
-import nivm, niparser
+import spryvm
 
 # Textual dump for debugging
 method dump(self: Activation) {.base.} =
@@ -32,7 +32,7 @@ method dump(self: BlokActivation) =
   if self.pos < self.len:
     echo "POS(" & $self.pos & "): " & $self.body[self.pos]
   echo($self.locals)
-  
+
 proc dump(ni: Interpreter) =
   echo "STACK:"
   for a in ni.stack:

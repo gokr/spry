@@ -1,4 +1,4 @@
-import nivm, niparser
+import spryvm
 
 # An executable Ni polymorphic function
 type

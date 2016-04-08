@@ -1,6 +1,5 @@
 nimcache
 profile_*
-ni.pro*
-.nirepl-history
-bin/ni
-bin/nirepl
+.ispry-history
+bin/spry
+bin/ispry

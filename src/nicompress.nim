@@ -1,5 +1,5 @@
 import lz4
-import nivm, niparser
+import spryvm
 
 # Ni compression
 proc addCompress*(ni: Interpreter) =

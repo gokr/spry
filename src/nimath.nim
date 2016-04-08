@@ -1,4 +1,4 @@
-import nivm, niparser
+import spryvm
 import math
 
 # Ni math module

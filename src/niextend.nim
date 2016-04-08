@@ -1,11 +1,11 @@
-import nivm, niparser
-# Example extending Ni with multiline string literals similar to Nim but using
+import spryvm
+# Example extending Spry with multiline string literals similar to Nim but using
 # triple single quotes ''' ... ''' and no skipping whitespace/newline after
 # the first delimiter. Its just an example, adding support for """ was harder
 # since it intervenes with the existing simple support for normal "strings".
 #
 # We also add a word "reduce" implemented in Nim. See nitest.nim for some
-# trivial tests demonstrating that you can then extend ni by simply importing
+# trivial tests demonstrating that you can then extend Spry by simply importing
 # this module, which then will automatically extend any created Interpreter.
 
 
@@ -30,12 +30,12 @@ method tokenReady(self: MultilineStringValueParser, token: string, c: char): str
     return token & c
   else:
     return nil
-    
+
 # This proc does the work extending the Parser instance
 proc extendParser(p: Parser) {.procvar.} =
   p.valueParsers.add(MultilineStringValueParser())
 
-## Register our extension proc above in Ni so it gets called
+## Register our extension proc above in Spry so it gets called
 addParserExtension(extendParser)
 
 

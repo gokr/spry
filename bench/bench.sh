@@ -1,15 +1,15 @@
-rm -f ./niv2 ./ni
-nim c -d:release --out:$PWD/ni ../src/ni.nim
-nim c -d:release --gc:v2 --out:$PWD/niv2 ../src/ni.nim
+rm -f ./spryv2 ./spry
+nim c -d:release --out:$PWD/spry ../src/spry.nim
+nim c -d:release --gc:v2 --out:$PWD/spryv2 ../src/spry.nim
 
 echo
-echo "Ni with default gc:"
-/usr/bin/time -v ./ni factorial.ni
+echo "Spry with default gc:"
+/usr/bin/time -v ./spry factorial.sy
 echo
-echo "Ni using nimath fac primitive function:"
-/usr/bin/time -v ./ni fac.ni
+echo "Spry using nimath fac primitive function:"
+/usr/bin/time -v ./spry fac.sy
 
 # v2 fails currently with "in loop" or something
-echo "Ni with default gc v2:"
-/usr/bin/time -v ./niv2 fac.ni
+echo "Spry with default gc v2:"
+/usr/bin/time -v ./spryv2 fac.sy
 

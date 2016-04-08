@@ -1,4 +1,4 @@
-import nivm, niparser, nimath, nios, niio
+import spryvm, nimath, nios, niio
 import threadpool
 
 # Ni threading
