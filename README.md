@@ -1,4 +1,4 @@
-# Spryn
+# Spry
 
 [![nimble](https://raw.githubusercontent.com/yglukhov/nimble-tag/master/nimble_js.png)](https://github.com/yglukhov/nimble-tag)
 
