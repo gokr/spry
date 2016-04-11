@@ -41,7 +41,7 @@ proc dump(spry: Interpreter) =
   echo "========================================"
 
 
-# Ni debug module
+# Spry debug module
 proc addDebug*(spry: Interpreter) =
   nimPrim("dump", false, 0):    dump(spry)
   when not defined(js): # There is no repr support in js backend

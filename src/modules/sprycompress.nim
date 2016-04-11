@@ -1,7 +1,7 @@
 import lz4
 import spryvm
 
-# Ni compression
+# Spry compression
 proc addCompress*(spry: Interpreter) =
   # Compression of string
   nimPrim("compress", false, 1):

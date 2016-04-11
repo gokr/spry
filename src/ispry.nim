@@ -17,12 +17,12 @@ when defined(readLine):
 import spryvm
 
 # Spry extra modules, as much as possible!
-import niextend, nimath, nios, niio, nithread, nipython, nioo, nidebug, nicompress
+import spryextend, sprymath, spryos, spryio, sprythread, sprypython, spryoo, sprydebug, sprycompress
 
 const Prompt = ">>> "
 
 when defined(readLine) and not defined(Windows):
-  const HistoryFile = ".nirepl-history"
+  const HistoryFile = ".ispry-history"
   # Load existing history file
   discard historyLoad(HistoryFile)
   # Makes sure editing wraps for long lines?
@@ -40,17 +40,17 @@ proc getLine(prompt: string): string =
     result = stdin.readline()
 
 proc main() =
-  # Let's create a Ni interpreter. It also holds all state.
-  let ni = newInterpreter()
-  ni.addExtend()
-  ni.addMath()
-  ni.addOS()
-  ni.addIO()
-  ni.addThread()
-  ni.addPython()
-  ni.addOO()
-  ni.addDebug()
-  ni.addCompress()
+  # Let's create a Spry interpreter. It also holds all state.
+  let spry = newInterpreter()
+  spry.addExtend()
+  spry.addMath()
+  spry.addOS()
+  spry.addIO()
+  spry.addThread()
+  spry.addPython()
+  spry.addOO()
+  spry.addDebug()
+  spry.addCompress()
 
   var
     lines, stashed, fileLines = newSeq[string]()
@@ -66,6 +66,7 @@ proc main() =
       for line in lines(fn):
         fileLines.add(line)
 
+  echo "Welcome to interactive Spry!"
   echo "An empty line will evaluate previous lines, so hit enter twice."
   # We collect lines until an empty line is entered, easy way to enter
   # multiline code.
@@ -104,7 +105,7 @@ proc main() =
       lines = newSeq[string]()
       try:
         # Let the interpreter eval the code
-        var output = $ni.evalRoot("[" & code & "]")
+        var output = $spry.evalRoot("[" & code & "]")
         # Print any result
         if output.isNil:
           output = if suspended: "nil" else: ""

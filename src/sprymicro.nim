@@ -1,8 +1,8 @@
-# Ni Micro Language interpreter.
+# Spry Micro Language interpreter.
 #
-# This Ni interpreter has no extra modules linked, only core language.
+# This interpreter has no extra modules linked, only core language.
 
-import nivm
+import spryvm
 
 # Just run an embedded string
-discard newInterpreter().eval("echo (3 + 4)")
+discard newInterpreter().eval("[echo (3 + 4)]")
