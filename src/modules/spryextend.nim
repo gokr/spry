@@ -43,31 +43,31 @@ addParserExtension(extendParser)
 # Extending the Interpreter with a Nim primitive word
 #######################################################################
 
-proc evalReduce(self: SeqComposite, ni: Interpreter): Node =
+proc evalReduce(self: SeqComposite, spry: Interpreter): Node =
   ## Evaluate all nodes in the block and return a new block with all results
   var collect = newSeq[Node]()
   let current = newActivation(Blok(self))
-  ni.pushActivation(current)
+  spry.pushActivation(current)
   while not current.atEnd:
     let next = current.next()
     # Then we eval the node if it canEval
-    if next.canEval(ni):
-      current.last = next.eval(ni)
+    if next.canEval(spry):
+      current.last = next.eval(spry)
       if current.returned:
-        ni.currentActivation.doReturn(ni)
+        spry.currentActivation.doReturn(spry)
         return current.last
       collect.add(current.last)
     else:
       current.last = next
-  ni.popActivation()
+  spry.popActivation()
   return newBlok(collect)
 
 
 # This is a primitive we want to add, like do but calling proc above
-proc primReduce*(ni: Interpreter): Node =
-  SeqComposite(evalArg(ni)).evalReduce(ni)
+proc primReduce*(spry: Interpreter): Node =
+  SeqComposite(evalArg(spry)).evalReduce(spry)
 
 # This proc does the work extending an Interpreter instance
-proc addExtend*(ni: Interpreter) =
-  ni.makeWord("reduce", newNimProc(primReduce, false, 1))
+proc addExtend*(spry: Interpreter) =
+  spry.makeWord("reduce", newNimProc(primReduce, false, 1))
 

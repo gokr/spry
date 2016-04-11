@@ -1,20 +1,20 @@
 The *.nim examples are compiled using nim:
 
-	nim c ni2nim.nim
+	nim c spry2nim.nim
 
 ...and then run:
 
-	./ni2nim
+	./spry2nim
 
 ...or all in one:
 
-	nim c -r ni2nim
+	nim c -r spry2nim
 
 
-The *.ni examples are either run directly if
-you have a "ni" interpreter in your path, or
+The *.sy examples are either run directly if
+you have a "spry" interpreter in your path, or
 you run them like:
 
-	../bin/ni hello.ni
+	../bin/spry hello.sy
 
 

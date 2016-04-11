@@ -33,16 +33,16 @@ method dump(self: BlokActivation) =
     echo "POS(" & $self.pos & "): " & $self.body[self.pos]
   echo($self.locals)
 
-proc dump(ni: Interpreter) =
+proc dump(spry: Interpreter) =
   echo "STACK:"
-  for a in ni.stack:
+  for a in spry.stack:
     dump(a)
     echo "-----------------------------"
   echo "========================================"
 
 
 # Ni debug module
-proc addDebug*(ni: Interpreter) =
-  nimPrim("dump", false, 0):    dump(ni)
+proc addDebug*(spry: Interpreter) =
+  nimPrim("dump", false, 0):    dump(spry)
   when not defined(js): # There is no repr support in js backend
-    nimPrim("repr", false, 1):  newValue(repr(evalArg(ni)))
+    nimPrim("repr", false, 1):  newValue(repr(evalArg(spry)))

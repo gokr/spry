@@ -1,5 +1,5 @@
-Trivial app that implements factorial in Ni
-===========================================
+Trivial app that implements factorial in Spry
+=============================================
 Run make.sh and then open factorial.html in a browser.
 
 To also minify try:
@@ -10,9 +10,9 @@ To also minify try:
 
 Trivial example of a REPL
 =========================
-Run makeni.sh and then open ni.html in a browser.
+Run makespry.sh and then open spry.html in a browser.
 
 To also minify try:
 
   sudo npm install -g minifier
-  minify -o ni.js ni.js
+  minify -o spry.js spry.js

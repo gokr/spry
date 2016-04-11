@@ -1,18 +1,18 @@
 import spryvm
 
-# Ni IO module
-proc addIO*(ni: Interpreter) =
+# Spry IO module
+proc addIO*(spry: Interpreter) =
   # IO
   nimPrim("echo", false, 1):
-    echo(form(evalArg(ni)))
+    echo(form(evalArg(spry)))
   nimPrim("probe", false, 1):
-    result = arg(ni)
+    result = arg(spry)
     echo(form(result))
   nimPrim("readFile", false, 1):
-    let fn = StringVal(evalArg(ni)).value
+    let fn = StringVal(evalArg(spry)).value
     let contents = readFile(fn).string
     newValue(contents)
   nimPrim("writeFile", false, 2):
-    let fn = StringVal(evalArg(ni)).value
-    result = evalArg(ni)
+    let fn = StringVal(evalArg(spry)).value
+    result = evalArg(spry)
     writeFile(fn, StringVal(result).value)

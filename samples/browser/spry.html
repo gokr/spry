@@ -2,15 +2,15 @@
 <script type="text/javascript" src="shortcut.js"></script>
 <script type="text/javascript" src="ni.js"></script>
 <script type="text/javascript">
-function evalInNi(code) {
-  document.body.appendChild(document.createTextNode(nieval(code)))
+function evalInSpry(code) {
+  document.body.appendChild(document.createTextNode(spryEval(code)))
   document.body.appendChild(document.createElement('br'))
 }
 shortcut.add("ctrl+enter", function() {
   evalInNi(document.getElementById('code').value)
 })
 </script>
-<p>Enter Ni code:</p>
+<p>Enter Spry code:</p>
 <p><textarea cols="40" rows="10" id='code'>3 + 4</textarea></p>
-<p><button onclick="evalInNi(document.getElementById('code').value)">Eval (ctrl-enter)</button></p>
+<p><button onclick="evalInSpry(document.getElementById('code').value)">Eval (ctrl-enter)</button></p>
 </body></html>

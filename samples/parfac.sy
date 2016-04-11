@@ -1,3 +1,4 @@
+#!/usr/bin/env spry
 # Parallell factorial benchmark. Need to fix so that
 # we can await on spawned jobs, right now we don't know
 # when they are done.

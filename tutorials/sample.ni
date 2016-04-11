@@ -1,7 +1,7 @@
-#!/usr/bin/env nirepl
-# Fun Fun with Ni!
+#!/usr/bin/env ispry
+# Fun Fun with Spry!
 #
-# Ni source code is basically just a list of "words" and "values"
+# Spry source code is basically just a list of "words" and "values"
 # with sublists created using "[..]" and such a list is called
 # a "block". Parenthesis can also be used to control evalation
 # order. This file, when parsed by the Parser, is wrapped in
@@ -11,15 +11,15 @@
 echo "Hello"
 # pause
 
-# Here is a block with all core Ni value types.
+# Here is a block with all core Spry value types.
 # It should print "[3 4.0 true false nil "hey"]"
-echo [3 4.0 true false nil "hey"]
+echo [3 4.0 true false nil "hey" undef]
 # pause
 
 # A word is just a string until it gets resolved. "echo" above
 # got resolved to a primitive function taking 1 argument, when
 # this script was called upon to run. It resolved only one
-# level deep though, so the words "true", "false" and "nil"
+# level deep though, so the words "true", "false", "nil" and "undef"
 # are still just words in the block above. When they are resolved
 # they would refer to the singletons for those three values.
 #
@@ -31,7 +31,7 @@ myblock = [3 + 4]
 
 # When the echo function pulls in its argument, it first evaluates
 # it. For words it means "look up and evaluate what we found".
-# We found a block, which is the basic unit of code in Ni, but
+# We found a block, which is the basic unit of code in Spry, but
 # blocks just return themselves when called
 # upon to evaluate. We need to do more to actually "run" them.
 # It should print "[3 + 4]" 
@@ -39,7 +39,7 @@ echo myblock
 # pause
 
 # The "do" word will resolve the block and then run it as code.
-# Its at this point that "+" gets resolved to a primitive infix function.
+# It's at this point that "+" gets resolved to a primitive infix function.
 # This should print "7".
 echo do myblock
 # pause
@@ -57,18 +57,16 @@ foo = func myblock
 echo foo
 # pause
 
-# The Ni Parser is exposed through the "parse" primitive.
-# Currently parse will put whatever it parses into a block
-# so we don't need "[]" inside the string. The bar func we create
-# below is equivalent to foo.
-bar = func parse "3 + 4"
+# The Spry Parser is exposed through the "parse" primitive.
+# The bar func we create below is equivalent to foo.
+bar = func parse "[3 + 4]"
 # pause
 
 # So this should also print "7"
 echo bar
 # pause
 
-# The fact that Ni code is just blocks means we can compose and manipulate
+# The fact that Spry code is just blocks means we can compose and manipulate
 # code just as data. First let's make a func calling our previous funcs.
 combo = func [foo + bar]
 # pause
@@ -85,7 +83,7 @@ echo ^combo
 # pause
 
 # So... blocks are collections
-echo (myblock len) 	# Prints 3
+echo (myblock size) 	# Prints 3
 echo (myblock first) 	# Prints 3
 echo (myblock at: 1)	# Prints +
 # pause
