@@ -1,19 +1,19 @@
 import spryvm
 
-import niextend, nimath, niio, nidebug, nicompress, nios, nithread, nipython, nioo
+import spryextend, sprymath, spryio, sprydebug, sprycompress, spryos, sprythread, sprypython, spryoo
 
 proc newVM(): Interpreter =
-  var ni = newInterpreter()
-  ni.addExtend()
-  ni.addMath()
-  ni.addOS()
-  ni.addIO()
-  ni.addThread()
-  ni.addPython()
-  ni.addDebug()
-  ni.addCompress()
-  ni.addOO()
-  return ni
+  var spry = newInterpreter()
+  spry.addExtend()
+  spry.addMath()
+  spry.addOS()
+  spry.addIO()
+  spry.addThread()
+  spry.addPython()
+  spry.addDebug()
+  spry.addCompress()
+  spry.addOO()
+  return spry
 
 # Some helpers for tests below
 proc show(code: string): string =
@@ -118,7 +118,7 @@ when true:
   assert(run("{a = 1 b = \"hey\"}") == "{a = 1 b = \"hey\"}")
   assert(run("{a = {d = (3 + 4) e = (5 + 6)}}") == "{a = {d = 7 e = 11}}")
   assert(run("{a = 3} at: 'a") == "3")
-  assert(run("{3 = 4 6 = 1} at: 6") == "1") # int, In Ni any Node can be a key!
+  assert(run("{3 = 4 6 = 1} at: 6") == "1") # int, In spry any Node can be a key!
   assert(run("{\"hey\" = 4 true = 1 6.0 = 8} at: \"hey\"") == "4") # string
   assert(run("{\"hey\" = 4 true = 1 6.0 = nil} at: 6.0") == "nil") # float
   #assert(run("{undef = 8} at: undef") == "8") # undef humm...
@@ -360,7 +360,7 @@ when true:
   eval r
   """) == "14")
 
-  # Implementing Smalltalk do: in Ni
+  # Implementing Smalltalk do: in spry
   assert(run("""
   do: = funci [:blk :fun
     blk reset
@@ -436,24 +436,24 @@ when true:
   assert(run("x = 3 x tags: [bum num] x tag? 'bum") == "true")
   assert(run("x = 3 x tags: [bum num] x tag? 'lum") == "false")
 
-  # Ni math
+  # spry math
   assert(run("10 fac") == "3628800")
   assert(run("10.0 sin") == "-0.5440211108893698")
 
-  # Ni OO
+  # spry OO
   assert(run("p = polyfunc [:a + 1]") == "funci [:a + 1]")
   assert(run("p = polyfunc [:a + 1] 2 p") == "3")
 
-  # Ni compress
+  # spry compress
   assert(run("compress \"abc123\"") == "\"\\x06\\x00\\x00\\x00`abc123\"")
   assert(run("uncompress (compress \"abc123\")") == "\"abc123\"")
 
-  # Ni serialize deserialize
+  # spry serialize deserialize
   assert(run("serialize [1 2 3 \"abc\" {3.14}]") == "\"[1 2 3 \\\"abc\\\" {3.14}]\"")
   assert(run("deserialize serialize [1 2 3 \"abc\" {3.14}]") == "[1 2 3 \"abc\" {3.14}]")
 
-  # Ni IO
-  assert(run("(deserialize readFile \"data.ni\") first first") == "121412")
+  # spry IO
+  assert(run("(deserialize readFile \"data.spry\") first first") == "121412")
 
 
 when true:

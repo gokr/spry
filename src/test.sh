@@ -1,4 +1,4 @@
-nim c -r nitest
+nim c -r sprytest
 if [ $? -ne 0 ]; then
   echo "TEST FAILED"
   exit 1

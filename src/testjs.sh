@@ -1,4 +1,4 @@
-nim js -r -d:release -d:nodejs nitest
+nim js -r -d:release -d:nodejs sprytest
 if [ $? -ne 0 ]; then
   echo "TEST FAILED"
   exit 1

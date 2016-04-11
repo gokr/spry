@@ -4,7 +4,7 @@ import math
 # Spry math module
 proc addMath*(spry: Interpreter) =
   # math module
-  nimPrim("binom", true, 2): newValue(binom(IntVal(evalArgInfix(spry)).value, IntVal(evalArg(ni)).value))
+  nimPrim("binom", true, 2): newValue(binom(IntVal(evalArgInfix(spry)).value, IntVal(evalArg(spry)).value))
   nimPrim("fac", true, 1): newValue(fac(IntVal(evalArgInfix(spry)).value))
   nimPrim("powerOfTwo?", true, 1): newValue(isPowerOfTwo(IntVal(evalArgInfix(spry)).value))
   nimPrim("nextPowerOfTwo", true, 1): newValue(nextPowerOfTwo(IntVal(evalArgInfix(spry)).value))

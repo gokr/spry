@@ -8,7 +8,7 @@ when defined(profiler):
 
 import os
 import spryvm
-import niextend, nimath, nios, niio, nithread, nipython, nidebug, nicompress
+import spryextend, sprymath, spryos, spryio, sprythread, sprypython, sprydebug, sprycompress
 
 var spry = newInterpreter()
 
