@@ -249,6 +249,10 @@ when true:
   assert(run("[3 4], [5 6]") == "[3 4 5 6]")
   assert(run("[3 4] contains: 3") == "true")
   assert(run("[3 4] contains: 8") == "false")
+  assert(run("{x = 1 y = 2} contains: 'x") == "true")
+  assert(run("{x = 1 y = 2} contains: 'z") == "false")
+  assert(run("{\"x\" = 1 \"y\" = 2} contains: \"x\"") == "true")
+  assert(run("{\"x\" = 1 \"y\" = 2} contains: \"z\"") == "false")
   assert(run("[false bum 3.14 4] contains: 'bum") == "true")
   assert(run("[1 2 true 4] contains: 'false") == "false") # Note that block contains words, not values
   assert(run("[1 2 true 4] contains: 'true") == "true")
@@ -267,6 +271,15 @@ when true:
   assert(run("ifelse (3 > 4) [\"yay\"] ['ok]") == "'ok")
   assert(run("ifelse (3 > 4) [true] [false]") == "false")
   assert(run("ifelse (4 > 3) [true] [false]") == "true")
+
+  # Smalltalk if, kinda
+  assert(run("(3 < 4) if: [5]") == "5")
+  assert(run("3 < 4 if: [5]") == "5")
+  assert(run("3 < 4 ifNot: [5]") == "nil")
+  assert(run("3 < 4 if: [1] else: [2]") == "1")
+  assert(run("3 < 4 ifNot: [1] else: [2]") == "2")
+  assert(run("5 < 4 ifNot: [1] else: [2]") == "1")
+  assert(run("5 < 4 if: [1] else: [2]") == "2")
 
   # loops, eva will
   assert(run("x = 0 5 timesRepeat: [x = (x + 1)] eva x") == "5")

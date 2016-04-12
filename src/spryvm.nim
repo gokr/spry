@@ -374,6 +374,9 @@ proc add*(self: SeqComposite, n: openarray[Node]) =
 proc contains*(self: SeqComposite, n: Node): bool =
   self.nodes.contains(n)
 
+proc contains*(self: Map, n: Node): bool =
+  self.bindings.contains(n)
+
 method concat*(self: SeqComposite, nodes: seq[Node]): SeqComposite {.base.} =
   raiseRuntimeException("Should not happen..." & $self & " " & $nodes)
 
@@ -1113,9 +1116,9 @@ proc newInterpreter*(): Interpreter =
   nimPrim("self", false, 0):
     spry.undefVal
 
-  # Creation of spry types without literal syntax
-  nimPrim("object", false, 1):
-    spry.undefVal
+  # Access to root Map
+  nimPrim("root", false, 0):
+    spry.root
 
   # Tags
   nimPrim("tag:", true, 2):
@@ -1217,7 +1220,11 @@ proc newInterpreter*(): Interpreter =
   # Idea here: Use xxx? for infix funcs, arity 1, returning booleans
   # ..and xxx! for infix funcs arity 0.
   nimPrim("size", true, 1):
-    newValue(SeqComposite(evalArgInfix(spry)).nodes.len)
+    let comp = evalArgInfix(spry)
+    if comp of SeqComposite:
+      return newValue(SeqComposite(evalArgInfix(spry)).nodes.len)
+    elif comp of Map:
+      return newValue(Map(evalArgInfix(spry)).bindings.len)
   nimPrim("at:", true, 2):
     ## Ugly, but I can't get [] to work as methods...
     let comp = evalArgInfix(spry)
@@ -1234,6 +1241,14 @@ proc newInterpreter*(): Interpreter =
     elif comp of Map:
       Map(comp)[key] = val
     return comp
+  nimPrim("contains:", true, 2):
+    let comp = evalArgInfix(spry)
+    let key = evalArg(spry)
+    if comp of SeqComposite:
+      return newValue(SeqComposite(comp).contains(key))
+    elif comp of Map:
+      return newValue(Map(comp).contains(key))
+    return comp
   nimPrim("read", true, 1):
     let comp = SeqComposite(evalArgInfix(spry))
     comp[comp.pos]
@@ -1249,9 +1264,6 @@ proc newInterpreter*(): Interpreter =
     result = evalArgInfix(spry)
     let comp = SeqComposite(result)
     comp.removeLast()
-  nimPrim("contains:", true, 2):
-    let comp = SeqComposite(evalArgInfix(spry))
-    newValue(comp.contains(evalArg(spry)))
 
   # Positioning
   nimPrim("reset", true, 1):  SeqComposite(evalArgInfix(spry)).pos = 0 # Called change in Rebol
@@ -1313,6 +1325,18 @@ proc newInterpreter*(): Interpreter =
     else:
       discard arg(spry) # Consume the block
       return spry.nilVal
+  nimPrim("if:", true, 2):
+    if BoolVal(evalArgInfix(spry)).value:
+      return SeqComposite(evalArg(spry)).evalDo(spry)
+    else:
+      discard arg(spry) # Consume the block
+      return spry.nilVal
+  nimPrim("ifNot:", true, 2):
+    if BoolVal(evalArgInfix(spry)).value:
+      discard arg(spry) # Consume the block
+      return spry.nilVal
+    else:
+      return SeqComposite(evalArg(spry)).evalDo(spry)
   nimPrim("ifelse", false, 3):
     if BoolVal(evalArg(spry)).value:
       let res = SeqComposite(evalArg(spry)).evalDo(spry)
@@ -1321,6 +1345,22 @@ proc newInterpreter*(): Interpreter =
     else:
       discard arg(spry) # Consume first block
       return SeqComposite(evalArg(spry)).evalDo(spry)
+  nimPrim("if:else:", true, 3):
+    if BoolVal(evalArgInfix(spry)).value:
+      let res = SeqComposite(evalArg(spry)).evalDo(spry)
+      discard arg(spry) # Consume second block
+      return res
+    else:
+      discard arg(spry) # Consume first block
+      return SeqComposite(evalArg(spry)).evalDo(spry)
+  nimPrim("ifNot:else:", true, 3):
+    if BoolVal(evalArgInfix(spry)).value:
+      discard arg(spry) # Consume first block
+      return SeqComposite(evalArg(spry)).evalDo(spry)
+    else:
+      let res = SeqComposite(evalArg(spry)).evalDo(spry)
+      discard arg(spry) # Consume second block
+      return res
   nimPrim("timesRepeat:", true, 2):
     let times = IntVal(evalArgInfix(spry)).value
     let fn = SeqComposite(evalArg(spry))
