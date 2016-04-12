@@ -468,6 +468,8 @@ when true:
   # spry IO
   assert(run("(deserialize readFile \"data.spry\") first first") == "121412")
 
+  # spry OS
+  assert(run("shell \"stat --printf='%s' data.spry\"") == "\"1665\\x0A\"")
 
 when true:
   # Demonstrate extension from extend.nim
