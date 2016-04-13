@@ -63,6 +63,9 @@ type
   UndefVal* = ref object of Value
   NilVal* = ref object of Value
 
+  PointerVal* = ref object of Value
+    value*: pointer
+
   # Abstract
   Composite* = ref object of Node
   SeqComposite* = ref object of Node
@@ -351,6 +354,9 @@ proc newValue*(v: float): FloatVal =
 
 proc newValue*(v: string): StringVal =
   StringVal(value: v)
+
+proc newValue*(v: pointer): PointerVal =
+  PointerVal(value: v)
 
 proc newValue*(v: bool): BoolVal =
   if v:
@@ -729,6 +735,7 @@ type
 
 # Forward declarations to make Nim happy
 proc funk*(spry: Interpreter, body: Blok, infix: bool): Node
+proc evalRoot*(spry: Interpreter, code: string): Node
 method eval*(self: Node, spry: Interpreter): Node {.base.}
 method evalDo*(self: Node, spry: Interpreter): Node {.base.}
 
@@ -1190,6 +1197,8 @@ proc newInterpreter*(): Interpreter =
       return Curly(val).concat(SeqComposite(evalArg(spry)).nodes)
 
   # Conversions
+  nimPrim("form", true, 1):
+    newValue(form(evalArgInfix(spry)))
   nimPrim("asFloat", true, 1):
     let val = evalArgInfix(spry)
     if val of FloatVal:
@@ -1408,6 +1417,23 @@ proc newInterpreter*(): Interpreter =
   # Create and push root activation
   spry.rootActivation = newRootActivation(spry.root)
   spry.pushActivation(spry.rootActivation)
+
+  # Library code
+  discard spry.evalRoot """[
+    # Trivial error function
+    error = func [echo :msg quit 1]
+
+    # Trivial assert
+    assert = func [:x ifNot: [error "Oops, assertion failed"] return x]
+
+    select: = funci [:blk :pred
+      result = []
+      blk reset
+      [blk end?] whileFalse: [
+        n = (blk next)
+        if do pred n [result add: n]]
+      return result]
+  ]"""
 
 proc atEnd*(spry: Interpreter): bool {.inline.} =
   return spry.currentActivation.atEnd

@@ -158,10 +158,13 @@ when true:
 
   # Strings
   assert(run("\"ab[c\"") == "\"ab[c\"")
+  assert(run("123 form") == "\"123\"")
+  assert(run("\"abc123\" form") == "\"abc123\"")
 
   # Concatenation
   assert(run("\"ab\", \"cd\"") == "\"abcd\"")
   assert(run("[1] , [2 3]") == "[1 2 3]")
+
 
   # Set and get variables
   assert(run("x = 4 5 + x") == "9")
@@ -400,15 +403,7 @@ when true:
 
   # Implementing select:
   assert(run("""
-  select: = funci [:blk :pred
-    result = []
-    blk reset
-    [blk end?] whileFalse: [
-      n = (blk next)
-      if do pred n [result add: n]]
-    return result
-  ]
-  [1 2 3 4] select: [:each > 2]
+    [1 2 3 4] select: [:each > 2]
   """) == "[3 4]")
 
   # Implementing collect: as do: and map:
@@ -470,6 +465,9 @@ when true:
 
   # spry OS
   assert(run("shell \"stat --printf='%s' data.spry\"") == "\"1665\\x0A\"")
+
+  # Library code
+  assert(run("assert (3 < 4)") == "true")
 
 when true:
   # Demonstrate extension from extend.nim
