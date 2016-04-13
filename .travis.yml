@@ -72,7 +72,7 @@ before_script:
     - nimble refresh
 script:
     # Let nimble get dependencies
-    - nimble c src/nitest
+    - nimble c src/sprytest
     # Test
     - cd src && ./test.sh
     # Optional: build docs.
