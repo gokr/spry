@@ -33,6 +33,9 @@ Spry should only depend on Nim, so it should work fine on Windows, OSX, Linux et
 for the moment **I only use Linux for Spry development**. The shell scripts can probably be rewritten
 in nimscript and thus everything can be fully cross platform.
 
+### Vagrant
+Included is a VagrantFile for Ubuntu 12.04. Just do `vagrant up` and `vagrant ssh` into it to find spry installed. Test with `ispry`.
+
 ### Linux
 
 1. Get [Nim](http://www.nim-lang.org)! I recommend following the [instructions at the bottom](http://nim-lang.org/download.html).
