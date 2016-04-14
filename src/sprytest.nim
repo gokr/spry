@@ -463,7 +463,11 @@ when true:
   # Checks that we do get a clone, but a shallow one
   assert(run("a = [[1 2]] b = (a clone) (b at: 0) at: 0 put: 5 eval a") == "[[5 2]]")
   assert(run("a = [[1 2]] b = (a clone) b add: 5 eval a") == "[[1 2]]")
-
+  assert(run("x = ^(3 4) ^x clone") == "(3 4)") # Works for Paren
+  assert(run("x = ^{3 4} ^x clone") == "{3 4}") # Works for Curly
+  assert(run("a = {x = 1} a clone") == "{x = 1}")
+  assert(run("a = {x = [1]} b = (a clone) (b at: 'y put: 2) eval b") == "{x = [1] y = 2}")
+  assert(run("a = {x = [1]} b = (a clone) (b at: 'y put: 2) eval a") == "{x = [1]}")
 when true:
   # Demonstrate extension from extend.nim
   assert(show("'''abc'''") == "\"abc\"")

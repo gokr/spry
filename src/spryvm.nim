@@ -77,7 +77,7 @@ type
   Blok* = ref object of SeqComposite
   Curly* = ref object of SeqComposite
   Map* = ref object of Composite
-    bindings*: ref OrderedTable[Node, Binding]
+    bindings*: OrderedTable[Node, Binding]
 
   # Dictionaries currently holds Bindings instead of the value directly.
   # This way we we can later reify Binding
@@ -296,7 +296,10 @@ proc raiseParseException(msg: string) =
   raise newException(ParseException, msg)
 
 proc newMap*(): Map =
-  Map(bindings: newOrderedTable[Node, Binding]())
+  Map(bindings: initOrderedTable[Node, Binding]())
+
+proc newMap*(bindings: OrderedTable[Node, Binding]): Map =
+  Map(bindings: bindings)
 
 proc newEvalWord*(s: string): EvalWord =
   EvalWord(word: s)
@@ -398,16 +401,19 @@ method concat*(self: Curly, nodes: seq[Node]): SeqComposite =
 proc removeLast*(self: SeqComposite) =
   system.delete(self.nodes,self.nodes.high)
 
-method clone*(self: SeqComposite): SeqComposite {.base.} =
+method clone*(self: Node): Node {.base.} =
   raiseRuntimeException("Should not happen..." & $self)
 
-method clone*(self: Blok): SeqComposite =
+method clone*(self: Map): Node =
+  newMap(self.bindings)
+
+method clone*(self: Blok): Node =
   newBlok(self.nodes)
 
-method clone*(self: Paren): SeqComposite =
+method clone*(self: Paren): Node =
   newParen(self.nodes)
 
-method clone*(self: Curly): SeqComposite =
+method clone*(self: Curly): Node =
   newCurly(self.nodes)
 
 # Methods for the base value parsers
@@ -1331,7 +1337,7 @@ proc newInterpreter*(): Interpreter =
   nimPrim("parse", false, 1):   newParser().parse(StringVal(evalArg(spry)).value)
 
   # Cloning
-  nimPrim("clone", true, 1):   SeqComposite(evalArgInfix(spry)).clone()
+  nimPrim("clone", true, 1):    evalArgInfix(spry).clone()
 
   # serialize & deserialize
   nimPrim("serialize", false, 1):
