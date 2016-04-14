@@ -398,6 +398,18 @@ method concat*(self: Curly, nodes: seq[Node]): SeqComposite =
 proc removeLast*(self: SeqComposite) =
   system.delete(self.nodes,self.nodes.high)
 
+method clone*(self: SeqComposite): SeqComposite {.base.} =
+  raiseRuntimeException("Should not happen..." & $self)
+
+method clone*(self: Blok): SeqComposite =
+  newBlok(self.nodes)
+
+method clone*(self: Paren): SeqComposite =
+  newParen(self.nodes)
+
+method clone*(self: Curly): SeqComposite =
+  newCurly(self.nodes)
+
 # Methods for the base value parsers
 method parseValue*(self: ValueParser, s: string): Node {.procvar,base.} =
   nil
@@ -1318,6 +1330,9 @@ proc newInterpreter*(): Interpreter =
   nimPrim("eval", false, 1):    evalArg(spry).eval(spry)
   nimPrim("parse", false, 1):   newParser().parse(StringVal(evalArg(spry)).value)
 
+  # Cloning
+  nimPrim("clone", true, 1):   SeqComposite(evalArgInfix(spry)).clone()
+
   # serialize & deserialize
   nimPrim("serialize", false, 1):
     newValue($evalArg(spry))
@@ -1426,13 +1441,28 @@ proc newInterpreter*(): Interpreter =
     # Trivial assert
     assert = func [:x ifNot: [error "Oops, assertion failed"] return x]
 
+    do: = funci [:blk :fun
+      blk reset
+      [blk end?] whileFalse: [do fun (blk next)]
+    ]
+
+    detect: = funci [:blk :pred
+      blk reset
+      [blk end?] whileFalse: [
+        n = (blk next)
+        if do pred n [return n]]
+      return nil
+    ]
+
     select: = funci [:blk :pred
-      result = []
+      result = ([] clone)
       blk reset
       [blk end?] whileFalse: [
         n = (blk next)
         if do pred n [result add: n]]
       return result]
+
+    modules = [] clone
   ]"""
 
 proc atEnd*(spry: Interpreter): bool {.inline.} =

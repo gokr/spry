@@ -378,27 +378,17 @@ when true:
 
   # Implementing Smalltalk do: in spry
   assert(run("""
-  do: = funci [:blk :fun
-    blk reset
-    [blk end?] whileFalse: [do fun (blk next)]
-  ]
-  r = 0 y = [1 2 3]
-  y do: [r = (r + :e)]
-  eval r""") == "6")
+    r = 0 y = [1 2 3]
+    y do: [r = (r + :e)]
+    eval r
+  """) == "6")
 
   # Implementing detect:, note that we use the internal streaming of blocks
   # so we need to do call reset first. Also note the use of return which
   # is a non local return in Smalltalk style, so it will return from the
   # whole func.
   assert(run("""
-  detect: = funci [:blk :pred
-    blk reset
-    [blk end?] whileFalse: [
-      n = (blk next)
-      if do pred n [return n]]
-    return nil
-  ]
-  [1 2 3 4] detect: [:each > 2]
+    [1 2 3 4] detect: [:each > 2]
   """) == "3")
 
   # Implementing select:
@@ -468,6 +458,11 @@ when true:
 
   # Library code
   assert(run("assert (3 < 4)") == "true")
+
+  # Clone
+  # Checks that we do get a clone, but a shallow one
+  assert(run("a = [[1 2]] b = (a clone) (b at: 0) at: 0 put: 5 eval a") == "[[5 2]]")
+  assert(run("a = [[1 2]] b = (a clone) b add: 5 eval a") == "[[1 2]]")
 
 when true:
   # Demonstrate extension from extend.nim
