@@ -1045,8 +1045,15 @@ method lookup(self: BlokActivation, key: Node): Binding =
     return self.locals.lookup(key)
 
 proc lookup(spry: Interpreter, key: Node): Binding =
+  ## Not sure why, but three methods didn't want to fly
   if (key of EvalModuleWord):
     let binding = spry.rootActivation.lookup(EvalModuleWord(key).module)
+    if binding.notNil:
+      let module = binding.val
+      if module.notNil:
+        result = Map(module).lookup(key)
+  elif (key of GetModuleWord):
+    let binding = spry.rootActivation.lookup(GetModuleWord(key).module)
     if binding.notNil:
       let module = binding.val
       if module.notNil:
@@ -1056,12 +1063,6 @@ proc lookup(spry: Interpreter, key: Node): Binding =
       let hit = activation.lookup(key)
       if hit.notNil:
         return hit
-
-#method lookup(spry: Interpreter, key: EvalModuleWord): Binding =
-#  let binding = spry.rootActivation.lookup(key.module)
-#  let module = binding.val
-#  if module.notNil:
-#    result = Map(module).lookup(key)
 
 proc lookupLocal(spry: Interpreter, key: Node): Binding =
   return spry.currentActivation.lookup(key)

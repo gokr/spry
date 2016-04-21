@@ -474,8 +474,9 @@ when true:
   assert(run("Foo = {x = 10} eva Foo::y") == "undef")
   assert(run("Foo = {x = 10} Foo::x = 3 eva Foo::x") == "3")
   assert(run("eva Foo::y") == "undef")
-  #assert(run("Foo = {x = 10} eva ^Foo::x") == "10")
-  ##assert(run("Foo = {x = func [:x + 1]} eva ^Foo::x") == "func [:x + 1]")
+  assert(run("Foo = {x = 10} eva ^Foo::x") == "10")
+  assert(run("Foo = {x = func [:x + 1]} eva ^Foo::x") == "func [:x + 1]")
+  assert(run("Foo = {x = func [:x + 1]} Foo::x 3") == "4")
 
 
 when true:
