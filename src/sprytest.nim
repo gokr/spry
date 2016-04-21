@@ -468,6 +468,16 @@ when true:
   assert(run("a = {x = 1} a clone") == "{x = 1}")
   assert(run("a = {x = [1]} b = (a clone) (b at: 'y put: 2) eval b") == "{x = [1] y = 2}")
   assert(run("a = {x = [1]} b = (a clone) (b at: 'y put: 2) eval a") == "{x = [1]}")
+
+  # Modules
+  assert(run("Foo = {x = 10} eva Foo::x") == "10")
+  assert(run("Foo = {x = 10} eva Foo::y") == "undef")
+  assert(run("Foo = {x = 10} Foo::x = 3 eva Foo::x") == "3")
+  assert(run("eva Foo::y") == "undef")
+  #assert(run("Foo = {x = 10} eva ^Foo::x") == "10")
+  ##assert(run("Foo = {x = func [:x + 1]} eva ^Foo::x") == "func [:x + 1]")
+
+
 when true:
   # Demonstrate extension from extend.nim
   assert(show("'''abc'''") == "\"abc\"")

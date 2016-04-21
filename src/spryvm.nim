@@ -35,11 +35,15 @@ type
   LitWord* = ref object of Word
 
   EvalWord* = ref object of EvalW
+  EvalModuleWord* = ref object of EvalWord
+    module*: Word
   EvalSelfWord* = ref object of EvalW
   EvalOuterWord* = ref object of EvalW
   EvalArgWord* = ref object of EvalW
 
   GetWord* = ref object of GetW
+  GetModuleWord* = ref object of GetWord
+    module*: Word
   GetSelfWord* = ref object of GetW
   GetOuterWord* = ref object of GetW
   GetArgWord* = ref object of GetW
@@ -236,6 +240,9 @@ method `$`*(self: Word): string =
 method `$`*(self: EvalWord): string =
   self.word
 
+method `$`*(self: EvalModuleWord): string =
+  $self.module & "::" & self.word
+
 method `$`*(self: EvalSelfWord): string =
   "." & self.word
 
@@ -244,6 +251,9 @@ method `$`*(self: EvalOuterWord): string =
 
 method `$`*(self: GetWord): string =
   "^" & self.word
+
+method `$`*(self: GetModuleWord): string =
+  "^" & $self.module & "::" & self.word
 
 method `$`*(self: GetSelfWord): string =
   "^." & self.word
@@ -304,6 +314,13 @@ proc newMap*(bindings: OrderedTable[Node, Binding]): Map =
 proc newEvalWord*(s: string): EvalWord =
   EvalWord(word: s)
 
+proc newLitWord*(s: string): LitWord =
+  LitWord(word: s)
+
+proc newEvalModuleWord*(s: string): EvalWord =
+  let both = s.split("::")
+  EvalModuleWord(word: both[1], module: newEvalWord(both[0]))
+
 proc newEvalSelfWord*(s: string): EvalSelfWord =
   EvalSelfWord(word: s)
 
@@ -313,14 +330,15 @@ proc newEvalOuterWord*(s: string): EvalOuterWord =
 proc newGetWord*(s: string): GetWord =
   GetWord(word: s)
 
+proc newGetModuleWord*(s: string): GetWord =
+  let both = s.split("::")
+  GetModuleWord(word: both[1], module: newEvalWord(both[0]))
+
 proc newGetSelfWord*(s: string): GetSelfWord =
   GetSelfWord(word: s)
 
 proc newGetOuterWord*(s: string): GetOuterWord =
   GetOuterWord(word: s)
-
-proc newLitWord*(s: string): LitWord =
-  LitWord(word: s)
 
 proc newEvalArgWord*(s: string): EvalArgWord =
   EvalArgWord(word: s)
@@ -565,7 +583,10 @@ proc newWord(self: Parser, token: string): Node =
       else:
         raiseParseException("Malformed local lookup word, missing at least 1 character")
     else:
-      return newGetWord(token[1..^1])
+      if token.contains("::"):
+        return newGetModuleWord(token[1..^1])
+      else:
+        return newGetWord(token[1..^1])
 
   # All literal words are preceded with "'"
   if first == '\'':
@@ -604,7 +625,10 @@ proc newWord(self: Parser, token: string): Node =
     else:
       raiseParseException("Malformed local eval word, missing at least 1 character")
   else:
-    return newEvalWord(token)
+    if token.contains("::"):
+      return newEvalModuleWord(token)
+    else:
+      return newEvalWord(token)
 
 template newWord*(token: string): Node =
   newWord(nil, token)
@@ -1021,10 +1045,23 @@ method lookup(self: BlokActivation, key: Node): Binding =
     return self.locals.lookup(key)
 
 proc lookup(spry: Interpreter, key: Node): Binding =
-  for activation in mapWalk(spry.currentActivation):
-    let hit = activation.lookup(key)
-    if hit.notNil:
-      return hit
+  if (key of EvalModuleWord):
+    let binding = spry.rootActivation.lookup(EvalModuleWord(key).module)
+    if binding.notNil:
+      let module = binding.val
+      if module.notNil:
+        result = Map(module).lookup(key)
+  else:
+    for activation in mapWalk(spry.currentActivation):
+      let hit = activation.lookup(key)
+      if hit.notNil:
+        return hit
+
+#method lookup(spry: Interpreter, key: EvalModuleWord): Binding =
+#  let binding = spry.rootActivation.lookup(key.module)
+#  let module = binding.val
+#  if module.notNil:
+#    result = Map(module).lookup(key)
 
 proc lookupLocal(spry: Interpreter, key: Node): Binding =
   return spry.currentActivation.lookup(key)
