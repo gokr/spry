@@ -738,6 +738,7 @@ type
     currentActivation*: Activation  # Execution spaghetti stack
     rootActivation*: RootActivation # The first one
     root*: Map               # Root bindings
+    modules*: Blok           # Modules for unqualified lookup
     trueVal*: Node
     falseVal*: Node
     undefVal*: Node
@@ -1059,8 +1060,14 @@ proc lookup(spry: Interpreter, key: Node): Binding =
       if module.notNil:
         result = Map(module).lookup(key)
   else:
+    # Try looking upwards ending in the rootActivation
     for activation in mapWalk(spry.currentActivation):
       let hit = activation.lookup(key)
+      if hit.notNil:
+        return hit
+    # Then we try looking in the modules block, in order
+    for map in spry.modules.nodes:
+      let hit = Map(map).lookup(key)
       if hit.notNil:
         return hit
 
@@ -1182,6 +1189,12 @@ proc newInterpreter*(): Interpreter =
   # Access to root Map
   nimPrim("root", false, 0):
     spry.root
+
+  # Access to modules Block
+  spry.modules = newBlok()
+  spry.makeWord("modules", spry.modules)
+  #nimPrim("modules", false, 0):
+  #  spry.modules
 
   # Tags
   nimPrim("tag:", true, 2):
@@ -1505,8 +1518,6 @@ proc newInterpreter*(): Interpreter =
         n = (blk next)
         if do pred n [result add: n]]
       return result]
-
-    modules = [] clone
   ]"""
 
 proc atEnd*(spry: Interpreter): bool {.inline.} =

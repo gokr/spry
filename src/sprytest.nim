@@ -477,7 +477,12 @@ when true:
   assert(run("Foo = {x = 10} eva ^Foo::x") == "10")
   assert(run("Foo = {x = func [:x + 1]} eva ^Foo::x") == "func [:x + 1]")
   assert(run("Foo = {x = func [:x + 1]} Foo::x 3") == "4")
-
+  assert(run("eval modules") == "[]")
+  assert(run("modules add: {x = 10} eval modules") == "[{x = 10}]")
+  assert(run("modules add: {x = 10} eval modules size") == "1")
+  assert(run("modules add: {x = 10} eval x") == "10")
+  assert(run("Foo = {x = func [:x + 1]} Bar = {x = 7} modules add: Foo modules add: Bar x 1") == "2")
+  assert(run("Foo = {x = func [:x + 1] y = 10} Bar = {x = func [:x + 2]} modules add: Bar modules add: Foo x y") == "12")
 
 when true:
   # Demonstrate extension from extend.nim
