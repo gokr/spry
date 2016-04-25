@@ -22,9 +22,9 @@ proc addModules*(spry: Interpreter) =
       true
     ]
 
-    existsFile "ispry.spry" if: [
-      echo "Loading ispry.spry ..."
-      loadFile: "ispry.spry"
+    existsFile "spry.spry" if: [
+      echo "Loading spry.spry ..."
+      loadFile: "spry.spry"
     ]
 
   ]"""

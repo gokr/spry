@@ -1,0 +1,15 @@
+{
+  _meta = {
+    name = 'ispry
+    version = "1.0"
+    description = "Default module loaded by ispry"
+  }
+
+  # Just a demo module
+  bar = 10
+
+  baz = func [:x * 10]
+
+  bazz = func [(baz :y) + 1]
+}
+

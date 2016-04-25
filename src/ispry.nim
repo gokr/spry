@@ -17,7 +17,7 @@ when defined(readLine):
 import spryvm
 
 # Spry extra modules, as much as possible!
-import spryextend, sprymath, spryos, spryio, sprythread, sprypython, spryoo, sprydebug, sprycompress
+import spryextend, sprymath, spryos, spryio, sprythread, sprypython, spryoo, sprydebug, sprycompress, sprystring, sprymodules
 
 const Prompt = ">>> "
 
@@ -51,6 +51,8 @@ proc main() =
   spry.addOO()
   spry.addDebug()
   spry.addCompress()
+  spry.addString()
+  spry.addModules()
 
   var
     lines, stashed, fileLines = newSeq[string]()
