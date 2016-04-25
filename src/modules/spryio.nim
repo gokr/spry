@@ -1,5 +1,7 @@
 import spryvm
 
+import os
+
 # Spry IO module
 proc addIO*(spry: Interpreter) =
   # IO
@@ -8,6 +10,9 @@ proc addIO*(spry: Interpreter) =
   nimPrim("probe", false, 1):
     result = arg(spry)
     echo(form(result))
+  nimPrim("existsFile", false, 1):
+    let fn = StringVal(evalArg(spry)).value
+    newValue(existsFile(fn))
   nimPrim("readFile", false, 1):
     let fn = StringVal(evalArg(spry)).value
     let contents = readFile(fn).string
