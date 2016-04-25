@@ -95,81 +95,6 @@ type
 proc raiseRuntimeException*(msg: string) =
   raise newException(RuntimeException, msg)
 
-method hash*(self: Node): Hash {.base.} =
-  raiseRuntimeException("Nodes need to implement hash")
-
-method `==`*(self: Node, other: Node): bool {.base.} =
-  raiseRuntimeException("Nodes need to implement ==")
-
-method hash*(self: Word): Hash =
-  self.word.hash
-
-method `==`*(self: Word, other: Node): bool =
-  other of Word and (self.word == Word(other).word)
-
-method hash*(self: IntVal): Hash =
-  self.value.hash
-
-method `==`*(self: IntVal, other: Node): bool =
-  other of IntVal and (self.value == IntVal(other).value)
-
-method hash*(self: FloatVal): Hash =
-  self.value.hash
-
-method `==`*(self: FloatVal, other: Node): bool =
-  other of FloatVal and (self.value == FloatVal(other).value)
-
-method hash*(self: StringVal): Hash =
-  self.value.hash
-
-method `==`*(self: StringVal, other: Node): bool =
-  other of StringVal and (self.value == StringVal(other).value)
-
-method hash*(self: TrueVal): Hash =
-  hash(1)
-
-method hash*(self: FalseVal): Hash =
-  hash(0)
-
-method value*(self: BoolVal): bool {.base.} =
-  true
-
-method value*(self: FalseVal): bool =
-  false
-
-method `==`*(self, other: TrueVal): bool =
-  true
-
-method `==`*(self, other: FalseVal): bool =
-  true
-
-method `==`*(self: TrueVal, other: FalseVal): bool =
-  false
-
-method `==`*(self: FalseVal, other: TrueVal): bool =
-  false
-
-#method `==`*(self: BoolVal, other: Node): bool =
-#  other of BoolVal and (self == BoolVal(other))
-
-#method `==`*(other: Node, self: BoolVal): bool =
-#  other of BoolVal and (self == BoolVal(other))
-
-#method `==`*(other, self: BoolVal): bool =
-#  self == other
-
-method hash*(self: NilVal): Hash =
-  hash(1)
-
-method `==`*(self: Nilval, other: Node): bool =
-  other of NilVal
-
-method hash*(self: UndefVal): Hash =
-  hash(2)
-
-method `==`*(self: Undefval, other: Node): bool =
-  other of UndefVal
-
 
 # Utilities I would like to have in stdlib
 template isEmpty*[T](a: openArray[T]): bool =
@@ -283,6 +208,83 @@ method `$`*(self: KeyWord): string =
   result = ""
   for i in 0 .. self.keys.len - 1:
     result = result & self.keys[i] & " " & $self.args[i]
+
+# Hash and == implementations
+method hash*(self: Node): Hash {.base.} =
+  raiseRuntimeException("Nodes need to implement hash")
+
+method `==`*(self: Node, other: Node): bool {.base.} =
+  raiseRuntimeException("Nodes need to implement ==")
+
+method hash*(self: Word): Hash =
+  self.word.hash
+
+method `==`*(self: Word, other: Node): bool =
+  other of Word and (self.word == Word(other).word)
+
+method hash*(self: IntVal): Hash =
+  self.value.hash
+
+method `==`*(self: IntVal, other: Node): bool =
+  other of IntVal and (self.value == IntVal(other).value)
+
+method hash*(self: FloatVal): Hash =
+  self.value.hash
+
+method `==`*(self: FloatVal, other: Node): bool =
+  other of FloatVal and (self.value == FloatVal(other).value)
+
+method hash*(self: StringVal): Hash =
+  self.value.hash
+
+method `==`*(self: StringVal, other: Node): bool =
+  other of StringVal and (self.value == StringVal(other).value)
+
+method hash*(self: TrueVal): Hash =
+  hash(1)
+
+method hash*(self: FalseVal): Hash =
+  hash(0)
+
+method value*(self: BoolVal): bool {.base.} =
+  true
+
+method value*(self: FalseVal): bool =
+  false
+
+method `==`*(self, other: TrueVal): bool =
+  true
+
+method `==`*(self, other: FalseVal): bool =
+  true
+
+method `==`*(self: TrueVal, other: FalseVal): bool =
+  false
+
+method `==`*(self: FalseVal, other: TrueVal): bool =
+  false
+
+#method `==`*(self: BoolVal, other: Node): bool =
+#  other of BoolVal and (self == BoolVal(other))
+
+#method `==`*(other: Node, self: BoolVal): bool =
+#  other of BoolVal and (self == BoolVal(other))
+
+#method `==`*(other, self: BoolVal): bool =
+#  self == other
+
+method hash*(self: NilVal): Hash =
+  hash(1)
+
+method `==`*(self: Nilval, other: Node): bool =
+  other of NilVal
+
+method hash*(self: UndefVal): Hash =
+  hash(2)
+
+method `==`*(self: Undefval, other: Node): bool =
+  other of UndefVal
+
 
 # Human string representations
 method form*(self: Node): string {.base.} =
@@ -1153,6 +1155,9 @@ proc boolVal(val: bool, spry: Interpreter): Node =
   else:
     result = spry.falseVal
 
+proc reify(word: LitWord): Node =
+  newWord(word.word)
+
 # A template reducing boilerplate for registering nim primitives
 template nimPrim*(name: string, infix: bool, arity: int, body: stmt): stmt {.immediate, dirty.} =
   spry.makeWord(name, newNimProc(
@@ -1193,8 +1198,6 @@ proc newInterpreter*(): Interpreter =
   # Access to modules Block
   spry.modules = newBlok()
   spry.makeWord("modules", spry.modules)
-  #nimPrim("modules", false, 0):
-  #  spry.modules
 
   # Tags
   nimPrim("tag:", true, 2):
@@ -1202,7 +1205,10 @@ proc newInterpreter*(): Interpreter =
     let tag = evalArg(spry)
     if result.tags.isNil:
       result.tags = newBlok()
-    result.tags.add(tag)
+    if tag of LitWord:
+      result.tags.add(reify(LitWord(tag)))
+    else:
+      result.tags.add(tag)
   nimPrim("tag?", true, 2):
     let node = evalArgInfix(spry)
     let tag = evalArg(spry)
@@ -1309,7 +1315,11 @@ proc newInterpreter*(): Interpreter =
     if comp of SeqComposite:
       return SeqComposite(comp)[evalArg(spry)]
     elif comp of Map:
-      return Map(comp)[evalArg(spry)]
+      let key = evalArg(spry)
+      if key of LitWord:
+        return Map(comp)[reify(LitWord(key))]
+      else:
+        return Map(comp)[key]
   nimPrim("at:put:", true, 3):
     let comp = evalArgInfix(spry)
     let key = evalArg(spry)
@@ -1317,15 +1327,23 @@ proc newInterpreter*(): Interpreter =
     if comp of SeqComposite:
       SeqComposite(comp)[key] = val
     elif comp of Map:
-      Map(comp)[key] = val
+      if key of LitWord:
+        Map(comp)[reify(LitWord(key))] = val
+      else:
+        Map(comp)[key] = val
     return comp
   nimPrim("contains:", true, 2):
     let comp = evalArgInfix(spry)
     let key = evalArg(spry)
+    var k: Node
+    if key of LitWord:
+      k = reify(LitWord(key))
+    else:
+      k = key
     if comp of SeqComposite:
-      return newValue(SeqComposite(comp).contains(key))
+      return newValue(SeqComposite(comp).contains(k))
     elif comp of Map:
-      return newValue(Map(comp).contains(key))
+      return newValue(Map(comp).contains(k))
     return comp
   nimPrim("read", true, 1):
     let comp = SeqComposite(evalArgInfix(spry))
@@ -1387,10 +1405,20 @@ proc newInterpreter*(): Interpreter =
   nimPrim("eval", false, 1):    evalArg(spry).eval(spry)
   nimPrim("parse", false, 1):   newParser().parse(StringVal(evalArg(spry)).value)
 
+  # Word conversions
+  nimPrim("reify", false, 1):
+    reify(LitWord(evalArg(spry)))
+  nimPrim("sym", false, 1):
+    newLitWord($evalArg(spry))
+  nimPrim("litword", false, 1):
+    newLitWord(StringVal(evalArg(spry)).value)
+  nimPrim("word", false, 1):
+    newWord(StringVal(evalArg(spry)).value)
+
   # Cloning
   nimPrim("clone", true, 1):    evalArgInfix(spry).clone()
 
-  # serialize & deserialize
+  # Serialize & deserialize
   nimPrim("serialize", false, 1):
     newValue($evalArg(spry))
   nimPrim("deserialize", false, 1):
@@ -1602,7 +1630,8 @@ method eval(self: EvalOuterWord, spry: Interpreter): Node =
 
 method eval(self: LitWord, spry: Interpreter): Node =
   ## Evaluating a LitWord means creating a new word by stripping off \'
-  newWord(self.word)
+  #newWord(self.word)
+  self
 
 method eval(self: EvalArgWord, spry: Interpreter): Node =
   var arg: Node
