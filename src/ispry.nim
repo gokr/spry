@@ -106,8 +106,11 @@ proc main() =
       let code = lines.join("\n")
       lines = newSeq[string]()
       try:
-        # Let the interpreter eval the code
-        var output = $spry.evalRoot("[eval " & code & "]")
+        # Let the interpreter eval the code. We need to eval whatever we
+        # get (ispry acting as a func) - but we also need to use parens or
+        # it may get weird. The surrounding block is just because we only
+        # want to pass one Node.
+        var output = $spry.evalRoot("[eval (" & code & ")]")
         # Print any result
         if output.isNil:
           output = if suspended: "nil" else: ""

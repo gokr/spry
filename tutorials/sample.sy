@@ -11,9 +11,15 @@
 echo "Hello"
 # pause
 
-# Here is a block with all core Spry value types.
-# It should print "[3 4.0 true false nil "hey"]"
-echo [3 4.0 true false nil "hey" undef]
+# Here is a block with all core Spry value types; int, float, bool, nil, string.
+# It should print "[3 4.0 true false "hey"]"
+echo [3 4.0 true false "hey"]
+# pause
+
+# Just as in Smalltalk we have nil, but also undef which means never
+# assigned. All four of true, false, nil and undef are words bound to
+# known singleton nodes owned by the interpreter.
+echo [nil undef]
 # pause
 
 # A word is just a string until it gets resolved. "echo" above
