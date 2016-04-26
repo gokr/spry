@@ -107,7 +107,7 @@ proc main() =
       lines = newSeq[string]()
       try:
         # Let the interpreter eval the code
-        var output = $spry.evalRoot("[" & code & "]")
+        var output = $spry.evalRoot("[eval " & code & "]")
         # Print any result
         if output.isNil:
           output = if suspended: "nil" else: ""
