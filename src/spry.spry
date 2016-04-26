@@ -5,11 +5,6 @@
     description = "Default module loaded by ispry"
   }
 
-  # Just a demo module
-  bar = 10
-
-  baz = func [:x * 10]
-
-  bazz = func [(baz :y) + 1]
+  baseName = funci [:fn split: "." first]
 }
 

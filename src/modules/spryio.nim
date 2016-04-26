@@ -21,3 +21,4 @@ proc addIO*(spry: Interpreter) =
     let fn = StringVal(evalArg(spry)).value
     result = evalArg(spry)
     writeFile(fn, StringVal(result).value)
+
