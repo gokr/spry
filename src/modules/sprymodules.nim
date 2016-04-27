@@ -24,8 +24,8 @@ proc addModules*(spry: Interpreter) =
     ]
 
     existsFile "spry.spry" if: [
-      echo "Loading spry.spry ..."
-      loadFile: "spry.spry"
+      echo "Loading spry.sy ..."
+      loadFile: "spry.sy"
     ]
   ]"""
 
