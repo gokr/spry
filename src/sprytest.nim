@@ -486,6 +486,9 @@ when true:
   assert(run("modules add: {x = 10} eval x") == "10")
   assert(run("Foo = {x = func [:x + 1]} Bar = {x = 7} modules add: Foo modules add: Bar x 1") == "2")
   assert(run("Foo = {x = func [:x + 1] y = 10} Bar = {x = func [:x + 2]} modules add: Bar modules add: Foo x y") == "12")
+  assert(run("foo = func [bar = {x = 10} bar::x + 1] bar = 10 eval foo") == "11")
+  assert(run("do [bar = {x = 1 y = 2} do [bar::x + 1]]") == "2")
+
 
   # String
   assert(run("\"abc.de\" split: \".\"") == "[\"abc\" \"de\"]")
