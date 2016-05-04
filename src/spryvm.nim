@@ -745,6 +745,7 @@ type
     falseVal*: Node
     undefVal*: Node
     nilVal*: Node
+    objectish*: Node         # Tag for Objects and Modules
 
   # Node type to hold Nim primitive procs
   ProcType* = proc(spry: Interpreter): Node
@@ -1039,6 +1040,13 @@ method doReturn*(self: Activation, spry: Interpreter) {.base.} =
 method doReturn*(self: FunkActivation, spry: Interpreter) =
   spry.currentActivation = Funk(self.body).parent
 
+method isObjectish(self: Activation, spry: Interpreter): bool {.base.} =
+  false
+
+method isObjectish(self: BlokActivation, spry: Interpreter): bool =
+  self.locals.notNil and self.locals.tags.notNil and self.locals.tags.contains(spry.objectish)
+
+
 method lookup(self: Activation, key: Node): Binding {.base.} =
   # Base implementation needed for dynamic dispatch to work
   nil
@@ -1050,13 +1058,13 @@ method lookup(self: BlokActivation, key: Node): Binding =
 proc lookup(spry: Interpreter, key: Node): Binding =
   ## Not sure why, but three methods didn't want to fly
   if (key of EvalModuleWord):
-    let binding = spry.rootActivation.lookup(EvalModuleWord(key).module)
+    let binding = spry.lookup(EvalModuleWord(key).module)
     if binding.notNil:
       let module = binding.val
       if module.notNil:
         result = Map(module).lookup(key)
   elif (key of GetModuleWord):
-    let binding = spry.rootActivation.lookup(GetModuleWord(key).module)
+    let binding = spry.lookup(GetModuleWord(key).module)
     if binding.notNil:
       let module = binding.val
       if module.notNil:
@@ -1072,6 +1080,12 @@ proc lookup(spry: Interpreter, key: Node): Binding =
       let hit = Map(map).lookup(key)
       if hit.notNil:
         return hit
+
+proc lookupSelf(spry: Interpreter, key: Node): Binding =
+  # Find first objectish, ending in the rootActivation
+  for activation in mapWalk(spry.currentActivation):
+    if activation.isObjectish(spry):
+      return activation.lookup(key)
 
 proc lookupLocal(spry: Interpreter, key: Node): Binding =
   return spry.currentActivation.lookup(key)
@@ -1096,7 +1110,7 @@ proc makeBinding(spry: Interpreter, key: Node, val: Node): Binding =
   for activation in mapWalk(spry.currentActivation):
     return activation.makeBinding(key, val)
 
-proc setBinding(spry: Interpreter, key: Node, value: Node): Binding =
+proc setBinding*(spry: Interpreter, key: Node, value: Node): Binding =
   result = spry.lookup(key)
   if result.notNil:
     result.val = value
@@ -1172,10 +1186,12 @@ proc newInterpreter*(): Interpreter =
   spry.falseVal = newValue(false)
   spry.nilVal = newNilVal()
   spry.undefVal = newUndefVal()
+  spry.objectish = newLitWord("objectish")
   spry.makeWord("false", spry.falseVal)
   spry.makeWord("true", spry.trueVal)
   spry.makeWord("undef", spry.undefVal)
   spry.makeWord("nil", spry.nilVal)
+  spry.makeWord("objectish", spry.objectish)
 
   # Reflection words
   # Access to current Activation
@@ -1223,6 +1239,7 @@ proc newInterpreter*(): Interpreter =
   nimPrim("tags:", true, 2):
     result = evalArgInfix(spry)
     result.tags = Blok(evalArg(spry))
+
 
   # Lookups
   nimPrim("?", true, 1):
@@ -1605,7 +1622,7 @@ method eval(self: GetWord, spry: Interpreter): Node =
 
 method eval(self: GetSelfWord, spry: Interpreter): Node =
   ## Look up only
-  let hit = spry.lookupLocal(self)
+  let hit = spry.lookupSelf(self)
   if hit.isNil: spry.undefVal else: hit.val
 
 method eval(self: GetOuterWord, spry: Interpreter): Node =
@@ -1620,7 +1637,7 @@ method eval(self: EvalWord, spry: Interpreter): Node =
 
 method eval(self: EvalSelfWord, spry: Interpreter): Node =
   ## Look up only
-  let hit = spry.lookupLocal(self)
+  let hit = spry.lookupSelf(self)
   if hit.isNil: spry.undefVal else: hit.val.eval(spry)
 
 method eval(self: EvalOuterWord, spry: Interpreter): Node =
