@@ -10,6 +10,7 @@ type
   # The iterative parser builds a Node tree using a stack for nested blocks
   Parser* = ref object
     token: string                       # Collects characters into a token
+    ws: string                          # Collects whitespace and comments
     stack: seq[Node]                    # Lexical stack of block Nodes
     valueParsers*: seq[ValueParser]     # Registered valueParsers for literals
 
@@ -25,6 +26,7 @@ type
 
   # Nodes form an AST which we later eval directly using Interpreter
   Node* = ref object of RootObj
+    comment*: string
     tags*: Blok
   Word* = ref object of Node
     word*: string
@@ -72,7 +74,8 @@ type
 
   # Abstract
   Composite* = ref object of Node
-  SeqComposite* = ref object of Node
+    commentEnd*: string
+  SeqComposite* = ref object of Composite
     nodes*: seq[Node]
     pos*: int
 
@@ -121,6 +124,12 @@ method `$`*(self: Node): string {.base.} =
   else:
     repr(self)
 
+method commented*(self: Node): string {.base.} =
+  if self.comment.isNil:
+    $self
+  else:
+    self.comment & $self
+
 method `$`*(self: Binding): string =
   $self.key & " = " & $self.val
 
@@ -134,6 +143,21 @@ method `$`*(self: Map): string =
     else:
       result.add(" " & $v)
   return result & "}"
+
+method commented*(self: Map): string =
+  if self.comment.isNil:
+    result = "{"
+  else:
+    result = self.comment & "{"
+  var first = true
+  for k,v in self.bindings:
+    if first:
+      result.add(commented(v))
+      first = false
+    else:
+      result.add(commented(v))
+  return result & "}"
+
 
 method `$`*(self: IntVal): string =
   $self.value
@@ -158,6 +182,9 @@ method `$`*(self: UndefVal): string =
 
 proc `$`*(self: seq[Node]): string =
   self.map(proc(n: Node): string = $n).join(" ")
+
+proc commented*(self: seq[Node]): string =
+  self.map(proc(n: Node): string = commented(n)).join()
 
 method `$`*(self: Word): string =
   self.word
@@ -198,16 +225,54 @@ method `$`*(self: GetArgWord): string =
 method `$`*(self: Blok): string =
   "[" & $self.nodes & "]"
 
+method commented*(self: Blok): string =
+  if self.comment.isNil:
+    result = "["
+  else:
+    result = self.comment & "["
+  result = result & commented(self.nodes)
+  if self.commentEnd.isNil:
+    result = result & "]"
+  else:
+    result = result & self.commentEnd & "]"
+
 method `$`*(self: Paren): string =
   "(" & $self.nodes & ")"
 
+method commented*(self: Paren): string =
+  if self.comment.isNil:
+    result = "("
+  else:
+    result = self.comment & "("
+  result = result & commented(self.nodes)
+  if self.commentEnd.isNil:
+    result = result & ")"
+  else:
+    result = result & self.commentEnd & ")"
+
 method `$`*(self: Curly): string =
   "{" & $self.nodes & "}"
+
+method commented*(self: Curly): string =
+  if self.comment.isNil:
+    result = "{"
+  else:
+    result = self.comment & "{"
+  result = result & commented(self.nodes)
+  if self.commentEnd.isNil:
+    result = result & "}"
+  else:
+    result = result & self.commentEnd & "}"
 
 method `$`*(self: KeyWord): string =
   result = ""
   for i in 0 .. self.keys.len - 1:
     result = result & self.keys[i] & " " & $self.args[i]
+
+method commented*(self: KeyWord): string =
+  result = ""
+  for i in 0 .. self.keys.len - 1:
+    result = result & self.keys[i] & commented(self.args[i])
 
 # Hash and == implementations
 method hash*(self: Node): Hash {.base.} =
@@ -524,10 +589,10 @@ proc currentKeyword(self: Parser): KeyWord =
     return nil
 
 proc closeKeyword(self: Parser)
-proc pop(self: Parser) =
+proc pop(self: Parser): Node =
   if self.currentKeyword().notNil:
     self.closeKeyword()
-  discard self.stack.pop()
+  self.stack.pop()
 
 proc addNode(self: Parser)
 proc closeKeyword(self: Parser) =
@@ -638,16 +703,21 @@ template newWord*(token: string): Node =
 proc newWordOrValue(self: Parser): Node =
   ## Decide what to make, a word or value
   let token = self.token
+  let ws = self.ws
   self.token = ""
+  self.ws = ""
 
   # Try all valueParsers...
   for p in self.valueParsers:
     let valueOrNil = p.parseValue(token)
     if valueOrNil.notNil:
+      valueOrNil.comment = ws
       return valueOrNil
 
   # Then it must be a word
-  return newWord(self, token)
+  result = newWord(self, token)
+  if result.notNil:
+    result.comment = ws
 
 proc addNode(self: Parser) =
   # If there is a token we figure out what to make of it
@@ -662,6 +732,7 @@ proc parse*(self: Parser, str: string): Node =
   var pos = 0
   self.stack = @[]
   self.token = ""
+  self.ws = ""
   # Wrap code in a block and later return last element as result.
   var blok = newBlok()
   self.push(blok)
@@ -683,6 +754,8 @@ proc parse*(self: Parser, str: string): Node =
       if currentValueParser.isNil and ch in Whitespace:
         # But first we make sure to finish the token if any
         self.addNode()
+        # Collect for formatting
+        self.ws.add(ch)
       else:
         # Check if a valueParser wants to take over, only 5 first chars are checked
         let tokenLen = self.token.len + 1
@@ -694,34 +767,53 @@ proc parse*(self: Parser, str: string): Node =
         # If still no valueParser active we do regular token handling
         if currentValueParser.isNil:
           case ch
-          # Comments are not included in the AST
+          # Comments are collected and added to next node
           of '#':
             self.addNode()
+            self.ws.add('#')
             while (pos < str.len) and (str[pos] != '\l'):
+              self.ws.add(str[pos])
               inc pos
+            #if (pos < str.len):
+            #  self.ws.add('\l')
           # Paren
           of '(':
+            let n = newParen()
+            n.comment = self.ws
+            self.ws = ""
             self.addNode()
-            self.push(newParen())
+            self.push(n)
           # Block
           of '[':
+            let n = newBlok()
+            n.comment = self.ws
+            self.ws = ""
             self.addNode()
-            self.push(newBlok())
-          # Curly
+            self.push(n)
+         # Curly
           of '{':
+            let n = newCurly()
+            n.comment = self.ws
+            self.ws = ""
             self.addNode()
-            self.push(newCurly())
+            self.push(n)
           of ')':
             self.addNode()
-            self.pop
+            let n = self.pop
+            Composite(n).commentEnd = self.ws
+            self.ws = ""
           # Block
           of ']':
             self.addNode()
-            self.pop
+            let n = self.pop
+            Composite(n).commentEnd = self.ws
+            self.ws = ""
           # Curly
           of '}':
             self.addNode()
-            self.pop
+            let n = self.pop
+            Composite(n).commentEnd = self.ws
+            self.ws = ""
           # Ok, otherwise we just collect the char
           else:
             self.token.add(ch)
@@ -1291,6 +1383,8 @@ proc newInterpreter*(): Interpreter =
   # Conversions
   nimPrim("form", true, 1):
     newValue(form(evalArgInfix(spry)))
+  nimPrim("commented", true, 1):
+    newValue(commented(evalArgInfix(spry)))
   nimPrim("asFloat", true, 1):
     let val = evalArgInfix(spry)
     if val of FloatVal:
@@ -1567,6 +1661,7 @@ proc newInterpreter*(): Interpreter =
 
 proc atEnd*(spry: Interpreter): bool {.inline.} =
   return spry.currentActivation.atEnd
+
 
 proc funk*(spry: Interpreter, body: Blok, infix: bool): Node =
   result = newFunk(body, infix, spry.currentActivation)

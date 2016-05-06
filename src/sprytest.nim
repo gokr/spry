@@ -32,7 +32,11 @@ proc run(code: string): string =
   result = $newVM().evalRoot("[" & code & "]")
   echo("RESULT:" & result)
   echo("---------------------")
-
+proc stringRun(code: string): string =
+  # Expects a StringVal to compare with
+  result = StringVal(newVM().evalRoot("[" & code & "]")).value
+  echo("RESULT:" & result)
+  echo("---------------------")
 
 # A bunch of tests for Parser
 when true:
@@ -420,7 +424,7 @@ when true:
   assert(run("do [d = 5 locals at: 'd]") == "5")
   assert(run("locals at: 'd put: 5 d + 2") == "7")
   assert(run("do [a = 1 b = 2 locals]") == "{a = 1 b = 2}")
-  assert(run("do [a = 1 b = 2 (c = 3 (locals)]") == "{a = 1 b = 2 c = 3}")
+  assert(run("do [a = 1 b = 2 c = 3 (locals)]") == "{a = 1 b = 2 c = 3}")
 
   # The word self gives access to the local Object
   #assert(run("x = object {a = 1 foo = funci [self at: 'a]} x foo") == "1")
@@ -493,9 +497,31 @@ when true:
   assert(run("foo = func [bar = {x = 10} bar::x + 1] bar = 10 eval foo") == "11")
   assert(run("do [bar = {x = 1 y = 2} do [bar::x + 1]]") == "2")
 
-
   # String
   assert(run("\"abc.de\" split: \".\"") == "[\"abc\" \"de\"]")
+
+  # Commented
+  assert(stringRun("[  1 2  3 ] commented") == "[  1 2  3 ]")
+
+  # This test ensures that the commented func produces the same
+  # code string (comments and formatting) that the AST was built from.
+  let code ="""[# A Map is just a bunch of assignments inside a Curly. A Curly in Spry is just a sequence of Nodes.
+# After parsing we have a Curly which is still just "data". If we evaluate the Curly Spry will
+# execute the code inside it and at the end return the Map of locals that was populated by the code.
+{
+  # First is a very minimal meta Map holding the name of the Module in
+  # the form of a literal Word which is similar to a Symbol in Ruby/Smalltalk.
+  # There is no mandatory information, nor is the meta Map itself mandatory.
+  meta = { name = 'Foo }
+
+  # This just assigns 13 to x in the local scope Map
+  foo = 13
+
+  # Same again, but we can of course have funcs or whatever in a Module
+  adder = func [:x + :y]
+}]"""
+  assert(stringRun(code & " commented") == code)
+
 
 when true:
   # Demonstrate extension from extend.nim
