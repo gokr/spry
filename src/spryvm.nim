@@ -837,7 +837,7 @@ type
     falseVal*: Node
     undefVal*: Node
     nilVal*: Node
-    objectish*: Node         # Tag for Objects and Modules
+    objectTag*: Node         # Tag for Objects and Modules
 
   # Node type to hold Nim primitive procs
   ProcType* = proc(spry: Interpreter): Node
@@ -1132,11 +1132,11 @@ method doReturn*(self: Activation, spry: Interpreter) {.base.} =
 method doReturn*(self: FunkActivation, spry: Interpreter) =
   spry.currentActivation = Funk(self.body).parent
 
-method isObjectish(self: Activation, spry: Interpreter): bool {.base.} =
+method isObject(self: Activation, spry: Interpreter): bool {.base.} =
   false
 
-method isObjectish(self: BlokActivation, spry: Interpreter): bool =
-  self.locals.notNil and self.locals.tags.notNil and self.locals.tags.contains(spry.objectish)
+method isObject(self: BlokActivation, spry: Interpreter): bool =
+  self.locals.notNil and self.locals.tags.notNil and self.locals.tags.contains(spry.objectTag)
 
 
 method lookup(self: Activation, key: Node): Binding {.base.} =
@@ -1174,9 +1174,9 @@ proc lookup(spry: Interpreter, key: Node): Binding =
         return hit
 
 proc lookupSelf(spry: Interpreter, key: Node): Binding =
-  # Find first objectish, ending in the rootActivation
+  # Find first object, ending in the rootActivation
   for activation in mapWalk(spry.currentActivation):
-    if activation.isObjectish(spry):
+    if activation.isObject(spry):
       return activation.lookup(key)
 
 proc lookupLocal(spry: Interpreter, key: Node): Binding =
@@ -1278,12 +1278,12 @@ proc newInterpreter*(): Interpreter =
   spry.falseVal = newValue(false)
   spry.nilVal = newNilVal()
   spry.undefVal = newUndefVal()
-  spry.objectish = newLitWord("objectish")
+  spry.objectTag = newLitWord("object")
   spry.makeWord("false", spry.falseVal)
   spry.makeWord("true", spry.trueVal)
   spry.makeWord("undef", spry.undefVal)
   spry.makeWord("nil", spry.nilVal)
-  spry.makeWord("objectish", spry.objectish)
+  spry.makeWord("objectTag", spry.objectTag)
 
   # Reflection words
   # Access to current Activation

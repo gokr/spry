@@ -338,14 +338,14 @@ when true:
   assert(run("d = 5 do [eval d]") == "5")
   assert(run("d = 5 do [eval .d]") == "undef")
   assert(run("d = 5 do [eval ..d]") == "5")
-  # Not an objectish
+  # Not an object
   assert(run("o = {x = 5 getx = func [.x]} eval o::getx") == "undef")
-  assert(run("o = {x = 5} o tag: objectish o tags") == "[objectish]")
+  assert(run("o = {x = 5} o tag: objectTag o tags") == "[object]")
   assert(run("o = {x = 5 getx = func [return .x]} o::getx") == "undef")
-  assert(run("o = {x = 5 getx = func [return .x]} o tag: objectish o::getx") == "5")
-  assert(run("o = {x = 5 getx = func [eva .x]} o tag: objectish o::getx") == "5")
-  assert(run("o = {x = 5 getx = func [return .x] xplus = func [.x + 1]} o tag: objectish o::xplus") == "6")
-  assert(run("o = {x = 5 getx = func [return .x] xplus = func [do [locals at: 'x put: 4 .x + 1]]} o tag: objectish o::xplus") == "6")
+  assert(run("o = {x = 5 getx = func [return .x]} o tag: objectTag o::getx") == "5")
+  assert(run("o = {x = 5 getx = func [eva .x]} o tag: objectTag o::getx") == "5")
+  assert(run("o = {x = 5 getx = func [return .x] xplus = func [.x + 1]} o tag: objectTag o::xplus") == "6")
+  assert(run("o = {x = 5 getx = func [return .x] xplus = func [do [locals at: 'x put: 4 .x + 1]]} o tag: objectTag o::xplus") == "6")
 
   # func infix works too, and with 3 or more arguments too...
   assert(run("xx = func [:a :b a + b + b] xx 2 (xx 5 4)") == "28") # 2 + (5+4+4) + (5+4+4)
