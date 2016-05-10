@@ -426,15 +426,13 @@ when true:
   assert(run("do [a = 1 b = 2 locals]") == "{a = 1 b = 2}")
   assert(run("do [a = 1 b = 2 c = 3 (locals)]") == "{a = 1 b = 2 c = 3}")
 
-  # The word self gives access to the local Object
-  #assert(run("x = object {a = 1 foo = funci [self at: 'a]} x foo") == "1")
-  #assert(run("x = object {a = 1 foo = funci [.a]} x foo") == "1")
+  # The word self gives access to the closest outer object
+  assert(run("self") == "nil")
+  assert(run("x = object {a = 1 foo = funci [self at: 'a]} x::foo") == "1")
+  assert(run("x = object {a = 1 foo = funci [return .a]} x::foo") == "1")
 
   # The word activation gives access to the current activation record
   assert(run("activation") == "activation [[activation] 1]")
-
-  # The word self gives access to the closest outer object
-  assert(run("self") == "undef")
 
   # Add and check tag
   assert(run("x = 3 x tag: 'num x tag? 'num") == "true")
@@ -449,9 +447,14 @@ when true:
   assert(run("10 fac") == "3628800")
   assert(run("10.0 sin") == "-0.5440211108893698")
 
-  # spry OO
-  assert(run("p = polyfunc [:a + 1]") == "funci [:a + 1]")
-  assert(run("p = polyfunc [:a + 1] 2 p") == "3")
+  # spry polyfuncs (reduce should not be needed here)
+  assert(run("p = polyfunc reduce [func [:a + 1] func [:x]]") == "polyfunc [func [:a + 1] func [:x]]")
+  assert(run("[int string] -> [:x]") == "funci [:x]")
+  assert(run("^([int string] -> [:x]) tags") == "[int string]")
+  assert(run("p = polyfunc reduce [[int] -> [1] [string] -> [2]]") == "polyfunc [funci [1] funci [2]]")
+  assert(run("p = polyfunc reduce [[int] -> [1] [string] -> [2]] 42 p") == "nil")
+  assert(run("inc = polyfunc reduce [[int] -> [:x + 1] [string] -> [:x , \"c\"]] (42 tag: 'int) inc") == "43")
+  assert(run("inc = polyfunc reduce [[int] -> [:x + 1] [string] -> [:x , \"c\"]] (\"ab\" tag: 'string) inc") == "\"abc\"")
 
   # spry compress
   assert(run("compress \"abc123\"") == "\"\\x06\\x00\\x00\\x00`abc123\"")

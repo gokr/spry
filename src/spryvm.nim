@@ -131,6 +131,10 @@ method commented*(self: Node): string {.base.} =
     self.comment & $self
 
 method `$`*(self: Binding): string =
+  if self.key.isNil:
+    return "nil = " & $self.val
+  if self.val.isNil:
+    return $self.key & " = nil"
   $self.key & " = " & $self.val
 
 method `$`*(self: Map): string =
@@ -837,8 +841,8 @@ type
     falseVal*: Node
     undefVal*: Node
     nilVal*: Node
-    objectTag*: Node         # Tag for Objects and Modules
-
+    objectTag*: Node         # Tag for Objects
+    moduleTag*: Node         # Tag for Modules
   # Node type to hold Nim primitive procs
   ProcType* = proc(spry: Interpreter): Node
   NimProc* = ref object of Node
@@ -1138,7 +1142,6 @@ method isObject(self: Activation, spry: Interpreter): bool {.base.} =
 method isObject(self: BlokActivation, spry: Interpreter): bool =
   self.locals.notNil and self.locals.tags.notNil and self.locals.tags.contains(spry.objectTag)
 
-
 method lookup(self: Activation, key: Node): Binding {.base.} =
   # Base implementation needed for dynamic dispatch to work
   nil
@@ -1172,6 +1175,12 @@ proc lookup(spry: Interpreter, key: Node): Binding =
       let hit = Map(map).lookup(key)
       if hit.notNil:
         return hit
+
+proc self(spry: Interpreter): Map =
+  # Find first object, ending in the rootActivation
+  for activation in mapWalk(spry.currentActivation):
+    if activation.isObject(spry):
+      return BlokActivation(activation).getLocals()
 
 proc lookupSelf(spry: Interpreter, key: Node): Binding =
   # Find first object, ending in the rootActivation
@@ -1279,11 +1288,13 @@ proc newInterpreter*(): Interpreter =
   spry.nilVal = newNilVal()
   spry.undefVal = newUndefVal()
   spry.objectTag = newLitWord("object")
+  spry.moduleTag = newLitWord("module")
   spry.makeWord("false", spry.falseVal)
   spry.makeWord("true", spry.trueVal)
   spry.makeWord("undef", spry.undefVal)
   spry.makeWord("nil", spry.nilVal)
   spry.makeWord("objectTag", spry.objectTag)
+  spry.makeWord("moduleTag", spry.moduleTag)
 
   # Reflection words
   # Access to current Activation
@@ -1297,7 +1308,9 @@ proc newInterpreter*(): Interpreter =
 
   # Access to closest object
   nimPrim("self", false, 0):
-    spry.undefVal
+    result = self(spry)
+    if result.isNil:
+      result = spry.nilVal
 
   # Access to root Map
   nimPrim("root", false, 0):
@@ -1331,7 +1344,6 @@ proc newInterpreter*(): Interpreter =
   nimPrim("tags:", true, 2):
     result = evalArgInfix(spry)
     result.tags = Blok(evalArg(spry))
-
 
   # Lookups
   nimPrim("?", true, 1):
@@ -1637,6 +1649,11 @@ proc newInterpreter*(): Interpreter =
     # Trivial assert
     assert = func [:x ifNot: [error "Oops, assertion failed"] return x]
 
+    # Objects
+    object = func [ :map tag: objectTag return map ]
+    module = func [ object :map tag: moduleTag return map ]
+
+    # Collections
     do: = funci [:blk :fun
       blk reset
       [blk end?] whileFalse: [do fun (blk next)]
