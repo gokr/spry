@@ -44,22 +44,21 @@ when true:
   assert(show("[3 + 4 # foo]") == "[3 + 4]")  # Comment
   # The different kinds of words
   identical("one")        # Eval word
-  identical(".one")       # Eval word, only resolve locally
+  identical("@one")       # Eval word, self ref
   identical("..one")      # Eval word, start resolve in parent
   identical("^one")       # Lookup word
-  identical("^.one")      # Lookup word, only resolve locally
+  identical("^@one")      # Lookup word, self ref
   identical("^..one")     # Lookup word, start resolve in parent
   identical(":one")       # Arg word, pulls in from caller
   identical(":^one")      # Arg word, pulls in without eval
   identical("'one")       # Literal word
-  identical("'.one")      # Literal word
+  identical("'@one")      # Literal word
   identical("'..one")     # Literal word
   identical("'^..one")    # Literal word
   identical("':one")      # Literal word
   identical("':^one")     # Literal word
   identical("''one")      # Literal word
   assert(show("[a at: 1 put: 2]") == "[a at:put: 1 2]")  # Keyword syntactic sugar
-
   assert(show("""
 [
 red
@@ -333,19 +332,19 @@ when true:
 
   # . and ..
   assert(run("d = 5 do [eval ^d]") == "5")
-  assert(run("d = 5 do [eval ^.d]") == "undef")
+  assert(run("d = 5 do [eval ^@d]") == "undef")
   assert(run("d = 5 do [eval ^..d]") == "5")
   assert(run("d = 5 do [eval d]") == "5")
-  assert(run("d = 5 do [eval .d]") == "undef")
+  assert(run("d = 5 do [eval @d]") == "undef")
   assert(run("d = 5 do [eval ..d]") == "5")
   # Not an object
-  assert(run("o = {x = 5 getx = func [.x]} eval o::getx") == "undef")
+  assert(run("o = {x = 5 getx = func [@x]} eval o::getx") == "undef")
   assert(run("o = {x = 5} o tag: objectTag o tags") == "[object]")
-  assert(run("o = {x = 5 getx = func [return .x]} o::getx") == "undef")
-  assert(run("o = {x = 5 getx = func [return .x]} o tag: objectTag o::getx") == "5")
-  assert(run("o = {x = 5 getx = func [eva .x]} o tag: objectTag o::getx") == "5")
-  assert(run("o = {x = 5 getx = func [return .x] xplus = func [.x + 1]} o tag: objectTag o::xplus") == "6")
-  assert(run("o = {x = 5 getx = func [return .x] xplus = func [do [locals at: 'x put: 4 .x + 1]]} o tag: objectTag o::xplus") == "6")
+  assert(run("o = {x = 5 getx = func [return @x]} o::getx") == "undef")
+  assert(run("o = {x = 5 getx = func [return @x]} o tag: objectTag o::getx") == "5")
+  assert(run("o = {x = 5 getx = func [eva @x]} o tag: objectTag o::getx") == "5")
+  assert(run("o = {x = 5 getx = func [return @x] xplus = func [@x + 1]} o tag: objectTag o::xplus") == "6")
+  assert(run("o = {x = 5 getx = func [return @x] xplus = func [do [locals at: 'x put: 4 @x + 1]]} o tag: objectTag o::xplus") == "6")
 
   # func infix works too, and with 3 or more arguments too...
   assert(run("xx = func [:a :b a + b + b] xx 2 (xx 5 4)") == "28") # 2 + (5+4+4) + (5+4+4)
@@ -429,7 +428,7 @@ when true:
   # The word self gives access to the closest outer object
   assert(run("self") == "nil")
   assert(run("x = object {a = 1 foo = funci [self at: 'a]} x::foo") == "1")
-  assert(run("x = object {a = 1 foo = funci [return .a]} x::foo") == "1")
+  assert(run("x = object {a = 1 foo = funci [return @a]} x::foo") == "1")
 
   # The word activation gives access to the current activation record
   assert(run("activation") == "activation [[activation] 1]")

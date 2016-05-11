@@ -200,7 +200,7 @@ method `$`*(self: EvalModuleWord): string =
   $self.module & "::" & self.word
 
 method `$`*(self: EvalSelfWord): string =
-  "." & self.word
+  "@" & self.word
 
 method `$`*(self: EvalOuterWord): string =
   ".." & self.word
@@ -212,7 +212,7 @@ method `$`*(self: GetModuleWord): string =
   "^" & $self.module & "::" & self.word
 
 method `$`*(self: GetSelfWord): string =
-  "^." & self.word
+  "^@" & self.word
 
 method `$`*(self: GetOuterWord): string =
   "^.." & self.word
@@ -641,8 +641,13 @@ proc newWord(self: Parser, token: string): Node =
 
   # All lookup words are preceded with "^"
   if first == '^' and len > 1:
-    if token[1] == '.':
-      # Local or parent
+    if token[1] == '@':
+      # Self lookup word
+      if len > 2:
+        return newGetSelfWord(token[2..^1])
+      else:
+        raiseParseException("Malformed self lookup word, missing at least 1 character")
+    elif token[1] == '.':
       if len > 2:
         if token[2] == '.':
           if len > 3:
@@ -650,9 +655,9 @@ proc newWord(self: Parser, token: string): Node =
           else:
             raiseParseException("Malformed parent lookup word, missing at least 1 character")
         else:
-          return newGetSelfWord(token[2..^1])
+          raiseParseException("Malformed parent lookup word, missing at least a .")
       else:
-        raiseParseException("Malformed local lookup word, missing at least 1 character")
+        raiseParseException("Malformed parent lookup word, missing at least 2 characters")
     else:
       if token.contains("::"):
         return newGetModuleWord(token[1..^1])
@@ -682,9 +687,14 @@ proc newWord(self: Parser, token: string): Node =
         raiseParseException("Malformed keyword syntax, expecting an argument")
       return nil
 
-  # A regular eval word then, possibly prefixed with . or ..
-  if first == '.':
-    # Local or parent
+  # A regular eval word then, possibly prefixed with @ or ..
+  if first == '@':
+    # Self word
+    if len > 1:
+      return newEvalSelfWord(token[1..^1])
+    else:
+      raiseParseException("Malformed self eval word, missing at least 1 character")
+  elif first == '.':
     if len > 1:
       if token[1] == '.':
         if len > 2:
@@ -692,9 +702,9 @@ proc newWord(self: Parser, token: string): Node =
         else:
           raiseParseException("Malformed parent eval word, missing at least 1 character")
       else:
-        return newEvalSelfWord(token[1..^1])
+        raiseParseException("Malformed parent eval word, missing a .")
     else:
-      raiseParseException("Malformed local eval word, missing at least 1 character")
+      raiseParseException("Malformed parent eval word, missing at least 2 characters")
   else:
     if token.contains("::"):
       return newEvalModuleWord(token)
