@@ -841,8 +841,10 @@ type
     falseVal*: Node
     undefVal*: Node
     nilVal*: Node
+    emptyBlok*: Blok
     objectTag*: Node         # Tag for Objects
     moduleTag*: Node         # Tag for Modules
+
   # Node type to hold Nim primitive procs
   ProcType* = proc(spry: Interpreter): Node
   NimProc* = ref object of Node
@@ -1287,6 +1289,7 @@ proc newInterpreter*(): Interpreter =
   spry.falseVal = newValue(false)
   spry.nilVal = newNilVal()
   spry.undefVal = newUndefVal()
+  spry.emptyBlok = newBlok()
   spry.objectTag = newLitWord("object")
   spry.moduleTag = newLitWord("module")
   spry.makeWord("false", spry.falseVal)
@@ -1339,7 +1342,7 @@ proc newInterpreter*(): Interpreter =
   nimPrim("tags", true, 1):
     let node = evalArgInfix(spry)
     if node.tags.isNil:
-      return spry.falseVal
+      return spry.emptyBlok
     return node.tags
   nimPrim("tags:", true, 2):
     result = evalArgInfix(spry)
