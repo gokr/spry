@@ -330,13 +330,16 @@ when true:
   #assert(run("a = \"ab\" do [:'x & \"c\"] a") == "\"ac\"") # x becomes "a"
   assert(run("a = \"ab\" do [:x , \"c\"] a") == "\"abc\"") # x becomes "ab"
 
-  # . and ..
+  # @ and ..
   assert(run("d = 5 do [eval ^d]") == "5")
   assert(run("d = 5 do [eval ^@d]") == "undef")
   assert(run("d = 5 do [eval ^..d]") == "5")
+  assert(run("d = 5 do [(locals at: 'd put: 3) ^..d + d]") == "8")
   assert(run("d = 5 do [eval d]") == "5")
   assert(run("d = 5 do [eval @d]") == "undef")
   assert(run("d = 5 do [eval ..d]") == "5")
+  assert(run("d = 5 do [(locals at: 'd put: 3) ..d + d]") == "8")
+
   # Not an object
   assert(run("o = {x = 5 getx = func [@x]} eval o::getx") == "undef")
   assert(run("o = {x = 5} o tag: objectTag o tags") == "[object]")

@@ -8,7 +8,8 @@ when defined(profiler):
 
 import os
 import spryvm
-import spryextend, sprymath, spryos, spryio, sprythread, sprypython, sprydebug, sprycompress
+import spryextend, sprymath, spryos, spryio, sprythread, sprypython,
+ spryoo, sprydebug, sprycompress, sprystring, sprymodules
 
 var spry = newInterpreter()
 
@@ -19,8 +20,11 @@ spry.addOS()
 spry.addIO()
 spry.addThread()
 spry.addPython()
+spry.addOO()
 spry.addDebug()
 spry.addCompress()
+spry.addString()
+spry.addModules()
 
 # Just run a given file as argument, the hash-bang trick works also
 let fn = commandLineParams()[0]
