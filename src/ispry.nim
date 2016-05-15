@@ -17,7 +17,10 @@ when defined(readLine):
 import spryvm
 
 # Spry extra modules, as much as possible!
-import spryextend, sprymath, spryos, spryio, sprythread, sprypython, spryoo, sprydebug, sprycompress, sprystring, sprymodules
+import spryextend, sprymath, spryos, spryio, sprythread, spryoo, sprydebug, sprycompress, sprystring, sprymodules
+
+# Not included by default
+# import sprypython
 
 const Prompt = ">>> "
 
@@ -47,7 +50,7 @@ proc main() =
   spry.addOS()
   spry.addIO()
   spry.addThread()
-  spry.addPython()
+#  spry.addPython()
   spry.addOO()
   spry.addDebug()
   spry.addCompress()

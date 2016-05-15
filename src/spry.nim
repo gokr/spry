@@ -11,6 +11,8 @@ import spryvm
 import spryextend, sprymath, spryos, spryio, sprythread, sprypython,
  spryoo, sprydebug, sprycompress, sprystring, sprymodules
 
+# import sprypython
+
 var spry = newInterpreter()
 
 # Add extra modules
@@ -19,7 +21,7 @@ spry.addMath()
 spry.addOS()
 spry.addIO()
 spry.addThread()
-spry.addPython()
+#spry.addPython()
 spry.addOO()
 spry.addDebug()
 spry.addCompress()

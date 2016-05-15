@@ -1,6 +1,6 @@
 import spryvm
 
-import spryextend, sprymath, spryio, sprydebug, sprycompress, spryos, sprythread, sprypython, spryoo,
+import spryextend, sprymath, spryio, sprydebug, sprycompress, spryos, sprythread, spryoo,
   sprystring, sprymodules
 
 proc newVM(): Interpreter =
@@ -10,7 +10,7 @@ proc newVM(): Interpreter =
   spry.addOS()
   spry.addIO()
   spry.addThread()
-  spry.addPython()
+#  spry.addPython()
   spry.addDebug()
   spry.addCompress()
   spry.addOO()
