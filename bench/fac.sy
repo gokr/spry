@@ -1,5 +1,4 @@
-#!/usr/bin/env ni
-# Run with: ni fac.ni
+#!/usr/bin/env spry
 
 # Do it over and over :)
 100000 timesRepeat: [12 fac]
