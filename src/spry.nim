@@ -8,7 +8,7 @@ when defined(profiler):
 
 import os
 import spryvm
-import spryextend, sprymath, spryos, spryio, sprythread, sprypython,
+import spryextend, sprymath, spryos, spryio, sprythread,
  spryoo, sprydebug, sprycompress, sprystring, sprymodules
 
 # import sprypython
