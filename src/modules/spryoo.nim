@@ -5,17 +5,23 @@ type
   # nodes hold Funk instances
   PolyFunk* = ref object of Funk
 
-proc newPolyFunk*(funks: Blok, parent: Activation): Funk =
-  PolyFunk(nodes: funks.nodes, infix: true, parent: parent)
+proc newPolyFunk*(funks: Blok, infix: bool, parent: Activation): Funk =
+  PolyFunk(nodes: funks.nodes, infix: infix, parent: parent)
 
-proc polyfunk*(spry: Interpreter, funks: Blok): Node =
-  newPolyFunk(funks, spry.currentActivation)
+proc polyfunk*(funks: Blok, infix: bool, spry: Interpreter): Node =
+  newPolyFunk(funks, infix, spry.currentActivation)
 
 method `$`*(self: PolyFunk): string =
-  return "polyfunc [" & $self.nodes & "]"
+  if self.infix:
+    result = "polyfunci "
+  else:
+    result = "polyfunc "
+  return result & "[" & $self.nodes & "]"
 
 method eval(self: PolyFunk, spry: Interpreter): Node =
   let receiver = evalArgInfix(spry)
+  if receiver.isNil:
+    return spry.nilVal
   let tags = receiver.tags
   if tags.isNil:
     return spry.nilVal
@@ -30,9 +36,12 @@ method eval(self: PolyFunk, spry: Interpreter): Node =
 
 # Spry OO module
 proc addOO*(spry: Interpreter) =
-  # Create a polyfunc with a block of tagged funcis as argument
+  # Create a polyfunc with a block of tagged funcs/funcis as argument
   nimPrim("polyfunc", false, 1):
-    spry.polyfunk(Blok(evalArg(spry)))
+    polyfunk(Blok(evalArg(spry)), false, spry)
+
+  nimPrim("polyfunci", false, 1):
+    polyfunk(Blok(evalArg(spry)), true, spry)
 
   # Shorthand for making a tagged funci
   nimPrim("->", true, 2):

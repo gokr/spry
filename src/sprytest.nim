@@ -1,6 +1,6 @@
 import spryvm
 
-import spryextend, sprymath, spryio, sprydebug, sprycompress, spryos, sprythread, spryoo,
+import spryextend, sprymath, spryio, sprydebug, sprycompress, spryos, sprythread, sprypython, spryoo,
   sprystring, sprymodules
 
 proc newVM(): Interpreter =
@@ -10,7 +10,7 @@ proc newVM(): Interpreter =
   spry.addOS()
   spry.addIO()
   spry.addThread()
-#  spry.addPython()
+  spry.addPython()
   spry.addDebug()
   spry.addCompress()
   spry.addOO()
@@ -389,7 +389,7 @@ when true:
   eval r
   """) == "14")
 
-  # Implementing Smalltalk do: in spry
+  # Smalltalk do: in spry
   assert(run("""
     r = 0 y = [1 2 3]
     y do: [r = (r + :e)]
@@ -527,7 +527,10 @@ when true:
 }]"""
   assert(stringRun(code & " commented") == code)
 
-
+  # Collections
+  assert(run("x = 0 [1 2 3] do: [x = (x + :y)] eva x") == "6")
+  assert(run("x = 0 1 to: 3 do: [x = (x + :y)] eva x ") == "6")
+  assert(run("x = [] 1 to: 3 do: [x add: :y] eva x ") == "[1 2 3]")
 when true:
   # Demonstrate extension from extend.nim
   assert(show("'''abc'''") == "\"abc\"")
