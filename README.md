@@ -7,7 +7,7 @@
 [![Join the chat at https://gitter.im/gokr/spry](https://badges.gitter.im/gokr/spry.svg)](https://gitter.im/gokr/spry?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge)
 
 
-This is the **Spry** language, inspired by Rebol/Smalltalk/Self/Forth and Nim. Characteristics:
+This is the [Spry language](http://sprylang.org), inspired by Rebol/Smalltalk/Self/Forth and Nim. Characteristics:
 
 * A dynamically typed minimalistic language with a free form syntax similar to Rebol/Forth
 * Parser produces an AST which in turn is interpreted by the interpreter
