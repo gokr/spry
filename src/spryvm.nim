@@ -10,8 +10,10 @@ type
   # The iterative parser builds a Node tree using a stack for nested blocks
   Parser* = ref object
     token: string                       # Collects characters into a token
+    ws: string                          # Collects whitespace and comments
     stack: seq[Node]                    # Lexical stack of block Nodes
     valueParsers*: seq[ValueParser]     # Registered valueParsers for literals
+    litWords*: Table[string, LitWord]    # Registry for canonicalized strings
 
   # Base class for pluggable value parsers
   ValueParser* = ref object of RootObj
@@ -25,6 +27,7 @@ type
 
   # Nodes form an AST which we later eval directly using Interpreter
   Node* = ref object of RootObj
+    comment*: string
     tags*: Blok
   Word* = ref object of Node
     word*: string
@@ -72,7 +75,8 @@ type
 
   # Abstract
   Composite* = ref object of Node
-  SeqComposite* = ref object of Node
+    commentEnd*: string
+  SeqComposite* = ref object of Composite
     nodes*: seq[Node]
     pos*: int
 
@@ -121,7 +125,17 @@ method `$`*(self: Node): string {.base.} =
   else:
     repr(self)
 
+method commented*(self: Node): string {.base.} =
+  if self.comment.isNil:
+    $self
+  else:
+    self.comment & $self
+
 method `$`*(self: Binding): string =
+  if self.key.isNil:
+    return "nil = " & $self.val
+  if self.val.isNil:
+    return $self.key & " = nil"
   $self.key & " = " & $self.val
 
 method `$`*(self: Map): string =
@@ -134,6 +148,21 @@ method `$`*(self: Map): string =
     else:
       result.add(" " & $v)
   return result & "}"
+
+method commented*(self: Map): string =
+  if self.comment.isNil:
+    result = "{"
+  else:
+    result = self.comment & "{"
+  var first = true
+  for k,v in self.bindings:
+    if first:
+      result.add(commented(v))
+      first = false
+    else:
+      result.add(commented(v))
+  return result & "}"
+
 
 method `$`*(self: IntVal): string =
   $self.value
@@ -159,6 +188,9 @@ method `$`*(self: UndefVal): string =
 proc `$`*(self: seq[Node]): string =
   self.map(proc(n: Node): string = $n).join(" ")
 
+proc commented*(self: seq[Node]): string =
+  self.map(proc(n: Node): string = commented(n)).join()
+
 method `$`*(self: Word): string =
   self.word
 
@@ -169,7 +201,7 @@ method `$`*(self: EvalModuleWord): string =
   $self.module & "::" & self.word
 
 method `$`*(self: EvalSelfWord): string =
-  "." & self.word
+  "@" & self.word
 
 method `$`*(self: EvalOuterWord): string =
   ".." & self.word
@@ -181,7 +213,7 @@ method `$`*(self: GetModuleWord): string =
   "^" & $self.module & "::" & self.word
 
 method `$`*(self: GetSelfWord): string =
-  "^." & self.word
+  "^@" & self.word
 
 method `$`*(self: GetOuterWord): string =
   "^.." & self.word
@@ -198,23 +230,63 @@ method `$`*(self: GetArgWord): string =
 method `$`*(self: Blok): string =
   "[" & $self.nodes & "]"
 
+method commented*(self: Blok): string =
+  if self.comment.isNil:
+    result = "["
+  else:
+    result = self.comment & "["
+  result = result & commented(self.nodes)
+  if self.commentEnd.isNil:
+    result = result & "]"
+  else:
+    result = result & self.commentEnd & "]"
+
 method `$`*(self: Paren): string =
   "(" & $self.nodes & ")"
 
+method commented*(self: Paren): string =
+  if self.comment.isNil:
+    result = "("
+  else:
+    result = self.comment & "("
+  result = result & commented(self.nodes)
+  if self.commentEnd.isNil:
+    result = result & ")"
+  else:
+    result = result & self.commentEnd & ")"
+
 method `$`*(self: Curly): string =
   "{" & $self.nodes & "}"
+
+method commented*(self: Curly): string =
+  if self.comment.isNil:
+    result = "{"
+  else:
+    result = self.comment & "{"
+  result = result & commented(self.nodes)
+  if self.commentEnd.isNil:
+    result = result & "}"
+  else:
+    result = result & self.commentEnd & "}"
 
 method `$`*(self: KeyWord): string =
   result = ""
   for i in 0 .. self.keys.len - 1:
     result = result & self.keys[i] & " " & $self.args[i]
 
+method commented*(self: KeyWord): string =
+  result = ""
+  for i in 0 .. self.keys.len - 1:
+    result = result & self.keys[i] & commented(self.args[i])
+
 # Hash and == implementations
 method hash*(self: Node): Hash {.base.} =
   raiseRuntimeException("Nodes need to implement hash")
 
 method `==`*(self: Node, other: Node): bool {.base.} =
-  raiseRuntimeException("Nodes need to implement ==")
+  # Fallback to identity check
+  system.`==`(self, other)
+  #raiseRuntimeException("Nodes need to implement ==")
 
 method hash*(self: Word): Hash =
   self.word.hash
@@ -316,8 +388,13 @@ proc newMap*(bindings: OrderedTable[Node, Binding]): Map =
 proc newEvalWord*(s: string): EvalWord =
   EvalWord(word: s)
 
-proc newLitWord*(s: string): LitWord =
-  LitWord(word: s)
+proc newOrGetLitWord*(self: Parser, s: string): LitWord =
+  # Canonicalize so we only ever have one LitWord for a given s
+  if self.litWords.hasKey(s):
+    return self.litWords[s]
+  else:
+    result = LitWord(word: s)
+    self.litWords.add(s, result)
 
 proc newEvalModuleWord*(s: string): EvalWord =
   let both = s.split("::")
@@ -484,7 +561,10 @@ method tokenReady(self: StringValueParser, token: string, ch: char): string =
 
 proc newParser*(): Parser =
   ## Create a new Spry parser with the basic value parsers included
-  result = Parser(stack: newSeq[Node](), valueParsers: newSeq[ValueParser]())
+  result = Parser(
+    stack: newSeq[Node](),
+    valueParsers: newSeq[ValueParser](),
+    litWords: initTable[string, LitWord]())
   result.valueParsers.add(StringValueParser())
   result.valueParsers.add(IntValueParser())
   result.valueParsers.add(FloatValueParser())
@@ -524,10 +604,10 @@ proc currentKeyword(self: Parser): KeyWord =
     return nil
 
 proc closeKeyword(self: Parser)
-proc pop(self: Parser) =
+proc pop(self: Parser): Node =
   if self.currentKeyword().notNil:
     self.closeKeyword()
-  discard self.stack.pop()
+  self.stack.pop()
 
 proc addNode(self: Parser)
 proc closeKeyword(self: Parser) =
@@ -572,8 +652,13 @@ proc newWord(self: Parser, token: string): Node =
 
   # All lookup words are preceded with "^"
   if first == '^' and len > 1:
-    if token[1] == '.':
-      # Local or parent
+    if token[1] == '@':
+      # Self lookup word
+      if len > 2:
+        return newGetSelfWord(token[2..^1])
+      else:
+        raiseParseException("Malformed self lookup word, missing at least 1 character")
+    elif token[1] == '.':
       if len > 2:
         if token[2] == '.':
           if len > 3:
@@ -581,9 +666,9 @@ proc newWord(self: Parser, token: string): Node =
           else:
             raiseParseException("Malformed parent lookup word, missing at least 1 character")
         else:
-          return newGetSelfWord(token[2..^1])
+          raiseParseException("Malformed parent lookup word, missing at least a .")
       else:
-        raiseParseException("Malformed local lookup word, missing at least 1 character")
+        raiseParseException("Malformed parent lookup word, missing at least 2 characters")
     else:
       if token.contains("::"):
         return newGetModuleWord(token[1..^1])
@@ -595,7 +680,7 @@ proc newWord(self: Parser, token: string): Node =
     if len < 2:
       raiseParseException("Malformed literal word, missing at least 1 character")
     else:
-      return newLitWord(token[1..^1])
+      return self.newOrGetLitWord(token[1..^1])
 
   # All keywords end with ":"
   if len > 1 and token[^1] == ':':
@@ -613,9 +698,14 @@ proc newWord(self: Parser, token: string): Node =
         raiseParseException("Malformed keyword syntax, expecting an argument")
       return nil
 
-  # A regular eval word then, possibly prefixed with . or ..
-  if first == '.':
-    # Local or parent
+  # A regular eval word then, possibly prefixed with @ or ..
+  if first == '@':
+    # Self word
+    if len > 1:
+      return newEvalSelfWord(token[1..^1])
+    else:
+      raiseParseException("Malformed self eval word, missing at least 1 character")
+  elif first == '.':
     if len > 1:
       if token[1] == '.':
         if len > 2:
@@ -623,9 +713,9 @@ proc newWord(self: Parser, token: string): Node =
         else:
           raiseParseException("Malformed parent eval word, missing at least 1 character")
       else:
-        return newEvalSelfWord(token[1..^1])
+        raiseParseException("Malformed parent eval word, missing a .")
     else:
-      raiseParseException("Malformed local eval word, missing at least 1 character")
+      raiseParseException("Malformed parent eval word, missing at least 2 characters")
   else:
     if token.contains("::"):
       return newEvalModuleWord(token)
@@ -638,16 +728,21 @@ template newWord*(token: string): Node =
 proc newWordOrValue(self: Parser): Node =
   ## Decide what to make, a word or value
   let token = self.token
+  let ws = self.ws
   self.token = ""
+  self.ws = ""
 
   # Try all valueParsers...
   for p in self.valueParsers:
     let valueOrNil = p.parseValue(token)
     if valueOrNil.notNil:
+      valueOrNil.comment = ws
       return valueOrNil
 
   # Then it must be a word
-  return newWord(self, token)
+  result = newWord(self, token)
+  if result.notNil:
+    result.comment = ws
 
 proc addNode(self: Parser) =
   # If there is a token we figure out what to make of it
@@ -662,6 +757,7 @@ proc parse*(self: Parser, str: string): Node =
   var pos = 0
   self.stack = @[]
   self.token = ""
+  self.ws = ""
   # Wrap code in a block and later return last element as result.
   var blok = newBlok()
   self.push(blok)
@@ -683,6 +779,8 @@ proc parse*(self: Parser, str: string): Node =
       if currentValueParser.isNil and ch in Whitespace:
         # But first we make sure to finish the token if any
         self.addNode()
+        # Collect for formatting
+        self.ws.add(ch)
       else:
         # Check if a valueParser wants to take over, only 5 first chars are checked
         let tokenLen = self.token.len + 1
@@ -694,34 +792,53 @@ proc parse*(self: Parser, str: string): Node =
         # If still no valueParser active we do regular token handling
         if currentValueParser.isNil:
           case ch
-          # Comments are not included in the AST
+          # Comments are collected and added to next node
           of '#':
             self.addNode()
+            self.ws.add('#')
             while (pos < str.len) and (str[pos] != '\l'):
+              self.ws.add(str[pos])
               inc pos
+            #if (pos < str.len):
+            #  self.ws.add('\l')
           # Paren
           of '(':
+            let n = newParen()
+            n.comment = self.ws
+            self.ws = ""
             self.addNode()
-            self.push(newParen())
+            self.push(n)
           # Block
           of '[':
+            let n = newBlok()
+            n.comment = self.ws
+            self.ws = ""
             self.addNode()
-            self.push(newBlok())
-          # Curly
+            self.push(n)
+         # Curly
           of '{':
+            let n = newCurly()
+            n.comment = self.ws
+            self.ws = ""
             self.addNode()
-            self.push(newCurly())
+            self.push(n)
           of ')':
             self.addNode()
-            self.pop
+            let n = self.pop
+            Composite(n).commentEnd = self.ws
+            self.ws = ""
           # Block
           of ']':
             self.addNode()
-            self.pop
+            let n = self.pop
+            Composite(n).commentEnd = self.ws
+            self.ws = ""
           # Curly
           of '}':
             self.addNode()
-            self.pop
+            let n = self.pop
+            Composite(n).commentEnd = self.ws
+            self.ws = ""
           # Ok, otherwise we just collect the char
           else:
             self.token.add(ch)
@@ -737,6 +854,7 @@ proc parse*(self: Parser, str: string): Node =
 type
   # Spry interpreter
   Interpreter* = ref object
+    parser*: Parser
     currentActivation*: Activation  # Execution spaghetti stack
     rootActivation*: RootActivation # The first one
     root*: Map               # Root bindings
@@ -745,6 +863,9 @@ type
     falseVal*: Node
     undefVal*: Node
     nilVal*: Node
+    emptyBlok*: Blok
+    objectTag*: Node         # Tag for Objects
+    moduleTag*: Node         # Tag for Modules
 
   # Node type to hold Nim primitive procs
   ProcType* = proc(spry: Interpreter): Node
@@ -861,6 +982,7 @@ proc newActivation*(body: Paren): ParenActivation =
 
 proc newActivation*(body: Curly): CurlyActivation =
   result = CurlyActivation(body: body)
+  # We always return a new Map so we can initialize it early
   result.locals = newMap()
 
 # Stack iterator walking parent refs
@@ -871,9 +993,14 @@ iterator stack*(spry: Interpreter): Activation =
     activation = activation.parent
 
 proc getLocals(self: BlokActivation): Map =
+  ## Forces creation of the Map, only use if that is what you need
   if self.locals.isNil:
     self.locals = newMap()
   self.locals
+
+proc reset(self: Activation) =
+  self.returned = false
+  self.pos = 0
 
 method hasLocals(self: Activation): bool {.base.} =
   true
@@ -1039,6 +1166,12 @@ method doReturn*(self: Activation, spry: Interpreter) {.base.} =
 method doReturn*(self: FunkActivation, spry: Interpreter) =
   spry.currentActivation = Funk(self.body).parent
 
+method isObject(self: Activation, spry: Interpreter): bool {.base.} =
+  false
+
+method isObject(self: BlokActivation, spry: Interpreter): bool =
+  self.locals.notNil and self.locals.tags.notNil and self.locals.tags.contains(spry.objectTag)
+
 method lookup(self: Activation, key: Node): Binding {.base.} =
   # Base implementation needed for dynamic dispatch to work
   nil
@@ -1050,13 +1183,13 @@ method lookup(self: BlokActivation, key: Node): Binding =
 proc lookup(spry: Interpreter, key: Node): Binding =
   ## Not sure why, but three methods didn't want to fly
   if (key of EvalModuleWord):
-    let binding = spry.rootActivation.lookup(EvalModuleWord(key).module)
+    let binding = spry.lookup(EvalModuleWord(key).module)
     if binding.notNil:
       let module = binding.val
       if module.notNil:
         result = Map(module).lookup(key)
   elif (key of GetModuleWord):
-    let binding = spry.rootActivation.lookup(GetModuleWord(key).module)
+    let binding = spry.lookup(GetModuleWord(key).module)
     if binding.notNil:
       let module = binding.val
       if module.notNil:
@@ -1072,6 +1205,18 @@ proc lookup(spry: Interpreter, key: Node): Binding =
       let hit = Map(map).lookup(key)
       if hit.notNil:
         return hit
+
+proc self(spry: Interpreter): Map =
+  # Find first object, ending in the rootActivation
+  for activation in mapWalk(spry.currentActivation):
+    if activation.isObject(spry):
+      return BlokActivation(activation).getLocals()
+
+proc lookupSelf(spry: Interpreter, key: Node): Binding =
+  # Find first object, ending in the rootActivation
+  for activation in mapWalk(spry.currentActivation):
+    if activation.isObject(spry):
+      return activation.lookup(key)
 
 proc lookupLocal(spry: Interpreter, key: Node): Binding =
   return spry.currentActivation.lookup(key)
@@ -1096,7 +1241,7 @@ proc makeBinding(spry: Interpreter, key: Node, val: Node): Binding =
   for activation in mapWalk(spry.currentActivation):
     return activation.makeBinding(key, val)
 
-proc setBinding(spry: Interpreter, key: Node, value: Node): Binding =
+proc setBinding*(spry: Interpreter, key: Node, value: Node): Binding =
   result = spry.lookup(key)
   if result.notNil:
     result.val = value
@@ -1120,19 +1265,9 @@ proc argParent(spry: Interpreter): Activation =
   for activation in callerWalk(spry.currentActivation):
     return activation
 
-proc parentArgInfix*(spry: Interpreter): Node =
-  ## Pull the parent infix arg
-  let act = spry.argParent()
-  act.last
-
 proc argInfix*(spry: Interpreter): Node =
   ## Pull the infix arg
   spry.currentActivation.last
-
-proc parentArg*(spry: Interpreter): Node =
-  ## Pull next argument from parent activation
-  let act = spry.argParent()
-  act.next()
 
 proc arg*(spry: Interpreter): Node =
   ## Pull next argument from activation
@@ -1163,8 +1298,201 @@ template nimPrim*(name: string, infix: bool, arity: int, body: stmt): stmt {.imm
   spry.makeWord(name, newNimProc(
     proc (spry: Interpreter): Node = body, infix, arity))
 
+
+proc atEnd*(spry: Interpreter): bool {.inline.} =
+  return spry.currentActivation.atEnd
+
+
+proc funk*(spry: Interpreter, body: Blok, infix: bool): Node =
+  result = newFunk(body, infix, spry.currentActivation)
+
+method canEval*(self: Node, spry: Interpreter):bool {.base.} =
+  false
+
+method canEval*(self: EvalWord, spry: Interpreter):bool =
+  let binding = spry.lookup(self)
+  if binding.isNil:
+    return false
+  else:
+    return binding.val.canEval(spry)
+
+method canEval*(self: Binding, spry: Interpreter):bool =
+  return self.val.canEval(spry)
+
+method canEval*(self: Funk, spry: Interpreter):bool =
+  true
+
+method canEval*(self: NimProc, spry: Interpreter):bool =
+  true
+
+method canEval*(self: EvalArgWord, spry: Interpreter):bool =
+  # Since arg words have a side effect they are "actions"
+  true
+
+method canEval*(self: GetArgWord, spry: Interpreter):bool =
+  # Since arg words have a side effect they are "actions"
+  true
+
+method canEval*(self: Paren, spry: Interpreter):bool =
+  true
+
+method canEval*(self: Curly, spry: Interpreter):bool =
+  true
+
+# The heart of the interpreter - eval
+method eval(self: Node, spry: Interpreter): Node =
+  raiseRuntimeException("Should not happen")
+
+method eval(self: Word, spry: Interpreter): Node =
+  ## Look up
+  let binding = spry.lookup(self)
+  if binding.isNil:
+    raiseRuntimeException("Word not found: " & $self)
+  return binding.val.eval(spry)
+
+method eval(self: GetWord, spry: Interpreter): Node =
+  ## Look up only
+  let hit = spry.lookup(self)
+  if hit.isNil: spry.undefVal else: hit.val
+
+method eval(self: GetSelfWord, spry: Interpreter): Node =
+  ## Look up only
+  let hit = spry.lookupSelf(self)
+  if hit.isNil: spry.undefVal else: hit.val
+
+method eval(self: GetOuterWord, spry: Interpreter): Node =
+  ## Look up only
+  let hit = spry.lookupParent(self)
+  if hit.isNil: spry.undefVal else: hit.val
+
+method eval(self: EvalWord, spry: Interpreter): Node =
+  ## Look up only
+  let hit = spry.lookup(self)
+  if hit.isNil: spry.undefVal else: hit.val.eval(spry)
+
+method eval(self: EvalSelfWord, spry: Interpreter): Node =
+  ## Look up only
+  let hit = spry.lookupSelf(self)
+  if hit.isNil: spry.undefVal else: hit.val.eval(spry)
+
+method eval(self: EvalOuterWord, spry: Interpreter): Node =
+  ## Look up only
+  let hit = spry.lookupParent(self)
+  if hit.isNil: spry.undefVal else: hit.val.eval(spry)
+
+method eval(self: LitWord, spry: Interpreter): Node =
+  ## Evaluating a LitWord means creating a new word by stripping off \'
+  #newWord(self.word)
+  self
+
+method eval(self: EvalArgWord, spry: Interpreter): Node =
+  var arg: Node
+  let previousActivation = spry.argParent()
+  if spry.currentActivation.body.infix and spry.currentActivation.infixArg.isNil:
+    arg = previousActivation.last
+    spry.currentActivation.infixArg = arg
+  else:
+    arg = previousActivation.next()
+  # This evaluation needs to be done in parent activation!
+  let here = spry.currentActivation
+  spry.currentActivation = previousActivation
+  let ev = arg.eval(spry)
+  spry.currentActivation = here
+  discard spry.setBinding(self, ev)
+  return ev
+
+method eval(self: GetArgWord, spry: Interpreter): Node =
+  var arg: Node
+  let previousActivation = spry.argParent()
+  if spry.currentActivation.body.infix and spry.currentActivation.infixArg.isNil:
+    arg = previousActivation.last
+    spry.currentActivation.infixArg = arg
+  else:
+    arg = previousActivation.next()
+  discard spry.setBinding(self, arg)
+  return arg
+
+method eval(self: NimProc, spry: Interpreter): Node =
+  return self.prok(spry)
+
+proc eval(current: Activation, spry: Interpreter): Node =
+  ## This is the inner chamber of the heart :)
+  spry.pushActivation(current)
+  while not current.atEnd:
+    let next = current.next()
+    # Then we eval the node if it canEval
+    if next.canEval(spry):
+      current.last = next.eval(spry)
+      if current.returned:
+        spry.currentActivation.doReturn(spry)
+        return current.last
+    else:
+      current.last = next
+  if current.last of Binding:
+    current.last = Binding(current.last).val
+  spry.popActivation()
+  return current.last
+
+method eval(self: Funk, spry: Interpreter): Node =
+  newActivation(self).eval(spry)
+
+method eval(self: Paren, spry: Interpreter): Node =
+  newActivation(self).eval(spry)
+
+method eval(self: Curly, spry: Interpreter): Node =
+  let activation = newActivation(self)
+  discard activation.eval(spry)
+  return activation.locals
+
+method evalDo(self: Node, spry: Interpreter): Node =
+  raiseRuntimeException("Do only works for sequences")
+
+method evalDo(self: Blok, spry: Interpreter): Node =
+  newActivation(self).eval(spry)
+
+method evalDo(self: Paren, spry: Interpreter): Node =
+  newActivation(self).eval(spry)
+
+method evalDo(self: Curly, spry: Interpreter): Node =
+  # Calling do on a curly doesn't do the locals trick
+  newActivation(self).eval(spry)
+
+method eval(self: Blok, spry: Interpreter): Node =
+  self
+
+method eval(self: Value, spry: Interpreter): Node =
+  self
+
+method eval(self: Map, spry: Interpreter): Node =
+  self
+
+method eval(self: Binding, spry: Interpreter): Node =
+  self.val
+
+proc eval*(spry: Interpreter, code: string): Node =
+  ## Evaluate code in a new activation
+  SeqComposite(spry.parser.parse(code)).evalDo(spry)
+
+proc evalRootDo*(self: Blok, spry: Interpreter): Node =
+  # Evaluate a node in the root activation
+  # Ugly... First pop the root activation
+  spry.popActivation()
+  # This will push it back and... pop it too
+  spry.rootActivation.body = self
+  spry.rootActivation.pos = 0
+  result = spry.rootActivation.eval(spry)
+  # ...so we need to put it back
+  spry.pushActivation(spry.rootActivation)
+
+proc evalRoot*(spry: Interpreter, code: string): Node =
+  ## Evaluate code in the root activation, presume it is a block
+  Blok(spry.parser.parse(code)).evalRootDo(spry)
+
+template newLitWord(self: Interpreter, s:string): Node =
+  self.parser.newOrGetLitWord(s)
+
 proc newInterpreter*(): Interpreter =
-  let spry = Interpreter(root: newMap())
+  let spry = Interpreter(root: newMap(), parser: newParser())
   result = spry
 
   # Singletons
@@ -1172,10 +1500,15 @@ proc newInterpreter*(): Interpreter =
   spry.falseVal = newValue(false)
   spry.nilVal = newNilVal()
   spry.undefVal = newUndefVal()
+  spry.emptyBlok = newBlok()
+  spry.objectTag = spry.newLitWord("object")
+  spry.moduleTag = spry.newLitWord("module")
   spry.makeWord("false", spry.falseVal)
   spry.makeWord("true", spry.trueVal)
   spry.makeWord("undef", spry.undefVal)
   spry.makeWord("nil", spry.nilVal)
+  spry.makeWord("objectTag", spry.objectTag)
+  spry.makeWord("moduleTag", spry.moduleTag)
 
   # Reflection words
   # Access to current Activation
@@ -1189,7 +1522,9 @@ proc newInterpreter*(): Interpreter =
 
   # Access to closest object
   nimPrim("self", false, 0):
-    spry.undefVal
+    result = self(spry)
+    if result.isNil:
+      result = spry.nilVal
 
   # Access to root Map
   nimPrim("root", false, 0):
@@ -1218,7 +1553,7 @@ proc newInterpreter*(): Interpreter =
   nimPrim("tags", true, 1):
     let node = evalArgInfix(spry)
     if node.tags.isNil:
-      return spry.falseVal
+      return spry.emptyBlok
     return node.tags
   nimPrim("tags:", true, 2):
     result = evalArgInfix(spry)
@@ -1246,6 +1581,7 @@ proc newInterpreter*(): Interpreter =
   nimPrim("<=", true, 2):  evalArgInfix(spry) <= evalArg(spry)
   nimPrim(">=", true, 2):  evalArgInfix(spry) >= evalArg(spry)
   nimPrim("==", true, 2):  eq(evalArgInfix(spry), evalArg(spry))
+  nimPrim("===", true, 2):  newValue(system.`==`(evalArgInfix(spry), evalArg(spry)))
   nimPrim("!=", true, 2):  newValue(not BoolVal(eq(evalArgInfix(spry), evalArg(spry))).value)
 
   # Booleans
@@ -1274,6 +1610,8 @@ proc newInterpreter*(): Interpreter =
   # Conversions
   nimPrim("form", true, 1):
     newValue(form(evalArgInfix(spry)))
+  nimPrim("commented", true, 1):
+    newValue(commented(evalArgInfix(spry)))
   nimPrim("asFloat", true, 1):
     let val = evalArgInfix(spry)
     if val of FloatVal:
@@ -1393,8 +1731,55 @@ proc newInterpreter*(): Interpreter =
   nimPrim("fourth", true, 1): SeqComposite(evalArgInfix(spry))[3]
   nimPrim("fifth", true, 1):  SeqComposite(evalArgInfix(spry))[4]
   nimPrim("last", true, 1):
-    let nodes = SeqComposite(evalArgInfix(spry)).nodes
-    nodes[nodes.high]
+    SeqComposite(evalArgInfix(spry)).nodes[^1]
+
+  # Collection primitives
+  nimPrim("do:", true, 2):
+    let blk1 = SeqComposite(evalArgInfix(spry))
+    let blk2 = Blok(evalArg(spry))
+    let current = spry.currentActivation
+    # Ugly hack for now, we trick the activation into holding
+    # each in pos 0
+    let orig = current.body.nodes[0]
+    let oldpos = current.pos
+    current.pos = 0
+    # We create and reuse a single activation
+    let activation = newActivation(blk2)
+    for each in blk1.nodes:
+      current.body.nodes[0] = each
+      # evalDo will increase pos, but we set it back below
+      discard activation.eval(spry)
+      activation.reset()
+      current.pos = 0
+      # Or else non local returns don't work :)
+      if current.returned:
+        # Reset our trick
+        current.body.nodes[0] = orig
+        current.pos = oldpos
+        return current.last
+    # Reset our trick
+    current.body.nodes[0] = orig
+    current.pos = oldpos
+    return blk1
+
+  # Collection primitives
+  nimPrim("sum", true, 1):
+    let blk = SeqComposite(evalArgInfix(spry))
+    var sum:int = 0
+    var sum2:float = 0
+    var foundFloat = false
+    for each in blk.nodes:
+      if each of IntVal:
+        sum = sum + IntVal(each).value
+      elif each of FloatVal:
+        foundFloat = true
+        sum2 = sum2 + FloatVal(each).value
+      else:
+        raiseRuntimeException("Block contained something other than an int or float, can not sum.")
+    if foundFloat:
+      return newValue(sum2 + sum.float)
+    else:
+      return newValue(sum)
 
   #discard root.makeBinding("bind", newNimProc(primBind, false, 1))
   nimPrim("func", false, 1):    spry.funk(Blok(evalArg(spry)), false)
@@ -1403,15 +1788,15 @@ proc newInterpreter*(): Interpreter =
   nimPrim("^", false, 1):       arg(spry)
   nimPrim("eva", false, 1):     evalArg(spry)
   nimPrim("eval", false, 1):    evalArg(spry).eval(spry)
-  nimPrim("parse", false, 1):   newParser().parse(StringVal(evalArg(spry)).value)
+  nimPrim("parse", false, 1):   spry.parser.parse(StringVal(evalArg(spry)).value)
 
   # Word conversions
   nimPrim("reify", false, 1):
     reify(LitWord(evalArg(spry)))
   nimPrim("sym", false, 1):
-    newLitWord($evalArg(spry))
+    spry.newLitWord($evalArg(spry))
   nimPrim("litword", false, 1):
-    newLitWord(StringVal(evalArg(spry)).value)
+    spry.newLitWord(StringVal(evalArg(spry)).value)
   nimPrim("word", false, 1):
     newWord(StringVal(evalArg(spry)).value)
 
@@ -1422,7 +1807,7 @@ proc newInterpreter*(): Interpreter =
   nimPrim("serialize", false, 1):
     newValue($evalArg(spry))
   nimPrim("deserialize", false, 1):
-    newParser().parse(StringVal(evalArg(spry)).value)
+    spry.parser.parse(StringVal(evalArg(spry)).value)
 
   # Control structures
   nimPrim("return", false, 1):
@@ -1478,6 +1863,36 @@ proc newInterpreter*(): Interpreter =
       # Or else non local returns don't work :)
       if spry.currentActivation.returned:
         return
+  nimPrim("to:do:", true, 3):
+    let self = IntVal(evalArgInfix(spry))
+    let frm = self.value
+    let to = IntVal(evalArg(spry)).value
+    let fn = Blok(evalArg(spry))
+    let current = spry.currentActivation
+    # Ugly hack for now, we trick the activation into holding
+    # each in pos 0
+    let orig = current.body.nodes[0]
+    let oldpos = current.pos
+    current.pos = 0
+    # We create and reuse a single activation
+    let activation = newActivation(fn)
+    for i in frm .. to:
+      current.body.nodes[0] = newValue(i)
+      # evalDo will increase pos, but we set it back below
+      discard activation.eval(spry)
+      activation.reset()
+      current.pos = 0
+      # Or else non local returns don't work :)
+      if spry.currentActivation.returned:
+        # Reset our trick
+        current.body.nodes[0] = orig
+        current.pos = oldpos
+        return
+    # Reset our trick
+    current.body.nodes[0] = orig
+    current.pos = oldpos
+    return self
+
   nimPrim("whileTrue:", true, 2):
     let blk1 = SeqComposite(evalArgInfix(spry))
     let blk2 = SeqComposite(evalArg(spry))
@@ -1495,13 +1910,6 @@ proc newInterpreter*(): Interpreter =
       if spry.currentActivation.returned:
         return
 
-  # This is hard, because evalDo of fn wants to pull its argument from
-  # the parent activation, but there is none here. Hmmm.
-  #nimPrim("do:", true, 2):
-  #  let comp = SeqComposite(evalArgInfix(spry))
-  #  let blk = SeqComposite(evalArg(spry))
-  #  for node in comp.nodes:
-  #    result = blk.evalDo(node, spry)
 
   # Parallel
   #nimPrim("parallel", true, 1):
@@ -1526,7 +1934,12 @@ proc newInterpreter*(): Interpreter =
     # Trivial assert
     assert = func [:x ifNot: [error "Oops, assertion failed"] return x]
 
-    do: = funci [:blk :fun
+    # Objects
+    object = func [ :map tag: objectTag return map ]
+    module = func [ object :map tag: moduleTag return map ]
+
+    # Collections
+    sprydo: = funci [:blk :fun
       blk reset
       [blk end?] whileFalse: [do fun (blk next)]
     ]
@@ -1547,196 +1960,6 @@ proc newInterpreter*(): Interpreter =
         if do pred n [result add: n]]
       return result]
   ]"""
-
-proc atEnd*(spry: Interpreter): bool {.inline.} =
-  return spry.currentActivation.atEnd
-
-proc funk*(spry: Interpreter, body: Blok, infix: bool): Node =
-  result = newFunk(body, infix, spry.currentActivation)
-
-method canEval*(self: Node, spry: Interpreter):bool {.base.} =
-  false
-
-method canEval*(self: EvalWord, spry: Interpreter):bool =
-  let binding = spry.lookup(self)
-  if binding.isNil:
-    return false
-  else:
-    return binding.val.canEval(spry)
-
-method canEval*(self: Binding, spry: Interpreter):bool =
-  return self.val.canEval(spry)
-
-method canEval*(self: Funk, spry: Interpreter):bool =
-  true
-
-method canEval*(self: NimProc, spry: Interpreter):bool =
-  true
-
-method canEval*(self: EvalArgWord, spry: Interpreter):bool =
-  # Since arg words have a side effect they are "actions"
-  true
-
-method canEval*(self: GetArgWord, spry: Interpreter):bool =
-  # Since arg words have a side effect they are "actions"
-  true
-
-method canEval*(self: Paren, spry: Interpreter):bool =
-  true
-
-method canEval*(self: Curly, spry: Interpreter):bool =
-  true
-
-# The heart of the interpreter - eval
-method eval(self: Node, spry: Interpreter): Node =
-  raiseRuntimeException("Should not happen")
-
-method eval(self: Word, spry: Interpreter): Node =
-  ## Look up
-  let binding = spry.lookup(self)
-  if binding.isNil:
-    raiseRuntimeException("Word not found: " & $self)
-  return binding.val.eval(spry)
-
-method eval(self: GetWord, spry: Interpreter): Node =
-  ## Look up only
-  let hit = spry.lookup(self)
-  if hit.isNil: spry.undefVal else: hit.val
-
-method eval(self: GetSelfWord, spry: Interpreter): Node =
-  ## Look up only
-  let hit = spry.lookupLocal(self)
-  if hit.isNil: spry.undefVal else: hit.val
-
-method eval(self: GetOuterWord, spry: Interpreter): Node =
-  ## Look up only
-  let hit = spry.lookupParent(self)
-  if hit.isNil: spry.undefVal else: hit.val
-
-method eval(self: EvalWord, spry: Interpreter): Node =
-  ## Look up only
-  let hit = spry.lookup(self)
-  if hit.isNil: spry.undefVal else: hit.val.eval(spry)
-
-method eval(self: EvalSelfWord, spry: Interpreter): Node =
-  ## Look up only
-  let hit = spry.lookupLocal(self)
-  if hit.isNil: spry.undefVal else: hit.val.eval(spry)
-
-method eval(self: EvalOuterWord, spry: Interpreter): Node =
-  ## Look up only
-  let hit = spry.lookupParent(self)
-  if hit.isNil: spry.undefVal else: hit.val.eval(spry)
-
-method eval(self: LitWord, spry: Interpreter): Node =
-  ## Evaluating a LitWord means creating a new word by stripping off \'
-  #newWord(self.word)
-  self
-
-method eval(self: EvalArgWord, spry: Interpreter): Node =
-  var arg: Node
-  let previousActivation = spry.argParent()
-  if spry.currentActivation.body.infix and spry.currentActivation.infixArg.isNil:
-    arg = previousActivation.last # arg = parentArgInfix(spry)
-    spry.currentActivation.infixArg = arg
-  else:
-    arg = previousActivation.next() # parentArg(spry)
-  # This evaluation needs to be done in parent activation!
-  let here = spry.currentActivation
-  spry.currentActivation = previousActivation
-  let ev = arg.eval(spry)
-  spry.currentActivation = here
-  discard spry.setBinding(self, ev)
-  return ev
-
-method eval(self: GetArgWord, spry: Interpreter): Node =
-  var arg: Node
-  let previousActivation = spry.argParent()
-  if spry.currentActivation.body.infix and spry.currentActivation.infixArg.isNil:
-    arg = previousActivation.last # arg = parentArgInfix(spry)
-    spry.currentActivation.infixArg = arg
-  else:
-    arg = previousActivation.next() # parentArg(spry)
-  discard spry.setBinding(self, arg)
-  return arg
-
-method eval(self: NimProc, spry: Interpreter): Node =
-  return self.prok(spry)
-
-proc eval(current: Activation, spry: Interpreter): Node =
-  ## This is the inner chamber of the heart :)
-  spry.pushActivation(current)
-  while not current.atEnd:
-    let next = current.next()
-    # Then we eval the node if it canEval
-    if next.canEval(spry):
-      current.last = next.eval(spry)
-      if current.returned:
-        spry.currentActivation.doReturn(spry)
-        return current.last
-    else:
-      current.last = next
-  if current.last of Binding:
-    current.last = Binding(current.last).val
-  spry.popActivation()
-  return current.last
-
-method eval(self: Funk, spry: Interpreter): Node =
-  newActivation(self).eval(spry)
-
-method eval(self: Paren, spry: Interpreter): Node =
-  newActivation(self).eval(spry)
-
-method eval(self: Curly, spry: Interpreter): Node =
-  let activation = newActivation(self)
-  discard activation.eval(spry)
-  return activation.locals
-
-method evalDo(self: Node, spry: Interpreter): Node =
-  raiseRuntimeException("Do only works for sequences")
-
-method evalDo(self: Blok, spry: Interpreter): Node =
-  newActivation(self).eval(spry)
-
-method evalDo(self: Paren, spry: Interpreter): Node =
-  newActivation(self).eval(spry)
-
-method evalDo(self: Curly, spry: Interpreter): Node =
-  # Calling do on a curly doesn't do the locals trick
-  newActivation(self).eval(spry)
-
-proc evalRootDo*(self: Blok, spry: Interpreter): Node =
-  # Evaluate a node in the root activation
-  # Ugly... First pop the root activation
-  spry.popActivation()
-  # This will push it back and... pop it too
-  spry.rootActivation.body = self
-  spry.rootActivation.pos = 0
-  result = spry.rootActivation.eval(spry)
-  # ...so we need to put it back
-  spry.pushActivation(spry.rootActivation)
-
-method eval(self: Blok, spry: Interpreter): Node =
-  self
-
-method eval(self: Value, spry: Interpreter): Node =
-  self
-
-method eval(self: Map, spry: Interpreter): Node =
-  self
-
-method eval(self: Binding, spry: Interpreter): Node =
-  self.val
-
-proc eval*(spry: Interpreter, code: string): Node =
-  ## Evaluate code in a new activation
-  SeqComposite(newParser().parse(code)).evalDo(spry)
-
-proc evalRoot*(spry: Interpreter, code: string): Node =
-  ## Evaluate code in the root activation, presume it is a block
-  Blok(newParser().parse(code)).evalRootDo(spry)
-
-
 
 when isMainModule and not defined(js):
   # Just run a given file as argument, the hash-bang trick works also

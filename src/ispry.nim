@@ -17,7 +17,10 @@ when defined(readLine):
 import spryvm
 
 # Spry extra modules, as much as possible!
-import spryextend, sprymath, spryos, spryio, sprythread, sprypython, spryoo, sprydebug, sprycompress, sprystring, sprymodules
+import spryextend, sprymath, spryos, spryio, sprythread, spryoo, sprydebug, sprycompress, sprystring, sprymodules
+
+# Not included by default
+# import sprypython
 
 const Prompt = ">>> "
 
@@ -47,7 +50,7 @@ proc main() =
   spry.addOS()
   spry.addIO()
   spry.addThread()
-  spry.addPython()
+#  spry.addPython()
   spry.addOO()
   spry.addDebug()
   spry.addCompress()
@@ -110,7 +113,9 @@ proc main() =
         # get (ispry acting as a func) - but we also need to use parens or
         # it may get weird. The surrounding block is just because we only
         # want to pass one Node.
-        var output = $spry.evalRoot("[" & code & "]")
+        var result = spry.evalRoot("[" & code & "]")
+        discard spry.setBinding(newEvalWord("@"), result)
+        var output = $result
         # Print any result
         if output.isNil:
           output = if suspended: "nil" else: ""

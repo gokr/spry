@@ -32,7 +32,11 @@ proc run(code: string): string =
   result = $newVM().evalRoot("[" & code & "]")
   echo("RESULT:" & result)
   echo("---------------------")
-
+proc stringRun(code: string): string =
+  # Expects a StringVal to compare with
+  result = StringVal(newVM().evalRoot("[" & code & "]")).value
+  echo("RESULT:" & result)
+  echo("---------------------")
 
 # A bunch of tests for Parser
 when true:
@@ -40,22 +44,21 @@ when true:
   assert(show("[3 + 4 # foo]") == "[3 + 4]")  # Comment
   # The different kinds of words
   identical("one")        # Eval word
-  identical(".one")       # Eval word, only resolve locally
+  identical("@one")       # Eval word, self ref
   identical("..one")      # Eval word, start resolve in parent
   identical("^one")       # Lookup word
-  identical("^.one")      # Lookup word, only resolve locally
+  identical("^@one")      # Lookup word, self ref
   identical("^..one")     # Lookup word, start resolve in parent
   identical(":one")       # Arg word, pulls in from caller
   identical(":^one")      # Arg word, pulls in without eval
   identical("'one")       # Literal word
-  identical("'.one")      # Literal word
+  identical("'@one")      # Literal word
   identical("'..one")     # Literal word
   identical("'^..one")    # Literal word
   identical("':one")      # Literal word
   identical("':^one")     # Literal word
   identical("''one")      # Literal word
   assert(show("[a at: 1 put: 2]") == "[a at:put: 1 2]")  # Keyword syntactic sugar
-
   assert(show("""
 [
 red
@@ -327,17 +330,24 @@ when true:
   #assert(run("a = \"ab\" do [:'x & \"c\"] a") == "\"ac\"") # x becomes "a"
   assert(run("a = \"ab\" do [:x , \"c\"] a") == "\"abc\"") # x becomes "ab"
 
-  # . and ..
+  # @ and ..
   assert(run("d = 5 do [eval ^d]") == "5")
-  assert(run("d = 5 do [eval ^.d]") == "undef")
+  assert(run("d = 5 do [eval ^@d]") == "undef")
   assert(run("d = 5 do [eval ^..d]") == "5")
+  assert(run("d = 5 do [(locals at: 'd put: 3) ^..d + d]") == "8")
   assert(run("d = 5 do [eval d]") == "5")
-  assert(run("d = 5 do [eval .d]") == "undef")
+  assert(run("d = 5 do [eval @d]") == "undef")
   assert(run("d = 5 do [eval ..d]") == "5")
-  # Scoped assignment doesn't work yet
-  #assert(run("d = 5 do [ .d = 3 ..d + .d]") == "8")
-  #assert(run("d = 5 do [ d = 3 ..d + d]") == "6")
-  #assert(run("d = 5 do [ ..d = 3 ..d + d]") == "6")
+  assert(run("d = 5 do [(locals at: 'd put: 3) ..d + d]") == "8")
+
+  # Not an object
+  assert(run("o = {x = 5 getx = func [@x]} eval o::getx") == "undef")
+  assert(run("o = {x = 5} o tag: objectTag o tags") == "[object]")
+  assert(run("o = {x = 5 getx = func [return @x]} o::getx") == "undef")
+  assert(run("o = {x = 5 getx = func [return @x]} o tag: objectTag o::getx") == "5")
+  assert(run("o = {x = 5 getx = func [eva @x]} o tag: objectTag o::getx") == "5")
+  assert(run("o = {x = 5 getx = func [return @x] xplus = func [@x + 1]} o tag: objectTag o::xplus") == "6")
+  assert(run("o = {x = 5 getx = func [return @x] xplus = func [do [locals at: 'x put: 4 @x + 1]]} o tag: objectTag o::xplus") == "6")
 
   # func infix works too, and with 3 or more arguments too...
   assert(run("xx = func [:a :b a + b + b] xx 2 (xx 5 4)") == "28") # 2 + (5+4+4) + (5+4+4)
@@ -379,7 +389,7 @@ when true:
   eval r
   """) == "14")
 
-  # Implementing Smalltalk do: in spry
+  # Smalltalk do: in spry
   assert(run("""
     r = 0 y = [1 2 3]
     y do: [r = (r + :e)]
@@ -416,17 +426,15 @@ when true:
   assert(run("do [d = 5 locals at: 'd]") == "5")
   assert(run("locals at: 'd put: 5 d + 2") == "7")
   assert(run("do [a = 1 b = 2 locals]") == "{a = 1 b = 2}")
-  assert(run("do [a = 1 b = 2 (c = 3 (locals)]") == "{a = 1 b = 2 c = 3}")
+  assert(run("do [a = 1 b = 2 c = 3 (locals)]") == "{a = 1 b = 2 c = 3}")
 
-  # The word self gives access to the local Object
-  #assert(run("x = object {a = 1 foo = funci [self at: 'a]} x foo") == "1")
-  #assert(run("x = object {a = 1 foo = funci [.a]} x foo") == "1")
+  # The word self gives access to the closest outer object
+  assert(run("self") == "nil")
+  assert(run("x = object {a = 1 foo = funci [self at: 'a]} x::foo") == "1")
+  assert(run("x = object {a = 1 foo = funci [return @a]} x::foo") == "1")
 
   # The word activation gives access to the current activation record
   assert(run("activation") == "activation [[activation] 1]")
-
-  # The word self gives access to the closest outer object
-  assert(run("self") == "undef")
 
   # Add and check tag
   assert(run("x = 3 x tag: 'num x tag? 'num") == "true")
@@ -441,9 +449,14 @@ when true:
   assert(run("10 fac") == "3628800")
   assert(run("10.0 sin") == "-0.5440211108893698")
 
-  # spry OO
-  assert(run("p = polyfunc [:a + 1]") == "funci [:a + 1]")
-  assert(run("p = polyfunc [:a + 1] 2 p") == "3")
+  # spry polyfuncs (reduce should not be needed here)
+  assert(run("p = polyfunc reduce [func [:a + 1] func [:x]]") == "polyfunc [func [:a + 1] func [:x]]")
+  assert(run("[int string] -> [:x]") == "funci [:x]")
+  assert(run("^([int string] -> [:x]) tags") == "[int string]")
+  assert(run("p = polyfunc reduce [[int] -> [1] [string] -> [2]]") == "polyfunc [funci [1] funci [2]]")
+  assert(run("p = polyfunc reduce [[int] -> [1] [string] -> [2]] 42 p") == "nil")
+  assert(run("inc = polyfunc reduce [[int] -> [:x + 1] [string] -> [:x , \"c\"]] (42 tag: 'int) inc") == "43")
+  assert(run("inc = polyfunc reduce [[int] -> [:x + 1] [string] -> [:x , \"c\"]] (\"ab\" tag: 'string) inc") == "\"abc\"")
 
   # spry compress
   assert(run("compress \"abc123\"") == "\"\\x06\\x00\\x00\\x00`abc123\"")
@@ -486,10 +499,38 @@ when true:
   assert(run("modules add: {x = 10} eval x") == "10")
   assert(run("Foo = {x = func [:x + 1]} Bar = {x = 7} modules add: Foo modules add: Bar x 1") == "2")
   assert(run("Foo = {x = func [:x + 1] y = 10} Bar = {x = func [:x + 2]} modules add: Bar modules add: Foo x y") == "12")
-  assert(run("foo = func [bar = {x = 11} bar::x + 1] bar = 20 eval foo") == "12")
+  assert(run("foo = func [bar = {x = 10} bar::x + 1] bar = 10 eval foo") == "11")
+  assert(run("do [bar = {x = 1 y = 2} do [bar::x + 1]]") == "2")
+
   # String
   assert(run("\"abc.de\" split: \".\"") == "[\"abc\" \"de\"]")
 
+  # Commented
+  assert(stringRun("[  1 2  3 ] commented") == "[  1 2  3 ]")
+
+  # This test ensures that the commented func produces the same
+  # code string (comments and formatting) that the AST was built from.
+  let code ="""[# A Map is just a bunch of assignments inside a Curly. A Curly in Spry is just a sequence of Nodes.
+# After parsing we have a Curly which is still just "data". If we evaluate the Curly Spry will
+# execute the code inside it and at the end return the Map of locals that was populated by the code.
+{
+  # First is a very minimal meta Map holding the name of the Module in
+  # the form of a literal Word which is similar to a Symbol in Ruby/Smalltalk.
+  # There is no mandatory information, nor is the meta Map itself mandatory.
+  meta = { name = 'Foo }
+
+  # This just assigns 13 to x in the local scope Map
+  foo = 13
+
+  # Same again, but we can of course have funcs or whatever in a Module
+  adder = func [:x + :y]
+}]"""
+  assert(stringRun(code & " commented") == code)
+
+  # Collections
+  assert(run("x = 0 [1 2 3] do: [x = (x + :y)] eva x") == "6")
+  assert(run("x = 0 1 to: 3 do: [x = (x + :y)] eva x ") == "6")
+  assert(run("x = [] 1 to: 3 do: [x add: :y] eva x ") == "[1 2 3]")
 when true:
   # Demonstrate extension from extend.nim
   assert(show("'''abc'''") == "\"abc\"")
