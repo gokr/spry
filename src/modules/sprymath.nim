@@ -1,5 +1,5 @@
 import spryvm
-import math
+import math, random
 
 # Spry math module
 proc addMath*(spry: Interpreter) =
