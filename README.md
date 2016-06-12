@@ -34,10 +34,9 @@ for the moment **I only use Linux for Spry development**. The shell scripts can 
 in nimscript and thus everything can be fully cross platform.
 
 ### Vagrant
-Included is a VagrantFile for Ubuntu 12.04. Just do `vagrant up` and `vagrant ssh` into it to find spry installed. Test with `ispry`.
+Included is a VagrantFile for Ubuntu 16.04. Just do `vagrant up` and `vagrant ssh` into it to find spry installed. Test with `ispry`.
 
 ### Linux
-
 1. Get [Nim](http://www.nim-lang.org)! I recommend following the [instructions at the bottom](http://nim-lang.org/download.html).
 2. Install Nimble, [the Nim package manager](https://github.com/nim-lang/nimble). Yeah, its very nice and simple to use. Its not really needed but makes some things easier.
 3. Clone this repo. Then `cd spry/src && ./test.sh`. If it ends with "ALL GOOD"... **its all good :)**

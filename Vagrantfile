@@ -2,14 +2,15 @@
 # vi: set ft=ruby :
 
 Vagrant.configure(2) do |config|
-  config.vm.box = "ubuntu/trusty64"
+  config.vm.box = "ubuntu/xenial64"
   config.vm.provider "virtualbox" do |vb|
      vb.memory = "4096"
   end
   config.vm.provision "shell", privileged: false, inline: <<-SHELL
     #sudo apt-get update && sudo apt-get upgrade
-    sudo apt-get install -y git build-essential unzip
-    # Install Nim and bootstrap it
+    sudo apt-get install -y git build-essential unzip liblz4-1
+
+    # Install latest Nim and bootstrap it
     git clone https://github.com/nim-lang/Nim.git
     cd Nim
     git clone --depth 1 https://github.com/nim-lang/csources
@@ -28,12 +29,12 @@ Vagrant.configure(2) do |config|
     # Let it refresh the package list
     nimble refresh
 
-    # Install LZ4 r131 manually
-    wget https://github.com/Cyan4973/lz4/archive/r131.tar.gz
-    tar xzf r131.tar.gz
-    cd lz4-r131
-    sudo make install
-    sudo ldconfig
+    # No need for new Ubuntu: Install LZ4 r131 manually
+    # wget https://github.com/Cyan4973/lz4/archive/r131.tar.gz
+    # tar xzf r131.tar.gz
+    # cd lz4-r131
+    # sudo make install
+    # sudo ldconfig
 
     # Use nimble to install spry
     nimble install spry
