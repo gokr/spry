@@ -46,17 +46,17 @@ when true:
   identical("one")        # Eval word
   identical("@one")       # Eval word, self ref
   identical("..one")      # Eval word, start resolve in parent
-  identical("^one")       # Lookup word
-  identical("^@one")      # Lookup word, self ref
-  identical("^..one")     # Lookup word, start resolve in parent
+  identical("$one")       # Lookup word
+  identical("$@one")      # Lookup word, self ref
+  identical("$..one")     # Lookup word, start resolve in parent
   identical(":one")       # Arg word, pulls in from caller
-  identical(":^one")      # Arg word, pulls in without eval
+  identical(":$one")      # Arg word, pulls in without eval
   identical("'one")       # Literal word
   identical("'@one")      # Literal word
   identical("'..one")     # Literal word
-  identical("'^..one")    # Literal word
+  identical("'$..one")    # Literal word
   identical("':one")      # Literal word
-  identical("':^one")     # Literal word
+  identical("':$one")     # Literal word
   identical("''one")      # Literal word
   assert(show("[a at: 1 put: 2]") == "[a at:put: 1 2]")  # Keyword syntactic sugar
   assert(show("""
@@ -175,7 +175,7 @@ when true:
   # Set and get variables
   assert(run("x = 4 5 + x") == "9")
   assert(run("x = 1 x = x eval x") == "1")
-  assert(run("x = 4 return x") == "4")
+  assert(run("x = 4 ^ x") == "4")
   assert(run("x = 1 x = (x + 2) eval x") == "3")
   assert(run("x = 4 k = do [y = (x + 3) eval y] k + x") == "11")
   assert(run("x = 1 do [x = (x + 1)] eval x") == "2")
@@ -299,19 +299,19 @@ when true:
 
   # func
   assert(run("z = func [3 + 4] z") == "7")
-  assert(run("x = func [3 + 4] eva ^x") == "func [3 + 4]")
+  assert(run("x = func [3 + 4] eva $x") == "func [3 + 4]")
   assert(run("x = func [3 + 4] 'x") == "'x")
-  assert(run("x = func [3 + 4] ^x write: 5 x") == "9")
-  assert(run("x = func [3 + 4 return 1 8 + 9] x") == "1")
+  assert(run("x = func [3 + 4] $x write: 5 x") == "9")
+  assert(run("x = func [3 + 4 ^ 1 8 + 9] x") == "1")
   # Its a non local return so it returns all the way, thus it works deep down
-  assert(run("x = func [3 + 4 do [ 2 + 3 return 1 1 + 1] 8 + 9] x") == "1")
+  assert(run("x = func [3 + 4 do [ 2 + 3 ^ 1 1 + 1] 8 + 9] x") == "1")
 
-  # Testing ^ word that prevents evaluation, like quote in Lisp
-  assert(run("x = ^(3 + 4) ^x at: 2") == "4")
+  # Testing $ word that prevents evaluation, like quote in Lisp
+  assert(run("x = $(3 + 4) $x at: 2") == "4")
 
   # Testing literal word evaluation into the real word
   #assert(run("eva 'a") == "a")
-  #assert(run("eva ':^a") == ":^a")
+  #assert(run("eva ':$a") == ":$a")
 
   # func args
   assert(run("do [:a] 5") == "5")
@@ -325,16 +325,16 @@ when true:
   assert(run("do [:b + 3] 4") == "7") # Muhahaha!
   assert(run("do [:b + :c - 1] 4 3") == "6") # Muhahaha!
   assert(run("d = 5 do [:x] d") == "5")
-  assert(run("d = 5 do [:^x] d") == "d")
+  assert(run("d = 5 do [:$x] d") == "d")
   # x will be a Word, need val and key prims to access it!
   #assert(run("a = \"ab\" do [:'x & \"c\"] a") == "\"ac\"") # x becomes "a"
   assert(run("a = \"ab\" do [:x , \"c\"] a") == "\"abc\"") # x becomes "ab"
 
   # @ and ..
-  assert(run("d = 5 do [eval ^d]") == "5")
-  assert(run("d = 5 do [eval ^@d]") == "undef")
-  assert(run("d = 5 do [eval ^..d]") == "5")
-  assert(run("d = 5 do [(locals at: 'd put: 3) ^..d + d]") == "8")
+  assert(run("d = 5 do [eval $d]") == "5")
+  assert(run("d = 5 do [eval $@d]") == "undef")
+  assert(run("d = 5 do [eval $..d]") == "5")
+  assert(run("d = 5 do [(locals at: 'd put: 3) $..d + d]") == "8")
   assert(run("d = 5 do [eval d]") == "5")
   assert(run("d = 5 do [eval @d]") == "undef")
   assert(run("d = 5 do [eval ..d]") == "5")
@@ -343,11 +343,11 @@ when true:
   # Not an object
   assert(run("o = {x = 5 getx = func [@x]} eval o::getx") == "undef")
   assert(run("o = {x = 5} o tag: objectTag o tags") == "[object]")
-  assert(run("o = {x = 5 getx = func [return @x]} o::getx") == "undef")
-  assert(run("o = {x = 5 getx = func [return @x]} o tag: objectTag o::getx") == "5")
+  assert(run("o = {x = 5 getx = func [^ @x]} o::getx") == "undef")
+  assert(run("o = {x = 5 getx = func [^ @x]} o tag: objectTag o::getx") == "5")
   assert(run("o = {x = 5 getx = func [eva @x]} o tag: objectTag o::getx") == "5")
-  assert(run("o = {x = 5 getx = func [return @x] xplus = func [@x + 1]} o tag: objectTag o::xplus") == "6")
-  assert(run("o = {x = 5 getx = func [return @x] xplus = func [do [locals at: 'x put: 4 @x + 1]]} o tag: objectTag o::xplus") == "6")
+  assert(run("o = {x = 5 getx = func [^ @x] xplus = func [@x + 1]} o tag: objectTag o::xplus") == "6")
+  assert(run("o = {x = 5 getx = func [^ @x] xplus = func [do [locals at: 'x put: 4 @x + 1]]} o tag: objectTag o::xplus") == "6")
 
   # func infix works too, and with 3 or more arguments too...
   assert(run("xx = func [:a :b a + b + b] xx 2 (xx 5 4)") == "28") # 2 + (5+4+4) + (5+4+4)
@@ -362,11 +362,11 @@ when true:
   # Does not work since there is a semantic glitch - who is the argParent?
   #assert(run("sum = 0 sum-until-zero = func [[:a > 0] whileTrue: [sum = sum + a]] (sum-until-zero 1 2 3 0 4 4)") == "6")
   # This func does not pull second arg if first is < 0.
-  assert(run("add = func [ if (:a < 0) [return nil] return (a + :b) ] add -4 3") == "3")
-  assert(run("add = func [ if (:a < 0) [return nil] return (a + :b) ] add 1 3") == "4")
+  assert(run("add = func [ if (:a < 0) [^ nil] ^ (a + :b) ] add -4 3") == "3")
+  assert(run("add = func [ if (:a < 0) [^ nil] ^ (a + :b) ] add 1 3") == "4")
 
   # Macros, they need to be able to return multipe nodes...
-  assert(run("z = 5 foo = func [:^a return func [a + 10]] fupp = foo z z = 3 fupp") == "13")
+  assert(run("z = 5 foo = func [:$a ^ func [a + 10]] fupp = foo z z = 3 fupp") == "13")
 
   # func closures. Creates two different funcs closing over two values of a
   assert(run("c = func [:a func [a + :b]] d = (c 2) e = (c 3) (d 1 + e 1)") == "7") # 3 + 4
@@ -416,7 +416,7 @@ when true:
     blk reset
     [blk end?] whileFalse: [
       result add: (do lambda (blk next)) ]
-    return result ]
+    ^ result ]
   [1 2 3 4] map: [:x * 2]
   """) == "[2 4 6 8]")
 
@@ -431,7 +431,7 @@ when true:
   # The word self gives access to the closest outer object
   assert(run("self") == "nil")
   assert(run("x = object {a = 1 foo = funci [self at: 'a]} x::foo") == "1")
-  assert(run("x = object {a = 1 foo = funci [return @a]} x::foo") == "1")
+  assert(run("x = object {a = 1 foo = funci [^ @a]} x::foo") == "1")
 
   # The word activation gives access to the current activation record
   assert(run("activation") == "activation [[activation] 1]")
@@ -452,7 +452,7 @@ when true:
   # spry polyfuncs (reduce should not be needed here)
   assert(run("p = polyfunc reduce [func [:a + 1] func [:x]]") == "polyfunc [func [:a + 1] func [:x]]")
   assert(run("[int string] -> [:x]") == "funci [:x]")
-  assert(run("^([int string] -> [:x]) tags") == "[int string]")
+  assert(run("$([int string] -> [:x]) tags") == "[int string]")
   assert(run("p = polyfunc reduce [[int] -> [1] [string] -> [2]]") == "polyfunc [funci [1] funci [2]]")
   assert(run("p = polyfunc reduce [[int] -> [1] [string] -> [2]] 42 p") == "nil")
   assert(run("inc = polyfunc reduce [[int] -> [:x + 1] [string] -> [:x , \"c\"]] (42 tag: 'int) inc") == "43")
@@ -479,8 +479,8 @@ when true:
   # Checks that we do get a clone, but a shallow one
   assert(run("a = [[1 2]] b = (a clone) (b at: 0) at: 0 put: 5 eval a") == "[[5 2]]")
   assert(run("a = [[1 2]] b = (a clone) b add: 5 eval a") == "[[1 2]]")
-  assert(run("x = ^(3 4) ^x clone") == "(3 4)") # Works for Paren
-  assert(run("x = ^{3 4} ^x clone") == "{3 4}") # Works for Curly
+  assert(run("x = $(3 4) $x clone") == "(3 4)") # Works for Paren
+  assert(run("x = ${3 4} $x clone") == "{3 4}") # Works for Curly
   assert(run("a = {x = 1} a clone") == "{x = 1}")
   assert(run("a = {x = [1]} b = (a clone) (b at: 'y put: 2) eval b") == "{x = [1] y = 2}")
   assert(run("a = {x = [1]} b = (a clone) (b at: 'y put: 2) eval a") == "{x = [1]}")
@@ -490,8 +490,8 @@ when true:
   assert(run("Foo = {x = 10} eva Foo::y") == "undef")
   assert(run("Foo = {x = 10} Foo::x = 3 eva Foo::x") == "3")
   assert(run("eva Foo::y") == "undef")
-  assert(run("Foo = {x = 10} eva ^Foo::x") == "10")
-  assert(run("Foo = {x = func [:x + 1]} eva ^Foo::x") == "func [:x + 1]")
+  assert(run("Foo = {x = 10} eva $Foo::x") == "10")
+  assert(run("Foo = {x = func [:x + 1]} eva $Foo::x") == "func [:x + 1]")
   assert(run("Foo = {x = func [:x + 1]} Foo::x 3") == "4")
   assert(run("eval modules") == "[]")
   assert(run("modules add: {x = 10} eval modules") == "[{x = 10}]")

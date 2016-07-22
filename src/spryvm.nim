@@ -207,16 +207,16 @@ method `$`*(self: EvalOuterWord): string =
   ".." & self.word
 
 method `$`*(self: GetWord): string =
-  "^" & self.word
+  "$" & self.word
 
 method `$`*(self: GetModuleWord): string =
-  "^" & $self.module & "::" & self.word
+  "$" & $self.module & "::" & self.word
 
 method `$`*(self: GetSelfWord): string =
-  "^@" & self.word
+  "$@" & self.word
 
 method `$`*(self: GetOuterWord): string =
-  "^.." & self.word
+  "$.." & self.word
 
 method `$`*(self: LitWord): string =
   "'" & self.word
@@ -225,7 +225,7 @@ method `$`*(self: EvalArgWord): string =
   ":" & self.word
 
 method `$`*(self: GetArgWord): string =
-  ":^" & self.word
+  ":$" & self.word
 
 method `$`*(self: Blok): string =
   "[" & $self.nodes & "]"
@@ -642,7 +642,7 @@ proc newWord(self: Parser, token: string): Node =
 
   # All arg words (unique for Spry) are preceded with ":"
   if first == ':' and len > 1:
-    if token[1] == '^':
+    if token[1] == '$':
       if token.len < 3:
         raiseParseException("Malformed get argword, missing at least 1 character")
       # Then its a get arg word
@@ -650,8 +650,8 @@ proc newWord(self: Parser, token: string): Node =
     else:
       return newEvalArgWord(token[1..^1])
 
-  # All lookup words are preceded with "^"
-  if first == '^' and len > 1:
+  # All lookup words are preceded with "$"
+  if first == '$' and len > 1:
     if token[1] == '@':
       # Self lookup word
       if len > 2:
@@ -1785,7 +1785,7 @@ proc newInterpreter*(): Interpreter =
   nimPrim("func", false, 1):    spry.funk(Blok(evalArg(spry)), false)
   nimPrim("funci", false, 1):   spry.funk(Blok(evalArg(spry)), true)
   nimPrim("do", false, 1):      evalArg(spry).evalDo(spry)
-  nimPrim("^", false, 1):       arg(spry)
+  nimPrim("$", false, 1):       arg(spry)
   nimPrim("eva", false, 1):     evalArg(spry)
   nimPrim("eval", false, 1):    evalArg(spry).eval(spry)
   nimPrim("parse", false, 1):   spry.parser.parse(StringVal(evalArg(spry)).value)
@@ -1810,7 +1810,7 @@ proc newInterpreter*(): Interpreter =
     spry.parser.parse(StringVal(evalArg(spry)).value)
 
   # Control structures
-  nimPrim("return", false, 1):
+  nimPrim("^", false, 1):
     spry.currentActivation.returned = true
     evalArg(spry)
   nimPrim("if", false, 2):
@@ -1932,11 +1932,11 @@ proc newInterpreter*(): Interpreter =
     error = func [echo :msg quit 1]
 
     # Trivial assert
-    assert = func [:x ifNot: [error "Oops, assertion failed"] return x]
+    assert = func [:x ifNot: [error "Oops, assertion failed"] ^ x]
 
     # Objects
-    object = func [ :map tag: objectTag return map ]
-    module = func [ object :map tag: moduleTag return map ]
+    object = func [ :map tag: objectTag ^ map ]
+    module = func [ object :map tag: moduleTag ^ map ]
 
     # Collections
     sprydo: = funci [:blk :fun
@@ -1948,8 +1948,8 @@ proc newInterpreter*(): Interpreter =
       blk reset
       [blk end?] whileFalse: [
         n = (blk next)
-        if do pred n [return n]]
-      return nil
+        if do pred n [^ n]]
+      ^ nil
     ]
 
     select: = funci [:blk :pred
@@ -1958,7 +1958,7 @@ proc newInterpreter*(): Interpreter =
       [blk end?] whileFalse: [
         n = (blk next)
         if do pred n [result add: n]]
-      return result]
+      ^ result]
   ]"""
 
 when isMainModule and not defined(js):
