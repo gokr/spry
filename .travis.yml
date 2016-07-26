@@ -61,7 +61,7 @@ install:
     if [ ! -x $HOME/.nimble/bin/nimble ]; then
       git clone --depth 1 https://github.com/nim-lang/nimble.git
       cd nimble
-      nim c -r src/nimble install
+      nim -d:release c -r src/nimble -y install
       cd ..
     else
       nimble install nimble  
