@@ -110,11 +110,10 @@ proc main() =
       lines = newSeq[string]()
       try:
         # Let the interpreter eval the code. We need to eval whatever we
-        # get (ispry acting as a func) - but we also need to use parens or
-        # it may get weird. The surrounding block is just because we only
+        # get (ispry acting as a func). The surrounding block is just because we only
         # want to pass one Node.
         var result = spry.evalRoot("[" & code & "]")
-        discard spry.setBinding(newEvalWord("@"), result)
+        #discard spry.setBinding(newEvalWord("@"), result)
         var output = $result
         # Print any result
         if output.isNil:
