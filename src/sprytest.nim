@@ -341,9 +341,9 @@ when true:
   assert(run("d = 5 do [(locals at: 'd put: 3) ..d + d]") == "8")
 
   # Not an object
-  assert(run("o = {x = 5 getx = func [@x]} eval o::getx") == "undef")
   assert(run("o = {x = 5} o tag: objectTag o tags") == "[object]")
-  assert(run("o = {x = 5 getx = func [^ @x]} o::getx") == "undef")
+  assert(run("o = object [] {x = 5} o tags") == "[object]")
+  assert(run("o = {x = 5 getx = func [^ @x]} o::getx") == "undef") # Because @ works only for objects
   assert(run("o = {x = 5 getx = func [^ @x]} o tag: objectTag o::getx") == "5")
   assert(run("o = {x = 5 getx = func [eva @x]} o tag: objectTag o::getx") == "5")
   assert(run("o = {x = 5 getx = func [^ @x] xplus = func [@x + 1]} o tag: objectTag o::xplus") == "6")
@@ -430,8 +430,10 @@ when true:
 
   # The word self gives access to the closest outer object
   assert(run("self") == "nil")
-  assert(run("x = object {a = 1 foo = funci [self at: 'a]} x::foo") == "1")
-  assert(run("x = object {a = 1 foo = funci [^ @a]} x::foo") == "1")
+  assert(run("x = object [] {a = 1 foo = funci [self at: 'a]} x::foo") == "1")
+  assert(run("x = object [] {a = 1 foo = funci [^ @a]} x::foo") == "1")
+  assert(run("x = object [] {a = 1 foo = funci [^ @a]} eva $x::foo") == "funci [^ @a]")
+  assert(run("x = object [foo bar] {a = 1} x tags") == "[foo bar object]")
 
   # The word activation gives access to the current activation record
   assert(run("activation") == "activation [[activation] 1]")

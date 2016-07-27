@@ -383,7 +383,10 @@ proc newMap*(): Map =
   Map(bindings: initOrderedTable[Node, Binding]())
 
 proc newMap*(bindings: OrderedTable[Node, Binding]): Map =
-  Map(bindings: bindings)
+  # A copy of the Map
+  result = newMap()
+  for key, binding in bindings:
+    discard result.makeBinding(key, binding.val)
 
 proc newEvalWord*(s: string): EvalWord =
   EvalWord(word: s)
@@ -1164,7 +1167,8 @@ method doReturn*(self: Activation, spry: Interpreter) {.base.} =
     spry.currentActivation.returned = true
 
 method doReturn*(self: FunkActivation, spry: Interpreter) =
-  spry.currentActivation = Funk(self.body).parent
+  # We don't set returned = true - this will stop the return search
+  spry.currentActivation = self.parent
 
 method isObject(self: Activation, spry: Interpreter): bool {.base.} =
   false
@@ -1350,6 +1354,11 @@ method eval(self: Word, spry: Interpreter): Node =
     raiseRuntimeException("Word not found: " & $self)
   return binding.val.eval(spry)
 
+method eval(self: GetModuleWord, spry: Interpreter): Node =
+  ## Look up only
+  let hit = spry.lookup(self)
+  if hit.isNil: spry.undefVal else: hit.val
+
 method eval(self: GetWord, spry: Interpreter): Node =
   ## Look up only
   let hit = spry.lookup(self)
@@ -1365,18 +1374,23 @@ method eval(self: GetOuterWord, spry: Interpreter): Node =
   let hit = spry.lookupParent(self)
   if hit.isNil: spry.undefVal else: hit.val
 
+method eval(self: EvalModuleWord, spry: Interpreter): Node =
+  ## Look up and eval
+  let hit = spry.lookup(self)
+  if hit.isNil: spry.undefVal else: hit.val.eval(spry)
+
 method eval(self: EvalWord, spry: Interpreter): Node =
-  ## Look up only
+  ## Look up and eval
   let hit = spry.lookup(self)
   if hit.isNil: spry.undefVal else: hit.val.eval(spry)
 
 method eval(self: EvalSelfWord, spry: Interpreter): Node =
-  ## Look up only
+  ## Look up and eval
   let hit = spry.lookupSelf(self)
   if hit.isNil: spry.undefVal else: hit.val.eval(spry)
 
 method eval(self: EvalOuterWord, spry: Interpreter): Node =
-  ## Look up only
+  ## Look up and eval
   let hit = spry.lookupParent(self)
   if hit.isNil: spry.undefVal else: hit.val.eval(spry)
 
@@ -1442,6 +1456,7 @@ method eval(self: Paren, spry: Interpreter): Node =
 method eval(self: Curly, spry: Interpreter): Node =
   let activation = newActivation(self)
   discard activation.eval(spry)
+  activation.returned = true
   return activation.locals
 
 method evalDo(self: Node, spry: Interpreter): Node =
@@ -1811,8 +1826,8 @@ proc newInterpreter*(): Interpreter =
 
   # Control structures
   nimPrim("^", false, 1):
+    result = evalArg(spry)
     spry.currentActivation.returned = true
-    evalArg(spry)
   nimPrim("if", false, 2):
     if BoolVal(evalArg(spry)).value:
       return SeqComposite(evalArg(spry)).evalDo(spry)
@@ -1935,8 +1950,16 @@ proc newInterpreter*(): Interpreter =
     assert = func [:x ifNot: [error "Oops, assertion failed"] ^ x]
 
     # Objects
-    object = func [ :map tag: objectTag ^ map ]
-    module = func [ object :map tag: moduleTag ^ map ]
+    object = func [:ts :map
+      map tags: ts
+      map tag: objectTag
+      ^ map]
+
+    # Modules
+    module = func [
+      object [] :map
+      map tag: moduleTag
+      ^ map]
 
     # Collections
     sprydo: = funci [:blk :fun
