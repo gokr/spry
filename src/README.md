@@ -4,15 +4,13 @@ Files and what they are.
 
 * spryvm.nim    - The Spry interpreter and parser.
 * sprytest.nim  - Accompanying tests for the Spry interpreter
-* test.sh       - Trivial shell script to run sprytest.nim
-* testjs.sh     - Trivial shell script to run sprytest.nim compiled for nodejs
 
 # Spry executables
 
-* spry      - The kitchen sink Spry interpreter useful for scripting
-* ispry     - A first shot at a REPL for playing and for running interactive tutorials
-* sprymin   - A minimal core Spry interpreter with only a few modules 
-* sprymicro - As small as it can get, source is embedded
+* spry.nim      - The kitchen sink Spry interpreter useful for scripting
+* ispry.nim     - A first shot at a REPL for playing and for running interactive tutorials
+* sprymin.nim   - A minimal core Spry interpreter
+* sprymicro.nim - As small as it can get, source is embedded instead of accessed as file
 
 # Going small
 The Spry interpreter is fairly small, only around 1100 lines of code but it does include the Nim soft realtime GC so we can't
