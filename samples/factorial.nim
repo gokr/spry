@@ -5,6 +5,6 @@ import spryvm
 
 # Create an interpreter and have it evaluate a string of Spry code
 echo newInterpreter().eval """[
-  factorial = func [ifelse (:n > 0) [n * factorial (n - 1)] [1]]
+  factorial = func [:n > 0 if: [n * factorial (n - 1)] else: [1]]
   factorial 12
 ]"""

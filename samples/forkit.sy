@@ -4,14 +4,11 @@
 # Assignment is actually an infix function!
 code = [
   # This is a local function to recursively calculate factorial.
-  # ifelse is currently a 3-argument prefix function, but Spry could use
-  # Smalltalk syntax for that too.
-
   factorial = func [
     # Arguments are sucked in as we go, so no need to declare n first
-    ifelse (:n > 0)
-      [n * factorial (n - 1)]
-      [1]
+    :n > 0
+      if: [n * factorial (n - 1)]
+      else: [1]
   ]
   # Echo is a prefix function.
   echo factorial 1
