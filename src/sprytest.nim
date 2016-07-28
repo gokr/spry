@@ -143,7 +143,7 @@ when true:
   assert(run("x ?") == "false")
   assert(run("x = 1 x ?") == "true")
   assert(run("x = nil x ?") == "true")
-  assert(run("x = 1 if (x ?) [12]") == "12")
+  assert(run("x = 1 x ? if: [12]") == "12")
   assert(run("x = 1 x = undef x ?") == "false")
   assert(run("x = 5 x = undef eval x") == "undef")
   assert(run("x = 5 x = nil eval x") == "nil")
@@ -270,18 +270,16 @@ when true:
   # Data as code
   assert(run("code = [1 + 2 + 3] code at: 2 put: 10 do code") == "14")
 
-  # if and ifelse and echo
-  assert(run("x = true if x [true]") == "true")
-  assert(run("x = true if x [12]") == "12")
-  assert(run("if false [12]") == "nil")
-  assert(run("x = false if x [true]") == "nil")
-  assert(run("if (3 < 4) [\"yay\"]") == "\"yay\"")
-  assert(run("if (3 > 4) [\"yay\"]") == "nil")
-  assert(run("ifelse (3 > 4) [\"yay\"] ['ok]") == "'ok")
-  assert(run("ifelse (3 > 4) [true] [false]") == "false")
-  assert(run("ifelse (4 > 3) [true] [false]") == "true")
-
-  # Smalltalk if, kinda
+  # if:, if:else:, ifNot:, ifNot:else:
+  assert(run("x = true x if: [true]") == "true")
+  assert(run("x = true x if: [12]") == "12")
+  assert(run("false if: [12]") == "nil")
+  assert(run("x = false x if: [true]") == "nil")
+  assert(run("(3 < 4) if: [\"yay\"]") == "\"yay\"")
+  assert(run("(3 > 4) if: [\"yay\"]") == "nil")
+  assert(run("(3 > 4) if: [\"yay\"] else: ['ok]") == "'ok")
+  assert(run("(3 > 4) if: [true] else: [false]") == "false")
+  assert(run("(4 > 3) if: [true] else: [false]") == "true")
   assert(run("(3 < 4) if: [5]") == "5")
   assert(run("3 < 4 if: [5]") == "5")
   assert(run("3 < 4 ifNot: [5]") == "nil")
@@ -362,8 +360,8 @@ when true:
   # Does not work since there is a semantic glitch - who is the argParent?
   #assert(run("sum = 0 sum-until-zero = func [[:a > 0] whileTrue: [sum = sum + a]] (sum-until-zero 1 2 3 0 4 4)") == "6")
   # This func does not pull second arg if first is < 0.
-  assert(run("add = func [ if (:a < 0) [^ nil] ^ (a + :b) ] add -4 3") == "3")
-  assert(run("add = func [ if (:a < 0) [^ nil] ^ (a + :b) ] add 1 3") == "4")
+  assert(run("add = func [ :a < 0 if: [^ nil] ^ (a + :b) ] add -4 3") == "3")
+  assert(run("add = func [ :a < 0 if: [^ nil] ^ (a + :b) ] add 1 3") == "4")
 
   # Macros, they need to be able to return multipe nodes...
   assert(run("z = 5 foo = func [:$a ^ func [a + 10]] fupp = foo z z = 3 fupp") == "13")
@@ -373,7 +371,7 @@ when true:
 
   # Ok, but now we can do arguments so...
   assert(run("""
-  factorial = func [ifelse (:n > 0) [n * factorial (n - 1)] [1]]
+  factorial = func [:n > 0 if: [n * factorial (n - 1)] else: [1]]
   factorial 12
   """) == "479001600")
 
