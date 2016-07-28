@@ -1,0 +1,12 @@
+#!/usr/bin/env spry
+foo = polyfunc reduce [
+  [number] -> [^ "a number"]
+  [string] -> [^ "a string"]
+]
+
+# Create an int and a string and tag them
+aNumber = (12 tag: 'number)
+aString = ("abc" tag: 'string)
+
+# Let's try it
+echo ("abc is " , (aString foo) , " and 12 is " , (aNumber foo))
