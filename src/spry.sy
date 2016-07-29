@@ -1,6 +1,6 @@
 {
   # Here is the meta info
-  meta = {
+  _meta = {
     name = 'ispry
     version = "1.0"
     description = "Default module loaded by ispry"
