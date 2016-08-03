@@ -1658,7 +1658,9 @@ proc newInterpreter*(): Interpreter =
   # ..and xxx! for infix funcs arity 0.
   nimPrim("size", true, 1):
     let comp = evalArgInfix(spry)
-    if comp of SeqComposite:
+    if comp of StringVal:
+      result = newValue(StringVal(comp).value.len)
+    elif comp of SeqComposite:
       return newValue(SeqComposite(evalArgInfix(spry)).nodes.len)
     elif comp of Map:
       return newValue(Map(evalArgInfix(spry)).bindings.len)
@@ -1713,6 +1715,20 @@ proc newInterpreter*(): Interpreter =
     result = evalArgInfix(spry)
     let comp = SeqComposite(result)
     comp.removeLast()
+  nimPrim("copyFrom:to:", true, 2):
+    let comp = evalArgInfix(spry)
+    let frm = IntVal(evalArg(spry)).value
+    let to = IntVal(evalArg(spry)).value
+    if comp of StringVal:
+      result = newValue(StringVal(comp).value[frm .. to])
+    elif comp of Blok:
+      result = newBlok(Blok(comp).nodes[frm .. to])
+    elif comp of Paren:
+      result = newBlok(Paren(comp).nodes[frm .. to])
+    elif comp of Curly:
+      result = newBlok(Curly(comp).nodes[frm .. to])
+    if comp.tags.notNil:
+      result.tags = comp.tags
 
   # Positioning
   nimPrim("reset", true, 1):  SeqComposite(evalArgInfix(spry)).pos = 0 # Called change in Rebol
@@ -1803,6 +1819,9 @@ proc newInterpreter*(): Interpreter =
   nimPrim("$", false, 1):       arg(spry)
   nimPrim("eva", false, 1):     evalArg(spry)
   nimPrim("eval", false, 1):    evalArg(spry).eval(spry)
+
+  # Parse and serialize (called "mold" in Rebol)
+  nimPrim("serialize", false, 1): newValue($evalArg(spry))
   nimPrim("parse", false, 1):   spry.parser.parse(StringVal(evalArg(spry)).value)
 
   # Word conversions
@@ -1817,12 +1836,6 @@ proc newInterpreter*(): Interpreter =
 
   # Cloning
   nimPrim("clone", true, 1):    evalArgInfix(spry).clone()
-
-  # Serialize & deserialize
-  nimPrim("serialize", false, 1):
-    newValue($evalArg(spry))
-  nimPrim("deserialize", false, 1):
-    spry.parser.parse(StringVal(evalArg(spry)).value)
 
   # Control structures
   nimPrim("^", false, 1):
@@ -1933,7 +1946,7 @@ proc newInterpreter*(): Interpreter =
     error = func [echo :msg quit 1]
 
     # Trivial assert
-    assert = func [:x ifNot: [error "Oops, assertion failed"] ^ x]
+    assert = func [:x ifNot: [error "Oops, assertion failedh"] ^ x]
 
     # Objects
     object = func [:ts :map

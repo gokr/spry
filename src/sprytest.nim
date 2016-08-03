@@ -267,6 +267,11 @@ when true:
   assert(run("[1 2 true 4] contains: 'true") == "true")
   assert(run("x = false b = [] b add: x b contains: x") == "true")
 
+  # copyFrom:to:
+  assert(run("[1 2 3] copyFrom: 1 to: 2") == "[2 3]")
+  assert(run("[1 2 3] copyFrom: 0 to: 1") == "[1 2]")
+  assert(run("\"abcd\" copyFrom: 1 to: 2") == "\"bc\"")
+
   # Data as code
   assert(run("code = [1 + 2 + 3] code at: 2 put: 10 do code") == "14")
 
@@ -462,12 +467,12 @@ when true:
   assert(run("compress \"abc123\"") == "\"\\x06\\x00\\x00\\x00`abc123\"")
   assert(run("uncompress (compress \"abc123\")") == "\"abc123\"")
 
-  # spry serialize deserialize
+  # spry serialize parse
   assert(run("serialize [1 2 3 \"abc\" {3.14}]") == "\"[1 2 3 \\\"abc\\\" {3.14}]\"")
-  assert(run("deserialize serialize [1 2 3 \"abc\" {3.14}]") == "[1 2 3 \"abc\" {3.14}]")
+  assert(run("parse serialize [1 2 3 \"abc\" {3.14}]") == "[1 2 3 \"abc\" {3.14}]")
 
   # spry IO
-  assert(run("(deserialize readFile \"data.spry\") first first") == "121412")
+  assert(run("(parse readFile \"data.spry\") first first") == "121412")
 
   # spry OS
   assert(run("shell \"stat --printf='%s' data.spry\"") == "\"1665\\x0A\"")
