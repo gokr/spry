@@ -431,12 +431,15 @@ when true:
   assert(run("do [a = 1 b = 2 locals]") == "{a = 1 b = 2}")
   assert(run("do [a = 1 b = 2 c = 3 (locals)]") == "{a = 1 b = 2 c = 3}")
 
-  # The word self gives access to the closest outer object
+  # The word self gives access to the most recent infix argument
   assert(run("self") == "nil")
   assert(run("x = object [] {a = 1 foo = method [self at: 'a]} x::foo") == "1")
   assert(run("x = object [] {a = 1 foo = method [^ @a]} x::foo") == "1")
   assert(run("x = object [] {a = 1 foo = method [^ @a]} eva $x::foo") == "method [^ @a]")
   assert(run("x = object [foo bar] {a = 1} x tags") == "[foo bar object]")
+
+  # The word ; gives access to the last known infix argument
+  assert(run("[1] add: 2 ; add: 3 ; size") == "3")
 
   # The word activation gives access to the current activation record
   assert(run("activation") == "activation [[activation] 1]")

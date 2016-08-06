@@ -860,6 +860,7 @@ type
     parser*: Parser
     currentActivation*: Activation  # Execution spaghetti stack
     rootActivation*: RootActivation # The first one
+    lastSelf*: Node                 # Used to implement cascades
     root*: Map               # Root bindings
     modules*: Blok           # Modules for unqualified lookup
     trueVal*: Node
@@ -1149,6 +1150,7 @@ template pushActivation*(spry: Interpreter, activation: Activation) =
   spry.currentActivation = activation
 
 template popActivation*(spry: Interpreter) =
+  spry.lastSelf = spry.currentActivation.self
   spry.currentActivation = spry.currentActivation.parent
 
 proc atEnd*(self: Activation): bool {.inline.} =
@@ -1266,16 +1268,18 @@ proc argParent(spry: Interpreter): Activation =
     return activation
 
 proc argInfix*(spry: Interpreter): Node =
-  ## Pull the infix arg
-  spry.currentActivation.last
+  ## Pull self
+  result = spry.currentActivation.last
+  spry.lastSelf = result
 
 proc arg*(spry: Interpreter): Node =
   ## Pull next argument from activation
   spry.currentActivation.next()
 
 template evalArgInfix*(spry: Interpreter): Node =
-  ## Pull the infix arg and eval
-  spry.currentActivation.last.eval(spry)
+  ## Pull self and eval
+  spry.lastSelf = spry.currentActivation.last
+  spry.lastSelf.eval(spry)
 
 proc evalArg*(spry: Interpreter): Node =
   ## Pull next argument from activation and eval
@@ -1424,7 +1428,7 @@ method eval(self: GetArgWord, spry: Interpreter): Node =
   return arg
 
 method eval(self: NimProc, spry: Interpreter): Node =
-  return self.prok(spry)
+  self.prok(spry)
 
 proc eval(current: Activation, spry: Interpreter): Node =
   ## This is the inner chamber of the heart :)
@@ -1540,6 +1544,10 @@ proc newInterpreter*(): Interpreter =
   # Access to last receiver
   nimPrim("self", false):
     result = spry.currentActivation.self
+    if result.isNil:
+      result = spry.nilVal
+  nimPrim(";", false):
+    result = spry.lastSelf
     if result.isNil:
       result = spry.nilVal
 
