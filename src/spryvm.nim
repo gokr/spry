@@ -875,11 +875,9 @@ type
   NimProc* = ref object of Node
     prok*: ProcType
     infix*: bool
-    #arity*: int
 
   # An executable Ni function
   Funk* = ref object of Blok
-    #infix*: bool
     parent*: Activation
   Meth* = ref object of Funk
 
@@ -1172,11 +1170,11 @@ method doReturn*(self: FunkActivation, spry: Interpreter) =
   # We don't set returned = true - this will stop the return search
   spry.currentActivation = self.parent
 
-method isObject(self: Activation, spry: Interpreter): bool {.base.} =
+method isObject(self: Node, spry: Interpreter): bool {.base.} =
   false
 
-method isObject(self: BlokActivation, spry: Interpreter): bool =
-  self.locals.notNil and self.locals.tags.notNil and self.locals.tags.contains(spry.objectTag)
+method isObject(self: Map, spry: Interpreter): bool =
+  self.tags.notNil and self.tags.contains(spry.objectTag)
 
 method lookup(self: Activation, key: Node): Binding {.base.} =
   # Base implementation needed for dynamic dispatch to work
@@ -1212,17 +1210,10 @@ proc lookup(spry: Interpreter, key: Node): Binding =
       if hit.notNil:
         return hit
 
-proc self(spry: Interpreter): Map =
-  # Find first object, ending in the rootActivation
-  for activation in mapWalk(spry.currentActivation):
-    if activation.isObject(spry):
-      return BlokActivation(activation).getLocals()
-
 proc lookupSelf(spry: Interpreter, key: Node): Binding =
-  # Find first object, ending in the rootActivation
-  for activation in mapWalk(spry.currentActivation):
-    if activation.isObject(spry):
-      return activation.lookup(key)
+  let self = spry.currentActivation.self
+  if self of Map:
+    return Map(self).lookup(key)
 
 proc lookupLocal(spry: Interpreter, key: Node): Binding =
   return spry.currentActivation.lookup(key)
@@ -1546,10 +1537,9 @@ proc newInterpreter*(): Interpreter =
     for activation in mapWalk(spry.currentActivation):
       return BlokActivation(activation).getLocals()
 
-  # Access to closest object
+  # Access to last receiver
   nimPrim("self", false):
     result = spry.currentActivation.self
-    #result = self(spry)
     if result.isNil:
       result = spry.nilVal
 
