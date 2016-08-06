@@ -4,7 +4,7 @@ import strutils
 
 # Spry string module
 proc addString*(spry: Interpreter) =
-  nimPrim("split:", true, 2):
+  nimPrim("split:", true):
     let s = StringVal(evalArgInfix(spry)).value
     let sep = StringVal(evalArg(spry)).value
     # Should probably be a converter

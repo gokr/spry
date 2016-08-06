@@ -3,11 +3,11 @@ import os, osproc, times
 
 # Spry OS module
 proc addOS*(spry: Interpreter) =
-  nimPrim("sleep", false, 1):
+  nimPrim("sleep", false):
     sleep(IntVal(evalArg(spry)).value)
-  nimPrim("shell", false, 1):
+  nimPrim("shell", false):
     newValue(execProcess(StringVal(evalArg(spry)).value))
-  nimPrim("timeToRun", true, 1):
+  nimPrim("timeToRun", true):
     var t = cpuTime()
     discard evalArgInfix(spry).evalDo(spry)
     newValue(cpuTime() - t)

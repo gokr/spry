@@ -3,22 +3,18 @@ import spryvm, sequtils
 # An executable Spry polymorphic function
 type
   # nodes hold Funk instances
-  PolyFunk* = ref object of Funk
+  PolyMeth* = ref object of Meth
 
-proc newPolyFunk*(funks: Blok, infix: bool, parent: Activation): Funk =
-  PolyFunk(nodes: funks.nodes, infix: infix, parent: parent)
+proc newPolyMeth*(funks: Blok, parent: Activation): Funk =
+  PolyMeth(nodes: funks.nodes, parent: parent)
 
-proc polyfunk*(funks: Blok, infix: bool, spry: Interpreter): Node =
-  newPolyFunk(funks, infix, spry.currentActivation)
+proc polymeth*(funks: Blok, spry: Interpreter): Node =
+  newPolyMeth(funks, spry.currentActivation)
 
-method `$`*(self: PolyFunk): string =
-  if self.infix:
-    result = "polyfunci "
-  else:
-    result = "polyfunc "
-  return result & "[" & $self.nodes & "]"
+method `$`*(self: PolyMeth): string =
+  return "polymethod [" & $self.nodes & "]"
 
-method eval(self: PolyFunk, spry: Interpreter): Node =
+method eval(self: PolyMeth, spry: Interpreter): Node =
   let receiver = evalArgInfix(spry)
   if receiver.isNil:
     return spry.nilVal
@@ -36,16 +32,16 @@ method eval(self: PolyFunk, spry: Interpreter): Node =
 
 # Spry OO module
 proc addOO*(spry: Interpreter) =
-  # Create a polyfunc with a block of tagged funcs/funcis as argument
-  nimPrim("polyfunc", false, 1):
-    polyfunk(Blok(evalArg(spry)), false, spry)
+  # Create a polymeth with a block of tagged funcs/funcis as argument
+  nimPrim("polymethod", false):
+    polymeth(Blok(evalArg(spry)), spry)
 
-  nimPrim("polyfunci", false, 1):
-    polyfunk(Blok(evalArg(spry)), true, spry)
+  #nimPrim("polyfunci", false):
+  #  polymeth(Blok(evalArg(spry)), true, spry)
 
-  # Shorthand for making a tagged funci
-  nimPrim("->", true, 2):
+  # Shorthand for making a tagged method
+  nimPrim("->", true):
     let tags = evalArgInfix(spry)
-    let result = spry.funk(Blok(evalArg(spry)), true)
+    let result = spry.meth(Blok(evalArg(spry)))
     result.tags = Blok(tags)
     return result

@@ -7,5 +7,5 @@ proc primPython*(spry: Interpreter): spryvm.Node =
 
 # This proc does the work extending an Interpreter instance
 proc addPython*(spry: Interpreter) =
-  spry.makeWord("python", newNimProc(primPython, false, 1))
+  spry.makeWord("python", newNimProc(primPython, false))
 

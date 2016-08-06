@@ -7,6 +7,6 @@
   }
 
   # Just a simple infix func
-  baseName = funci [:fn split: "." first]
+  baseName = method [self split: "." first]
 }
 

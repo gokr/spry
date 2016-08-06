@@ -354,12 +354,12 @@ when true:
 
   # func infix works too, and with 3 or more arguments too...
   assert(run("xx = func [:a :b a + b + b] xx 2 (xx 5 4)") == "28") # 2 + (5+4+4) + (5+4+4)
-  assert(run("xx = funci [:a :b a + b] 5 xx 2") == "7") # 5 + 7
-  assert(run("xx = funci [:a + :b] 5 xx 2") == "7") # 5 + 7
-  assert(run("xx = funci [:a :b a + b + b] 5 xx (4 xx 2)") == "21") # 5 + (4+2+2) + (4+2+2)
-  assert(run("xx = funci [:a + :b + b] (5 xx 4) xx 2") == "17") # 5+4+4 + 2+2
-  assert(run("pick2add = funci [:block :b :c block at: b + (block at: c)] [1 2 3] pick2add 0 2") == "4") # 1+3
-  assert(run("pick2add = funci [:block at: :b + (block at: :c)] [1 2 3] pick2add 0 2") == "4") # 1+3
+  assert(run("xx = method [:b self + b] 5 xx 2") == "7") # 5 + 7
+  assert(run("xx = method [self + :b] 5 xx 2") == "7") # 5 + 7
+  assert(run("xx = method [:b self + b + b] 5 xx (4 xx 2)") == "21") # 5 + (4+2+2) + (4+2+2)
+  assert(run("xx = method [self + :b + b] (5 xx 4) xx 2") == "17") # 5+4+4 + 2+2
+  assert(run("pick2add = method [:b :c self at: b + (self at: c)] [1 2 3] pick2add 0 2") == "4") # 1+3
+  assert(run("pick2add = method [self at: :b + (self at: :c)] [1 2 3] pick2add 0 2") == "4") # 1+3
 
   # Variadic and dynamic args
   # Does not work since there is a semantic glitch - who is the argParent?
@@ -414,11 +414,11 @@ when true:
 
   # Implementing collect: as do: and map:
   assert(run("""
-  map: = funci [:blk :lambda
+  map: = method [:lambda
     result = []
-    blk reset
-    [blk end?] whileFalse: [
-      result add: (do lambda (blk next)) ]
+    self reset
+    [self end?] whileFalse: [
+      result add: (do lambda (self next)) ]
     ^ result ]
   [1 2 3 4] map: [:x * 2]
   """) == "[2 4 6 8]")
@@ -433,9 +433,9 @@ when true:
 
   # The word self gives access to the closest outer object
   assert(run("self") == "nil")
-  assert(run("x = object [] {a = 1 foo = funci [self at: 'a]} x::foo") == "1")
-  assert(run("x = object [] {a = 1 foo = funci [^ @a]} x::foo") == "1")
-  assert(run("x = object [] {a = 1 foo = funci [^ @a]} eva $x::foo") == "funci [^ @a]")
+  assert(run("x = object [] {a = 1 foo = method [self at: 'a]} x::foo") == "1")
+  assert(run("x = object [] {a = 1 foo = method [^ @a]} x::foo") == "1")
+  assert(run("x = object [] {a = 1 foo = method [^ @a]} eva $x::foo") == "method [^ @a]")
   assert(run("x = object [foo bar] {a = 1} x tags") == "[foo bar object]")
 
   # The word activation gives access to the current activation record
@@ -454,14 +454,14 @@ when true:
   assert(run("10 fac") == "3628800")
   assert(run("10.0 sin") == "-0.5440211108893698")
 
-  # spry polyfuncs (reduce should not be needed here)
-  assert(run("p = polyfunc reduce [func [:a + 1] func [:x]]") == "polyfunc [func [:a + 1] func [:x]]")
-  assert(run("[int string] -> [:x]") == "funci [:x]")
-  assert(run("$([int string] -> [:x]) tags") == "[int string]")
-  assert(run("p = polyfunc reduce [[int] -> [1] [string] -> [2]]") == "polyfunc [funci [1] funci [2]]")
-  assert(run("p = polyfunc reduce [[int] -> [1] [string] -> [2]] 42 p") == "nil")
-  assert(run("inc = polyfunc reduce [[int] -> [:x + 1] [string] -> [:x , \"c\"]] (42 tag: 'int) inc") == "43")
-  assert(run("inc = polyfunc reduce [[int] -> [:x + 1] [string] -> [:x , \"c\"]] (\"ab\" tag: 'string) inc") == "\"abc\"")
+  # spry polymeth (reduce should not be needed here)
+  assert(run("p = polymethod reduce [method [self + 1] method [self]]") == "polymethod [method [self + 1] method [self]]")
+  assert(run("[int string] -> [self]") == "method [self]")
+  assert(run("$([int string] -> [self]) tags") == "[int string]")
+  assert(run("p = polymethod reduce [[int] -> [1] [string] -> [2]]") == "polymethod [method [1] method [2]]")
+  assert(run("p = polymethod reduce [[int] -> [1] [string] -> [2]] 42 p") == "nil")
+  assert(run("inc = polymethod reduce [[int] -> [self + 1] [string] -> [self , \"c\"]] (42 tag: 'int) inc") == "43")
+  assert(run("inc = polymethod reduce [[int] -> [self + 1] [string] -> [self , \"c\"]] (\"ab\" tag: 'string) inc") == "\"abc\"")
 
   # spry compress
   assert(run("compress \"abc123\"") == "\"\\x06\\x00\\x00\\x00`abc123\"")

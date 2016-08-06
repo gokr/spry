@@ -43,6 +43,6 @@ proc dump(spry: Interpreter) =
 
 # Spry debug module
 proc addDebug*(spry: Interpreter) =
-  nimPrim("dump", false, 0):    dump(spry)
+  nimPrim("dump", false):    dump(spry)
   when not defined(js): # There is no repr support in js backend
-    nimPrim("repr", false, 1):  newValue(repr(evalArg(spry)))
+    nimPrim("repr", false):  newValue(repr(evalArg(spry)))
