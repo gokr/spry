@@ -1524,6 +1524,8 @@ proc newInterpreter*(): Interpreter =
   spry.emptyBlok = newBlok()
   spry.objectTag = spry.newLitWord("object")
   spry.moduleTag = spry.newLitWord("module")
+
+  spry.makeWord("root", spry.root)
   spry.makeWord("false", spry.falseVal)
   spry.makeWord("true", spry.trueVal)
   spry.makeWord("undef", spry.undefVal)
@@ -1550,10 +1552,6 @@ proc newInterpreter*(): Interpreter =
     result = spry.lastSelf
     if result.isNil:
       result = spry.nilVal
-
-  # Access to root Map
-  nimPrim("root", false):
-    spry.root
 
   # Access to modules Block
   spry.modules = newBlok()
