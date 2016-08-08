@@ -1212,6 +1212,11 @@ proc lookup(spry: Interpreter, key: Node): Binding =
       if hit.notNil:
         return hit
 
+proc argParent(spry: Interpreter): Activation =
+  # Return first activation up the parent chain that was a caller
+  for activation in callerWalk(spry.currentActivation):
+    return activation
+
 proc lookupSelf(spry: Interpreter, key: Node): Binding =
   let self = spry.currentActivation.self
   if self of Map:
@@ -1247,26 +1252,6 @@ proc setBinding*(spry: Interpreter, key: Node, value: Node): Binding =
   else:
     result = spry.makeBinding(key, value)
 
-method infix(self: Node): bool {.base.} =
-  false
-
-method infix(self: Funk): bool =
-  false
-
-method infix(self: Meth): bool =
-  true
-
-method infix(self: NimProc): bool =
-  self.infix
-
-method infix(self: Binding): bool =
-  return self.val.infix
-
-proc argParent(spry: Interpreter): Activation =
-  # Return first activation up the parent chain that was a caller
-  for activation in callerWalk(spry.currentActivation):
-    return activation
-
 proc argInfix*(spry: Interpreter): Node =
   ## Pull self
   result = spry.currentActivation.last
@@ -1280,6 +1265,19 @@ template evalArgInfix*(spry: Interpreter): Node =
   ## Pull self and eval
   spry.lastSelf = spry.currentActivation.last
   spry.lastSelf.eval(spry)
+
+proc self(spry: Interpreter): Node =
+  if spry.currentActivation.self.isNil:
+    spry.currentActivation.self = spry.undefVal
+  spry.currentActivation.self
+
+proc setSelf(spry: Interpreter): Node =
+  result = evalArgInfix(spry)
+  if result.isNil:
+    spry.currentActivation.self = spry.nilVal
+    result = spry.nilVal
+  else:
+    spry.currentActivation.self = result
 
 proc evalArg*(spry: Interpreter): Node =
   ## Pull next argument from activation and eval
@@ -1401,31 +1399,18 @@ method eval(self: LitWord, spry: Interpreter): Node =
   self
 
 method eval(self: EvalArgWord, spry: Interpreter): Node =
-  var arg: Node
   let previousActivation = spry.argParent()
-  if spry.currentActivation.body.infix and spry.currentActivation.self.isNil:
-    arg = previousActivation.last
-    spry.currentActivation.self = arg
-  else:
-    arg = previousActivation.next()
+  let arg = previousActivation.next()
   # This evaluation needs to be done in parent activation!
   let here = spry.currentActivation
   spry.currentActivation = previousActivation
-  let ev = arg.eval(spry)
+  result = arg.eval(spry)
   spry.currentActivation = here
-  discard spry.setBinding(self, ev)
-  return ev
+  discard spry.setBinding(self, result)
 
 method eval(self: GetArgWord, spry: Interpreter): Node =
-  var arg: Node
-  let previousActivation = spry.argParent()
-  if spry.currentActivation.body.infix and spry.currentActivation.self.isNil:
-    arg = previousActivation.last
-    spry.currentActivation.self = arg
-  else:
-    arg = previousActivation.next()
-  discard spry.setBinding(self, arg)
-  return arg
+  result = spry.argParent().next()
+  discard spry.setBinding(self, result)
 
 method eval(self: NimProc, spry: Interpreter): Node =
   self.prok(spry)
@@ -1453,7 +1438,7 @@ method eval(self: Funk, spry: Interpreter): Node =
 
 method eval(self: Meth, spry: Interpreter): Node =
   let act = newActivation(self)
-  act.self = evalArgInfix(spry)
+  discard setSelf(spry)
   act.eval(spry)
 
 method eval(self: Paren, spry: Interpreter): Node =
@@ -1543,11 +1528,16 @@ proc newInterpreter*(): Interpreter =
     for activation in mapWalk(spry.currentActivation):
       return BlokActivation(activation).getLocals()
 
-  # Access to last receiver
+  # Access to self
+  nimPrim("node", false):
+    let act = spry.argParent()
+    if act.notNil:
+      result = act.last
+      if result.isNil:
+        spry.currentActivation.self = spry.nilVal
+        result = spry.nilVal
   nimPrim("self", false):
-    result = spry.currentActivation.self
-    if result.isNil:
-      result = spry.nilVal
+    self(spry)
   nimPrim(";", false):
     result = spry.lastSelf
     if result.isNil:

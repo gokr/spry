@@ -431,8 +431,14 @@ when true:
   assert(run("do [a = 1 b = 2 locals]") == "{a = 1 b = 2}")
   assert(run("do [a = 1 b = 2 c = 3 (locals)]") == "{a = 1 b = 2 c = 3}")
 
-  # The word self gives access to the most recent infix argument
-  assert(run("self") == "nil")
+  # The word self gives access to the receiver for methods only
+  assert(run("self") == "undef") # self not bound for funcs
+  assert(run("xx = func [self] xx") == "undef") # self not bound for funcs
+  assert(run("xx = method [self + self] o = 12 o xx") == "24") # Multiple self
+  assert(run("xx = func [node] foo xx") == "foo") # Access to unevaled self
+  assert(run("xx = func [node] $(3 + 4) xx") == "(3 + 4)") # Access to unevaled self
+  assert(run("[] add: 1 ; add: $ + ; add: 2 echo ; do ;") == "3") # Access to last self ;
+
   assert(run("x = object [] {a = 1 foo = method [self at: 'a]} x::foo") == "1")
   assert(run("x = object [] {a = 1 foo = method [^ @a]} x::foo") == "1")
   assert(run("x = object [] {a = 1 foo = method [^ @a]} eva $x::foo") == "method [^ @a]")
