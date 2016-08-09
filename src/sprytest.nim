@@ -344,13 +344,13 @@ when true:
   assert(run("d = 5 do [(locals at: 'd put: 3) ..d + d]") == "8")
 
   # Not an object
-  assert(run("o = {x = 5} o tag: objectTag o tags") == "[object]")
+  assert(run("o = {x = 5} o tag: 'object o tags") == "[object]")
   assert(run("o = object [] {x = 5} o tags") == "[object]")
   assert(run("o = \"foo\" getx = method [^ @x] o getx") == "undef") # Because @ works only for objects
-  assert(run("o = {x = 5} getx = method [^ @x] o tag: objectTag o getx") == "5")
-  assert(run("o = {x = 5} getx = method [eva @x] o tag: objectTag o getx") == "5")
-  assert(run("o = {x = 5} xplus = method [@x + 1] o tag: objectTag o xplus") == "6")
-  assert(run("o = {x = 5} xplus = method [do [locals at: 'x put: 4 @x + 1]] o tag: objectTag o xplus") == "6")
+  assert(run("o = {x = 5} getx = method [^ @x] o tag: 'object o getx") == "5")
+  assert(run("o = {x = 5} getx = method [eva @x] o tag: 'object o getx") == "5")
+  assert(run("o = {x = 5} xplus = method [@x + 1] o tag: 'object o xplus") == "6")
+  assert(run("o = {x = 5} xplus = method [do [locals at: 'x put: 4 @x + 1]] o tag: 'object o xplus") == "6")
 
   # func infix works too, and with 3 or more arguments too...
   assert(run("xx = func [:a :b a + b + b] xx 2 (xx 5 4)") == "28") # 2 + (5+4+4) + (5+4+4)

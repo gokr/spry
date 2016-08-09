@@ -1515,8 +1515,8 @@ proc newInterpreter*(): Interpreter =
   spry.makeWord("true", spry.trueVal)
   spry.makeWord("undef", spry.undefVal)
   spry.makeWord("nil", spry.nilVal)
-  spry.makeWord("objectTag", spry.objectTag)
-  spry.makeWord("moduleTag", spry.moduleTag)
+  #spry.makeWord("objectTag", spry.objectTag)
+  #spry.makeWord("moduleTag", spry.moduleTag)
 
   # Reflection words
   # Access to current Activation
@@ -1622,7 +1622,7 @@ proc newInterpreter*(): Interpreter =
 
   # Conversions
   nimPrim("form", true):
-    newValue(form(evalArgInfix(spry)))
+    newValue(form(argInfix(spry)))
   nimPrim("commented", true):
     newValue(commented(evalArgInfix(spry)))
   nimPrim("asFloat", true):
@@ -1948,13 +1948,13 @@ proc newInterpreter*(): Interpreter =
     # Objects
     object = func [:ts :map
       map tags: ts
-      map tag: objectTag
+      map tag: 'object
       ^ map]
 
     # Modules
     module = func [
       object [] :map
-      map tag: moduleTag
+      map tag: 'module
       ^ map]
 
     # Collections
