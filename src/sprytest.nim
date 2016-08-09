@@ -223,6 +223,18 @@ when true:
   assert(run("false == true") == "false")
   assert(run("true == false") == "false")
 
+  # Identity and equality
+  assert(run("\"abc\" == \"abc\"") == "true")
+  assert(run("\"abc\" == \"ab\"") == "false")
+  assert(run("\"abc\" != \"ab\"") == "true")
+  assert(run("true === true") == "true")
+  assert(run("[1 2] == [1 2]") == "true")
+  assert(run("[1 2] === [1 2]") == "false")
+  assert(run("x = [1 2] y = x y === x") == "true")
+  assert(run("[1 2] != [1]") == "true")
+  assert(run("[1 2] == [1]") == "false")
+  assert(run("[1 2] == 45") == "false")
+
 # Will cause type exceptions
 #  assert(run("false == 4") == "false")
 #  assert(run("4 == false") == "false")

@@ -4,12 +4,24 @@
 
 import strutils, sequtils, tables, hashes
 
+const
+  # These characters do not need whitespace to be recognized as tokens,
+  # this means cascades, returns, concatenation etc can be written without
+  # whitespace.
+  #
+  # Note that the comparison characters '<','>','=','!' as well as '?' nor
+  # '-','+','*','/' are enabled right now. '-' gets into trouble with negative
+  # number literals and '?' should be able to be used with alphabetical words.
+  # This can surely be improved...
+  SpecialChars: CharSet = {';','\\','^','&','%','|',',','~'} #
+
 type
   ParseException* = object of Exception
 
   # The iterative parser builds a Node tree using a stack for nested blocks
   Parser* = ref object
     token: string                       # Collects characters into a token
+    specialCharDetected: bool           # Flag for collecting special char tokens
     ws: string                          # Collects whitespace and comments
     stack: seq[Node]                    # Lexical stack of block Nodes
     valueParsers*: seq[ValueParser]     # Registered valueParsers for literals
@@ -356,6 +368,12 @@ method hash*(self: UndefVal): Hash =
 
 method `==`*(self: Undefval, other: Node): bool =
   other of UndefVal
+
+method hash*(self: Blok): Hash =
+  hash(self.nodes)
+
+method `==`*(self: Blok, other: Node): bool =
+  other of Blok and (self.nodes == Blok(other).nodes)
 
 
 # Human string representations
@@ -748,6 +766,8 @@ proc newWordOrValue(self: Parser): Node =
     result.comment = ws
 
 proc addNode(self: Parser) =
+  # Cancel any special char token collection
+  self.specialCharDetected = false
   # If there is a token we figure out what to make of it
   if self.token.len > 0:
     let node = self.newWordOrValue()
@@ -764,7 +784,7 @@ proc parse*(self: Parser, str: string): Node =
   # Wrap code in a block and later return last element as result.
   var blok = newBlok()
   self.push(blok)
-  # Parsing is done in a single pass char by char, recursive descent
+  # Parsing is done in a single pass char by char, iteratively
   while pos < str.len:
     ch = str[pos]
     inc pos
@@ -844,7 +864,29 @@ proc parse*(self: Parser, str: string): Node =
             self.ws = ""
           # Ok, otherwise we just collect the char
           else:
-            self.token.add(ch)
+            # If a SpecialChar is detected we end previous token and
+            # then all following chars must be SpecialChars too, otherwise end token
+            # and start a new one. This makes Spry less sensitive to whitespace
+            # since you can write things like "^x" and "add: 3;" and have it
+            # tokenized as "^ x" and "add: 3 ;"
+            if self.specialCharDetected:
+              # Ok, the last char was a special...
+              if ch in SpecialChars:
+                # This one too, keep collecting...
+                self.token.add(ch)
+              else:
+                # We ran out of specials, add a node for it!
+                self.addNode()
+                self.token.add(ch)
+            else:
+              if ch in SpecialChars:
+                # We found a special, so quit the previous word
+                self.addNode()
+                # And start collecting for a special word
+                self.specialCharDetected = true
+                self.token.add(ch)
+              else:
+                self.token.add(ch)
         else:
           # Just collect for current value parser
           self.token.add(ch)
@@ -1133,6 +1175,9 @@ method `eq`(a, b: StringVal): Node {.inline.} =
   newValue(a.value == b.value)
 method `eq`(a, b: BoolVal): Node {.inline.} =
   newValue(a.value == b.value)
+method `eq`(a: Blok, b: Node): Node {.inline.} =
+  newValue(b of Blok and (a == b))
+
 
 method `&`(a: Node, b: Node): Node {.inline,base.} =
   raiseRuntimeException("Can not evaluate " & $a & " & " & $b)
