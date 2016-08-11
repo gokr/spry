@@ -1671,7 +1671,7 @@ proc newInterpreter*(): Interpreter =
 
   # Conversions
   nimPrim("print", true):
-    newValue(print(argInfix(spry)))
+    newValue(print(evalArgInfix(spry)))
   nimPrim("commented", true):
     newValue(commented(evalArgInfix(spry)))
   nimPrim("asFloat", true):
