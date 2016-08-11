@@ -1,0 +1,23 @@
+#!/usr/bin/env spry
+blk = []
+
+echo ("Time to create a block: " , (([
+  1 to: 400000 do: [blk add: :i]
+] timeToRun) print))
+
+echo ("Block of size: " , (blk size print))
+
+sum1 = 0
+tim = ([
+blk do: [sum1 = (sum1 + :each)]
+] timeToRun)
+
+echo ("Sum: " , (sum1 print))
+echo ("Time: " , (tim print))
+
+sum2 = 0
+tim2 = ([sum2 = (blk sum)] timeToRun)
+
+echo ("Sum function: " , (sum2 print))
+echo ("Time: " , (tim2 print))
+
