@@ -1,6 +1,6 @@
 [Package]
 name          = "spry"
-version       = "0.4"
+version       = "0.5"
 author        = "Göran Krampe"
 description   = "Homoiconic dynamic language in Nim"
 license       = "MIT"
