@@ -6,10 +6,10 @@ import os
 proc addIO*(spry: Interpreter) =
   # IO
   nimPrim("echo", false):
-    echo(form(evalArg(spry)))
+    echo(print(evalArg(spry)))
   nimPrim("probe", false):
     result = arg(spry)
-    echo(form(result))
+    echo(print(result))
   nimPrim("existsFile", false):
     let fn = StringVal(evalArg(spry)).value
     newValue(existsFile(fn))

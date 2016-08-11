@@ -11,8 +11,8 @@ red::color = "red"
 
 # Create a polyfunc price that is polymorphic
 price = polyfunc reduce [
-  [apple] -> [:apple "Apple costs ", (apple::price form)]           # Base for Apples
-  [red] -> [:apple "Red apple costs " , ((apple::price * 3) form)]  # For Red Apples
+  [apple] -> [:apple "Apple costs ", (apple::price print)]           # Base for Apples
+  [red] -> [:apple "Red apple costs " , ((apple::price * 3) print)]  # For Red Apples
 ]
 
 echo apple

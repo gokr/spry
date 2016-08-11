@@ -29,6 +29,11 @@ spry.addString()
 spry.addModules()
 
 # Just run a given file as argument, the hash-bang trick works also
-let fn = commandLineParams()[0]
-let code = readFile(fn)
+let params = commandLineParams()
+let fn = params[0]
+var code: string
+if fn == "-e":
+  code = params[1]
+else:
+  code = readFile(fn)
 discard spry.eval("[" & code & "]")

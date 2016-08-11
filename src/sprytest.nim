@@ -162,10 +162,11 @@ when true:
   # Note that only last result of block is used so "1 + 7" is dead code
   assert(run("5 + do [3 + do [1 + 7 1 + 9]]") == "18")
 
-  # Strings
+  # print (like Rebol "form")
   assert(run("\"ab[c\"") == "\"ab[c\"")
-  assert(run("123 form") == "\"123\"")
-  assert(run("\"abc123\" form") == "\"abc123\"")
+  assert(run("123 print") == "\"123\"")
+  assert(run("\"abc123\" print") == "\"abc123\"")
+  assert(run("[\"abc123\" 12] print") == "\"abc123 12\"")
 
   # Concatenation
   assert(run("\"ab\", \"cd\"") == "\"abcd\"")
@@ -203,12 +204,20 @@ when true:
   assert(run("3 > 4 or (3 < 4)") == "true")
   assert(run("3 > 4 and (3 < 4)") == "false")
   assert(run("7 > 4 and (3 < 4)") == "true")
+
+  # Comparisons
   assert(run("7 >= 4") == "true")
   assert(run("4 >= 4") == "true")
   assert(run("3 >= 4") == "false")
   assert(run("7 <= 4") == "false")
   assert(run("4 <= 4") == "true")
   assert(run("3 <= 4") == "true")
+  assert(run("\"abc\" >= \"abb\"") == "true")
+  assert(run("\"abc\" >= \"abc\"") == "true")
+  assert(run("\"abc\" >= \"abd\"") == "false")
+  assert(run("\"abc\" <= \"abb\"") == "false")
+  assert(run("\"abc\" <= \"abc\"") == "true")
+  assert(run("\"abc\" <= \"abd\"") == "true")
   assert(run("3 == 4") == "false")
   assert(run("4 == 4") == "true")
   assert(run("3.0 == 4.0") == "false")
@@ -227,13 +236,17 @@ when true:
   assert(run("\"abc\" == \"abc\"") == "true")
   assert(run("\"abc\" == \"ab\"") == "false")
   assert(run("\"abc\" != \"ab\"") == "true")
-  assert(run("true === true") == "true")
+  assert(run("true === true") == "true") # True for all singletons
+  assert(run("nil === nil") == "true")
+  assert(run("undef === undef") == "true")
+  assert(run("'foo === 'foo") == "true") # Litwords are canonicalized
+  assert(run("1 === 1") == "false")
   assert(run("[1 2] == [1 2]") == "true")
   assert(run("[1 2] === [1 2]") == "false")
   assert(run("x = [1 2] y = x y === x") == "true")
   assert(run("[1 2] != [1]") == "true")
   assert(run("[1 2] == [1]") == "false")
-  assert(run("[1 2] == 45") == "false")
+  assert(run("[1 2] == [1]") == "false")
 
 # Will cause type exceptions
 #  assert(run("false == 4") == "false")

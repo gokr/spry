@@ -377,13 +377,21 @@ method `==`*(self: Blok, other: Node): bool =
 
 
 # Human string representations
-method form*(self: Node): string {.base.} =
+method print*(self: Node): string {.base.} =
   # Default is to use $
   $self
 
-method form*(self: StringVal): string =
+method print*(self: StringVal): string =
   # No surrounding ""
   $self.value
+
+proc print*(self: seq[Node]): string =
+  self.map(proc(n: Node): string = print(n)).join(" ")
+
+method print*(self: Blok): string =
+  # No surrounding []
+  print(self.nodes)
+
 
 # Map lookups
 proc lookup*(self: Map, key: Node): Binding =
@@ -1554,14 +1562,14 @@ proc newInterpreter*(): Interpreter =
   spry.emptyBlok = newBlok()
   spry.objectTag = spry.newLitWord("object")
   spry.moduleTag = spry.newLitWord("module")
+  spry.modules = newBlok()
 
   spry.makeWord("root", spry.root)
   spry.makeWord("false", spry.falseVal)
   spry.makeWord("true", spry.trueVal)
   spry.makeWord("undef", spry.undefVal)
   spry.makeWord("nil", spry.nilVal)
-  #spry.makeWord("objectTag", spry.objectTag)
-  #spry.makeWord("moduleTag", spry.moduleTag)
+  spry.makeWord("modules", spry.modules)
 
   # Reflection words
   # Access to current Activation
@@ -1587,10 +1595,6 @@ proc newInterpreter*(): Interpreter =
     result = spry.lastSelf
     if result.isNil:
       result = spry.nilVal
-
-  # Access to modules Block
-  spry.modules = newBlok()
-  spry.makeWord("modules", spry.modules)
 
   # Tags
   nimPrim("tag:", true):
@@ -1622,7 +1626,7 @@ proc newInterpreter*(): Interpreter =
     let val = evalArgInfix(spry)
     newValue(not (val of UndefVal))
 
-  # Assignments
+  # Assignment
   nimPrim("=", true):
     result = evalArg(spry) # Perhaps we could make it eager here? Pulling in more?
     discard spry.setBinding(argInfix(spry), result)
@@ -1666,8 +1670,8 @@ proc newInterpreter*(): Interpreter =
       return Curly(val).concat(SeqComposite(evalArg(spry)).nodes)
 
   # Conversions
-  nimPrim("form", true):
-    newValue(form(argInfix(spry)))
+  nimPrim("print", true):
+    newValue(print(argInfix(spry)))
   nimPrim("commented", true):
     newValue(commented(evalArgInfix(spry)))
   nimPrim("asFloat", true):
