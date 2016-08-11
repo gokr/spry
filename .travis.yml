@@ -74,7 +74,7 @@ script:
     # Let nimble get dependencies
     - nimble c src/sprytest
     # Test
-    - cd src && ./test.sh
+    - cd src && ../scripts/test.sh
     # Optional: build docs.
     # nim doc --docSeeSrcUrl:https://github.com/AUTHOR/MYPROJECT/blob/master --project MYFILE.nim
 cache:
