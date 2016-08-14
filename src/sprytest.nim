@@ -1,7 +1,7 @@
 import spryvm
 
 import spryextend, sprymath, spryio, sprydebug, sprycompress, spryos, sprythread, sprypython, spryoo,
-  sprystring, sprymodules
+  sprystring, sprymodules, spryreflect
 
 proc newVM(): Interpreter =
   var spry = newInterpreter()
@@ -16,6 +16,7 @@ proc newVM(): Interpreter =
   spry.addOO()
   spry.addString()
   spry.addModules()
+  spry.addReflect()
   return spry
 
 # Some helpers for tests below
@@ -570,6 +571,15 @@ when true:
   assert(run("x = 0 [1 2 3] do: [x = (x + :y)] eva x") == "6")
   assert(run("x = 0 1 to: 3 do: [x = (x + :y)] eva x ") == "6")
   assert(run("x = [] 1 to: 3 do: [x add: :y] eva x ") == "[1 2 3]")
+
+  # Types
+  assert(run("x = 0 x type") == "'int")
+  assert(run("x = 0.5 x type") == "'float")
+  assert(run("x = \"a\" x type") == "'string")
+  assert(run("x = [] x type") == "'block")
+  assert(run("x type") == "'undefined")
+  assert(run("x = nil x type") == "'novalue")
+  assert(run("x = true x type") == "'boolean")
 when true:
   # Demonstrate extension from extend.nim
   assert(show("'''abc'''") == "\"abc\"")
