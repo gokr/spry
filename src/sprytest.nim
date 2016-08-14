@@ -330,6 +330,9 @@ when true:
   assert(run("x = 0 5 timesRepeat: [x = (x + 1)] eva x") == "5")
   assert(run("x = 0 [x > 5] whileFalse: [x = (x + 1)] eva x") == "6")
   assert(run("x = 10 [x > 5] whileTrue: [x = (x - 1)] eva x") == "5")
+  assert(run("foo = func [x = 10 [x > 5] whileTrue: [x = (x - 1) ^11] ^x] eva foo") == "11") # Return inside
+  assert(run("foo = func [x = 10 [x > 5 ^99] whileTrue: [x = (x - 1)] ^x] eva foo") == "99") # Return inside
+
 
   # func
   assert(run("z = func [3 + 4] z") == "7")
@@ -339,6 +342,8 @@ when true:
   assert(run("x = func [3 + 4 ^ 1 8 + 9] x") == "1")
   # Its a non local return so it returns all the way, thus it works deep down
   assert(run("x = func [3 + 4 do [ 2 + 3 ^ 1 1 + 1] 8 + 9] x") == "1")
+  assert(run("x = method [3 + 4 do [2 + 3 ^(self + 1) + 1] 8 + 9] 9 x") == "10")
+  assert(run("x = method [self < 4 then: [do [^9] 8] else: [^10]] 2 x") == "9")
 
   # Testing $ word that prevents evaluation, like quote in Lisp
   assert(run("x = $(3 + 4) $x at: 2") == "4")
@@ -591,6 +596,10 @@ when true:
   assert(run("mm = func [0 - :n] mm 7 + 2") == "-5")
   assert(run("mm = func [:n negated] mm 7 + 2") == "-5")
   assert(run("7 negated + 2") == "-5")
+
+  # Implementing ifTrue: using then:, two variants
+  assert(run("ifTrue: = method [:blk self then: [^do blk] else: [^nil]] 3 > 2 ifTrue: [99] ") == "99")
+  assert(run("ifTrue: = method [:blk self then: [^do blk] nil] 1 > 2 ifTrue: [99] ") == "nil")
 
 when true:
   # Demonstrate extension from extend.nim

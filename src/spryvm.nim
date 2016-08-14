@@ -1989,17 +1989,29 @@ proc newInterpreter*(): Interpreter =
   nimPrim("whileTrue:", true):
     let blk1 = SeqComposite(evalArgInfix(spry))
     let blk2 = SeqComposite(evalArg(spry))
-    while BoolVal(blk1.evalDo(spry)).value:
+    result = blk1.evalDo(spry)
+    if spry.currentActivation.returned:
+      return
+    while BoolVal(result).value:
       result = blk2.evalDo(spry)
       # Or else non local returns don't work :)
+      if spry.currentActivation.returned:
+        return
+      result = blk1.evalDo(spry)
       if spry.currentActivation.returned:
         return
   nimPrim("whileFalse:", true):
     let blk1 = SeqComposite(evalArgInfix(spry))
     let blk2 = SeqComposite(evalArg(spry))
-    while not BoolVal(blk1.evalDo(spry)).value:
+    result = blk1.evalDo(spry)
+    if spry.currentActivation.returned:
+      return
+    while not BoolVal(result).value:
       result = blk2.evalDo(spry)
       # Or else non local returns don't work :)
+      if spry.currentActivation.returned:
+        return
+      result = blk1.evalDo(spry)
       if spry.currentActivation.returned:
         return
 
