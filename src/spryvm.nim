@@ -2037,7 +2037,7 @@ proc newInterpreter*(): Interpreter =
     error = func [echo :msg quit 1]
 
     # Trivial assert
-    assert = func [:x ifNot: [error "Oops, assertion failedh"] ^ x]
+    assert = func [:x else: [error "Oops, assertion failed"] ^x]
 
     # Objects
     object = func [:ts :map
@@ -2061,8 +2061,8 @@ proc newInterpreter*(): Interpreter =
       self reset
       [self end?] whileFalse: [
         n = (self next)
-        do pred n then: [^ n]]
-      ^ nil
+        do pred n then: [^n]]
+      ^nil
     ]
 
     select: = method [:pred
@@ -2071,7 +2071,7 @@ proc newInterpreter*(): Interpreter =
       [self end?] whileFalse: [
         n = (self next)
         do pred n then: [result add: n]]
-      ^ result]
+      ^result]
   ]"""
 
 when isMainModule and not defined(js):
