@@ -9,7 +9,7 @@ proc addIO*(spry: Interpreter) =
     echo(print(evalArg(spry)))
   nimPrim("probe", false):
     result = arg(spry)
-    echo(print(result))
+    echo($result)
   nimPrim("existsFile", false):
     let fn = StringVal(evalArg(spry)).value
     newValue(existsFile(fn))
