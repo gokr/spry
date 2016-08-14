@@ -139,15 +139,21 @@ when true:
   assert(run("x = 5 eval x") == "5") # But we can eval it
   assert(run("f = func [3 + 4] f") == "7") # Functions are evaluated though
 
-  # Nil vs undef
+  # Nil vs undef, set? set:
   assert(run("eval x") == "undef")
-  assert(run("x ?") == "false")
-  assert(run("x = 1 x ?") == "true")
-  assert(run("x = nil x ?") == "true")
-  assert(run("x = 1 x ? if: [12]") == "12")
-  assert(run("x = 1 x = undef x ?") == "false")
+  assert(run("x set?") == "false")
+  assert(run("x = 1 x set?") == "true")
+  assert(run("x = nil x set?") == "true")
+  assert(run("x = undef x set?") == "false")
+  assert(run("x = 1 x = undef x set?") == "false")
+  assert(run("'x set: 1 'x set: undef x set?") == "false")
+  assert(run("x = 1 x set? if: [12]") == "12")
   assert(run("x = 5 x = undef eval x") == "undef")
   assert(run("x = 5 x = nil eval x") == "nil")
+  assert(run("'x set: 5 eval x") == "5")
+  assert(run("x = 'foo x set: 5 eval foo") == "5")
+  assert(run("(litword \"foo\") set: 5 eval foo") == "5")
+
 
   # Precedence and basic math
   assert(run("3 * 4") == "12")
@@ -370,8 +376,8 @@ when true:
   assert(run("d = 5 do [(locals at: 'd put: 3) ..d + d]") == "8")
 
   # Not an object
-  assert(run("o = {x = 5} o tag: 'object o tags") == "[object]")
-  assert(run("o = object [] {x = 5} o tags") == "[object]")
+  assert(run("o = {x = 5} o tag: 'object o tags") == "['object]")
+  assert(run("o = object [] {x = 5} o tags") == "['object]")
   assert(run("o = \"foo\" getx = method [^ @x] o getx") == "undef") # Because @ works only for objects
   assert(run("o = {x = 5} getx = method [^ @x] o tag: 'object o getx") == "5")
   assert(run("o = {x = 5} getx = method [eva @x] o tag: 'object o getx") == "5")
@@ -454,8 +460,8 @@ when true:
   assert(run("do [d = 5 locals]") == "{d = 5}")
   assert(run("do [d = 5 locals at: 'd]") == "5")
   assert(run("locals at: 'd put: 5 d + 2") == "7")
-  assert(run("do [a = 1 b = 2 locals]") == "{a = 1 b = 2}")
-  assert(run("do [a = 1 b = 2 c = 3 (locals)]") == "{a = 1 b = 2 c = 3}")
+  assert(run("map = do [a = 1 b = 2 locals] (map at: 'a) + (map at: 'b) ") == "3")
+  assert(run("map = do [a = 1 b = 2 c = 3 (locals)] (map get: a) + (map get: b) + (map get: c)") == "6")
 
   # The word self gives access to the receiver for methods only
   assert(run("self") == "undef") # self not bound for funcs
@@ -468,7 +474,7 @@ when true:
   assert(run("x = object [] {a = 1 foo = method [self at: 'a]} x::foo") == "1")
   assert(run("x = object [] {a = 1 foo = method [^ @a]} x::foo") == "1")
   assert(run("x = object [] {a = 1 foo = method [^ @a]} eva $x::foo") == "method [^ @a]")
-  assert(run("x = object [foo bar] {a = 1} x tags") == "[foo bar object]")
+  assert(run("x = object ['foo 'bar] {a = 1} x tags") == "['foo 'bar 'object]")
 
   # The word ; gives access to the last known infix argument
   assert(run("[1] add: 2 ; add: 3 ; size") == "3")
@@ -479,11 +485,11 @@ when true:
   # Add and check tag
   assert(run("x = 3 x tag: 'num x tag? 'num") == "true")
   assert(run("x = 3 x tag: 'num x tag? 'bum") == "false")
-  assert(run("x = 3 x tag: 'num x tags") == "[num]")
+  assert(run("x = 3 x tag: 'num x tags") == "['num]")
   assert(run("x = 3 x tag? 'bum") == "false")
-  assert(run("x = 3 x tags: [bum num] x tags") == "[bum num]")
-  assert(run("x = 3 x tags: [bum num] x tag? 'bum") == "true")
-  assert(run("x = 3 x tags: [bum num] x tag? 'lum") == "false")
+  assert(run("x = 3 x tags: ['bum 'num] x tags") == "['bum 'num]")
+  assert(run("x = 3 x tags: ['bum 'num] x tag? 'bum") == "true")
+  assert(run("x = 3 x tags: ['bum 'num] x tag? 'lum") == "false")
 
   # spry math
   assert(run("10 fac") == "3628800")
@@ -522,8 +528,9 @@ when true:
   assert(run("x = $(3 4) $x clone") == "(3 4)") # Works for Paren
   assert(run("x = ${3 4} $x clone") == "{3 4}") # Works for Curly
   assert(run("a = {x = 1} a clone") == "{x = 1}")
-  assert(run("a = {x = [1]} b = (a clone) (b at: 'y put: 2) eval b") == "{x = [1] y = 2}")
-  assert(run("a = {x = [1]} b = (a clone) (b at: 'y put: 2) eval a") == "{x = [1]}")
+  assert(run("a = {x = [1]} b = (a clone) (b at: (reify 'y) put: 2) (b get: y) + ((b get: x) first) ") == "3")
+  assert(run("a = {x = [1]} b = (a clone) (b set: y to: 2) (b get: y) + ((b get: x) first)") == "3")
+  assert(run("a = {x = [1]} b = (a clone) (b set: y to: 2) (a get: y)") == "undef")
 
   # Modules
   assert(run("Foo = {x = 10} eva Foo::x") == "10")

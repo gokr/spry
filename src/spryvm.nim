@@ -90,14 +90,14 @@ type
     commentEnd*: string
   SeqComposite* = ref object of Composite
     nodes*: seq[Node]
-    pos*: int
 
   # Concrete
   Paren* = ref object of SeqComposite
-  Blok* = ref object of SeqComposite
   Curly* = ref object of SeqComposite
+  Blok* = ref object of SeqComposite
+    pos*: int
   Map* = ref object of Composite
-    bindings*: OrderedTable[Node, Binding]
+    bindings*: Table[Node, Binding]
 
   # Dictionaries currently holds Bindings instead of the value directly.
   # This way we we can later reify Binding
@@ -297,8 +297,8 @@ method hash*(self: Node): Hash {.base.} =
 
 method `==`*(self: Node, other: Node): bool {.base.} =
   # Fallback to identity check
-  system.`==`(self, other)
-  #raiseRuntimeException("Nodes need to implement ==")
+  #system.`==`(self, other)
+  raiseRuntimeException("Nodes need to implement ==")
 
 method hash*(self: Word): Hash =
   self.word.hash
@@ -401,14 +401,19 @@ proc makeBinding*(self: Map, key: Node, val: Node): Binding =
   result = Binding(key: key, val: val)
   self.bindings[key] = result
 
+proc removeBinding*(self: Map, key: Node): Binding =
+  if self.bindings.hasKey(key):
+    result = self.bindings[key]
+    self.bindings.del(key)
+
 # Constructor procs
 proc raiseParseException(msg: string) =
   raise newException(ParseException, msg)
 
 proc newMap*(): Map =
-  Map(bindings: initOrderedTable[Node, Binding]())
+  Map(bindings: initTable[Node, Binding]())
 
-proc newMap*(bindings: OrderedTable[Node, Binding]): Map =
+proc newMap*(bindings: Table[Node, Binding]): Map =
   # A copy of the Map
   result = newMap()
   for key, binding in bindings:
@@ -1293,12 +1298,24 @@ method makeBinding(self: Activation, key: Node, val: Node): Binding {.base.} =
 method makeBinding(self: BlokActivation, key: Node, val: Node): Binding =
   self.getLocals().makeBinding(key, val)
 
+method removeBinding(self: Activation, key: Node): Binding {.base.} =
+  nil
+
+method removeBinding(self: BlokActivation, key: Node): Binding =
+  self.getLocals().removeBinding(key)
+
 proc makeBinding(spry: Interpreter, key: Node, val: Node): Binding =
-  # Bind in first activation with locals
+  # Bind in first activation with locals. The root activation has root as its locals
   for activation in mapWalk(spry.currentActivation):
     return activation.makeBinding(key, val)
 
+proc removeBinding(spry: Interpreter, key: Node): Binding =
+  for activation in mapWalk(spry.currentActivation):
+    return activation.removeBinding(key)
+
 proc setBinding*(spry: Interpreter, key: Node, value: Node): Binding =
+  if value of UndefVal:
+    return spry.removeBinding(key)
   result = spry.lookup(key)
   if result.notNil:
     result.val = value
@@ -1547,8 +1564,11 @@ proc evalRoot*(spry: Interpreter, code: string): Node =
   ## Evaluate code in the root activation, presume it is a block
   Blok(spry.parser.parse(code)).evalRootDo(spry)
 
-template newLitWord(self: Interpreter, s:string): Node =
+template newLitWord*(self: Interpreter, s:string): Node =
   self.parser.newOrGetLitWord(s)
+
+proc litify*(spry: Interpreter, word: Node): Node =
+  spry.newLitWord($word)
 
 proc newInterpreter*(): Interpreter =
   let spry = Interpreter(root: newMap(), parser: newParser())
@@ -1564,7 +1584,6 @@ proc newInterpreter*(): Interpreter =
   spry.moduleTag = spry.newLitWord("module")
   spry.modules = newBlok()
 
-  spry.makeWord("root", spry.root)
   spry.makeWord("false", spry.falseVal)
   spry.makeWord("true", spry.trueVal)
   spry.makeWord("undef", spry.undefVal)
@@ -1572,6 +1591,11 @@ proc newInterpreter*(): Interpreter =
   spry.makeWord("modules", spry.modules)
 
   # Reflection words
+  # Access to root Map. This is a prim to avoid root being a
+  # recursive Map.
+  nimPrim("root", false):
+    spry.root
+
   # Access to current Activation
   nimPrim("activation", false):
     spry.currentActivation
@@ -1599,19 +1623,22 @@ proc newInterpreter*(): Interpreter =
   # Tags
   nimPrim("tag:", true):
     result = evalArgInfix(spry)
-    let tag = evalArg(spry)
+    let tag = Word(evalArg(spry))
     if result.tags.isNil:
       result.tags = newBlok()
     if tag of LitWord:
-      result.tags.add(reify(LitWord(tag)))
-    else:
       result.tags.add(tag)
+    else:
+      result.tags.add(spry.litify(tag))
   nimPrim("tag?", true):
     let node = evalArgInfix(spry)
     let tag = evalArg(spry)
     if node.tags.isNil:
       return spry.falseVal
-    return boolVal(node.tags.contains(tag), spry)
+    if tag of LitWord:
+      return boolVal(node.tags.contains(tag), spry)
+    else:
+      return boolVal(node.tags.contains(spry.litify(tag)), spry)
   nimPrim("tags", true):
     let node = evalArgInfix(spry)
     if node.tags.isNil:
@@ -1621,30 +1648,38 @@ proc newInterpreter*(): Interpreter =
     result = evalArgInfix(spry)
     result.tags = Blok(evalArg(spry))
 
-  # Lookups
-  nimPrim("?", true):
-    let val = evalArgInfix(spry)
-    newValue(not (val of UndefVal))
-
   # Assignment
   nimPrim("=", true):
     result = evalArg(spry) # Perhaps we could make it eager here? Pulling in more?
     discard spry.setBinding(argInfix(spry), result)
+  nimPrim("?", false):
+    let binding = spry.lookup(arg(spry))
+    if binding.isNil:
+      return spry.falseVal
+    return spry.trueVal
+  nimPrim("set:", true):
+    result = evalArg(spry)
+    discard spry.setBinding(evalArgInfix(spry), result)
+  nimPrim("set?", false):
+    newValue(not (evalArgInfix(spry) of UndefVal))
 
-  # Basic math
+  # Arithmetic
   nimPrim("+", true):  evalArgInfix(spry) + evalArg(spry)
   nimPrim("-", true):  evalArgInfix(spry) - evalArg(spry)
   nimPrim("*", true):  evalArgInfix(spry) * evalArg(spry)
   nimPrim("/", true):  evalArgInfix(spry) / evalArg(spry)
 
   # Comparisons
-  nimPrim("<", true):  evalArgInfix(spry) < evalArg(spry)
-  nimPrim(">", true):  evalArgInfix(spry) > evalArg(spry)
+  nimPrim("<", true):   evalArgInfix(spry) < evalArg(spry)
+  nimPrim(">", true):   evalArgInfix(spry) > evalArg(spry)
   nimPrim("<=", true):  evalArgInfix(spry) <= evalArg(spry)
   nimPrim(">=", true):  evalArgInfix(spry) >= evalArg(spry)
+
+  # Equality and identity
   nimPrim("==", true):  eq(evalArgInfix(spry), evalArg(spry))
-  nimPrim("===", true):  newValue(system.`==`(evalArgInfix(spry), evalArg(spry)))
+  nimPrim("===", true): newValue(system.`==`(evalArgInfix(spry), evalArg(spry)))
   nimPrim("!=", true):  newValue(not BoolVal(eq(evalArgInfix(spry), evalArg(spry))).value)
+  nimPrim("!==", true): newValue(not system.`==`(evalArgInfix(spry), evalArg(spry)))
 
   # Booleans
   nimPrim("not", false): newValue(not BoolVal(evalArg(spry)).value)
@@ -1690,8 +1725,12 @@ proc newInterpreter*(): Interpreter =
       return newValue(toInt(FloatVal(val).value))
     else:
       raiseRuntimeException("Can not convert to int")
+  nimPrim("serialize", false):
+    newValue($evalArg(spry))
+  nimPrim("parse", false):
+    spry.parser.parse(StringVal(evalArg(spry)).value)
 
-  # Basic blocks
+  # Composite and String
   # Rebol head/tail collides too much with Lisp IMHO so not sure what to do with
   # those.
   # at: and at:put: in Smalltalk seems to be pick/poke in Rebol.
@@ -1711,16 +1750,12 @@ proc newInterpreter*(): Interpreter =
     elif comp of Map:
       return newValue(Map(evalArgInfix(spry)).bindings.len)
   nimPrim("at:", true):
-    ## Ugly, but I can't get [] to work as methods...
     let comp = evalArgInfix(spry)
     if comp of SeqComposite:
       return SeqComposite(comp)[evalArg(spry)]
     elif comp of Map:
-      let key = evalArg(spry)
-      if key of LitWord:
-        return Map(comp)[reify(LitWord(key))]
-      else:
-        return Map(comp)[key]
+      let hit = Map(comp)[evalArg(spry)]
+      if hit.isNil: return spry.undefVal else: return hit
   nimPrim("at:put:", true):
     let comp = evalArgInfix(spry)
     let key = evalArg(spry)
@@ -1728,31 +1763,27 @@ proc newInterpreter*(): Interpreter =
     if comp of SeqComposite:
       SeqComposite(comp)[key] = val
     elif comp of Map:
-      if key of LitWord:
-        Map(comp)[reify(LitWord(key))] = val
-      else:
-        Map(comp)[key] = val
+      Map(comp)[key] = val
+    return comp
+  nimPrim("get:", true):
+    let comp = evalArgInfix(spry)
+    let word = arg(spry)
+    let hit = Map(comp)[word]
+    if hit.isNil: spry.undefVal else: hit
+  nimPrim("set:to:", true):
+    let comp = Map(evalArgInfix(spry))
+    let word = arg(spry)
+    let val = evalArg(spry)
+    comp[word] = val
     return comp
   nimPrim("contains:", true):
     let comp = evalArgInfix(spry)
     let key = evalArg(spry)
-    var k: Node
-    if key of LitWord:
-      k = reify(LitWord(key))
-    else:
-      k = key
     if comp of SeqComposite:
-      return newValue(SeqComposite(comp).contains(k))
+      return newValue(SeqComposite(comp).contains(key))
     elif comp of Map:
-      return newValue(Map(comp).contains(k))
+      return newValue(Map(comp).contains(key))
     return comp
-  nimPrim("read", true):
-    let comp = SeqComposite(evalArgInfix(spry))
-    comp[comp.pos]
-  nimPrim("write:", true):
-    result = evalArgInfix(spry)
-    let comp = SeqComposite(result)
-    comp[comp.pos] = evalArg(spry)
   nimPrim("add:", true):
     result = evalArgInfix(spry)
     let comp = SeqComposite(result)
@@ -1770,35 +1801,40 @@ proc newInterpreter*(): Interpreter =
     elif comp of Blok:
       result = newBlok(Blok(comp).nodes[frm .. to])
     elif comp of Paren:
-      result = newBlok(Paren(comp).nodes[frm .. to])
+      result = newParen(Paren(comp).nodes[frm .. to])
     elif comp of Curly:
-      result = newBlok(Curly(comp).nodes[frm .. to])
+      result = newCurly(Curly(comp).nodes[frm .. to])
     if comp.tags.notNil:
       result.tags = comp.tags
 
-  # Positioning
-  nimPrim("reset", true):  SeqComposite(evalArgInfix(spry)).pos = 0 # Called change in Rebol
-  nimPrim("pos", true):    newValue(SeqComposite(evalArgInfix(spry)).pos) # ? in Rebol
+  # Streaming
+  nimPrim("reset", true):  Blok(evalArgInfix(spry)).pos = 0 # Called change in Rebol
+  nimPrim("pos", true):    newValue(Blok(evalArgInfix(spry)).pos) # ? in Rebol
   nimPrim("pos:", true):    # ? in Rebol
     result = evalArgInfix(spry)
-    let comp = SeqComposite(result)
+    let comp = Blok(result)
     comp.pos = IntVal(evalArg(spry)).value
-
-  # Streaming
+  nimPrim("read", true):
+    let comp = Blok(evalArgInfix(spry))
+    comp[comp.pos]
+  nimPrim("write:", true):
+    result = evalArgInfix(spry)
+    let comp = Blok(result)
+    comp[comp.pos] = evalArg(spry)
   nimPrim("next", true):
-    let comp = SeqComposite(evalArgInfix(spry))
+    let comp = Blok(evalArgInfix(spry))
     if comp.pos == comp.nodes.len:
       return spry.undefVal
     result = comp[comp.pos]
     inc(comp.pos)
   nimPrim("prev", true):
-    let comp = SeqComposite(evalArgInfix(spry))
+    let comp = Blok(evalArgInfix(spry))
     if comp.pos == 0:
       return spry.undefVal
     dec(comp.pos)
     result = comp[comp.pos]
   nimPrim("end?", true):
-    let comp = SeqComposite(evalArgInfix(spry))
+    let comp = Blok(evalArgInfix(spry))
     newValue(comp.pos == comp.nodes.len)
 
   # These are like in Rebol/Smalltalk but we use infix like in Smalltalk
@@ -1807,8 +1843,7 @@ proc newInterpreter*(): Interpreter =
   nimPrim("third", true):  SeqComposite(evalArgInfix(spry))[2]
   nimPrim("fourth", true): SeqComposite(evalArgInfix(spry))[3]
   nimPrim("fifth", true):  SeqComposite(evalArgInfix(spry))[4]
-  nimPrim("last", true):
-    SeqComposite(evalArgInfix(spry)).nodes[^1]
+  nimPrim("last", true):   SeqComposite(evalArgInfix(spry)).nodes[^1]
 
   # Collection primitives
   nimPrim("do:", true):
@@ -1866,15 +1901,13 @@ proc newInterpreter*(): Interpreter =
   nimPrim("eva", false):     evalArg(spry)
   nimPrim("eval", false):    evalArg(spry).eval(spry)
 
-  # Parse and serialize (called "mold" in Rebol)
-  nimPrim("serialize", false): newValue($evalArg(spry))
-  nimPrim("parse", false):   spry.parser.parse(StringVal(evalArg(spry)).value)
-
   # Word conversions
   nimPrim("reify", false):
     reify(LitWord(evalArg(spry)))
-  nimPrim("sym", false):
-    spry.newLitWord($evalArg(spry))
+  nimPrim("litify", false):
+    spry.litify(evalArg(spry))
+  nimPrim("quote", false):
+    spry.newLitWord($arg(spry))
   nimPrim("litword", false):
     spry.newLitWord(StringVal(evalArg(spry)).value)
   nimPrim("word", false):
