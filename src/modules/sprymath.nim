@@ -3,7 +3,13 @@ import math, random
 
 # Spry math module
 proc addMath*(spry: Interpreter) =
-  # math module
+  # Just like in Smalltalk
+  nimPrim("negated", true):
+    let v = evalArgInfix(spry)
+    if v of FloatVal:
+      return newValue(-FloatVal(v).value)
+    else:
+      return newValue(-IntVal(v).value)
   nimPrim("binom", true): newValue(binom(IntVal(evalArgInfix(spry)).value, IntVal(evalArg(spry)).value))
   nimPrim("fac", true): newValue(fac(IntVal(evalArgInfix(spry)).value))
   nimPrim("powerOfTwo?", true): newValue(isPowerOfTwo(IntVal(evalArgInfix(spry)).value))
