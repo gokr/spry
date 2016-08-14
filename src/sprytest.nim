@@ -581,6 +581,7 @@ when true:
   # Collections
   assert(run("x = 0 [1 2 3] do: [x = (x + :y)] eva x") == "6")
   assert(run("x = 0 1 to: 3 do: [x = (x + :y)] eva x ") == "6")
+  assert(run("y = [] -2 to: 2 do: [y add: :n] eva y") == "[-2 -1 0 1 2]")
   assert(run("x = [] 1 to: 3 do: [x add: :y] eva x ") == "[1 2 3]")
 
   # Types
