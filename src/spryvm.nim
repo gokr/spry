@@ -1920,19 +1920,19 @@ proc newInterpreter*(): Interpreter =
   nimPrim("^", false):
     result = evalArg(spry)
     spry.currentActivation.returned = true
-  nimPrim("if:", true):
+  nimPrim("then:", true):
     if BoolVal(evalArgInfix(spry)).value:
       return SeqComposite(evalArg(spry)).evalDo(spry)
     else:
       discard arg(spry) # Consume the block
       return spry.nilVal
-  nimPrim("ifNot:", true):
+  nimPrim("else:", true):
     if BoolVal(evalArgInfix(spry)).value:
       discard arg(spry) # Consume the block
       return spry.nilVal
     else:
       return SeqComposite(evalArg(spry)).evalDo(spry)
-  nimPrim("if:else:", true):
+  nimPrim("then:else:", true):
     if BoolVal(evalArgInfix(spry)).value:
       let res = SeqComposite(evalArg(spry)).evalDo(spry)
       discard arg(spry) # Consume second block
@@ -1940,7 +1940,7 @@ proc newInterpreter*(): Interpreter =
     else:
       discard arg(spry) # Consume first block
       return SeqComposite(evalArg(spry)).evalDo(spry)
-  nimPrim("ifNot:else:", true):
+  nimPrim("else:then:", true):
     if BoolVal(evalArgInfix(spry)).value:
       discard arg(spry) # Consume first block
       return SeqComposite(evalArg(spry)).evalDo(spry)
@@ -2049,7 +2049,7 @@ proc newInterpreter*(): Interpreter =
       self reset
       [self end?] whileFalse: [
         n = (self next)
-        do pred n if: [^ n]]
+        do pred n then: [^ n]]
       ^ nil
     ]
 
@@ -2058,7 +2058,7 @@ proc newInterpreter*(): Interpreter =
       self reset
       [self end?] whileFalse: [
         n = (self next)
-        do pred n if: [result add: n]]
+        do pred n then: [result add: n]]
       ^ result]
   ]"""
 

@@ -147,7 +147,7 @@ when true:
   assert(run("x = undef x set?") == "false")
   assert(run("x = 1 x = undef x set?") == "false")
   assert(run("'x set: 1 'x set: undef x set?") == "false")
-  assert(run("x = 1 x set? if: [12]") == "12")
+  assert(run("x = 1 x set? then: [12]") == "12")
   assert(run("x = 5 x = undef eval x") == "undef")
   assert(run("x = 5 x = nil eval x") == "nil")
   assert(run("'x set: 5 eval x") == "5")
@@ -307,23 +307,22 @@ when true:
   # Data as code
   assert(run("code = [1 + 2 + 3] code at: 2 put: 10 do code") == "14")
 
-  # if:, if:else:, ifNot:, ifNot:else:
-  assert(run("x = true x if: [true]") == "true")
-  assert(run("x = true x if: [12]") == "12")
-  assert(run("false if: [12]") == "nil")
-  assert(run("x = false x if: [true]") == "nil")
-  assert(run("(3 < 4) if: [\"yay\"]") == "\"yay\"")
-  assert(run("(3 > 4) if: [\"yay\"]") == "nil")
-  assert(run("(3 > 4) if: [\"yay\"] else: ['ok]") == "'ok")
-  assert(run("(3 > 4) if: [true] else: [false]") == "false")
-  assert(run("(4 > 3) if: [true] else: [false]") == "true")
-  assert(run("(3 < 4) if: [5]") == "5")
-  assert(run("3 < 4 if: [5]") == "5")
-  assert(run("3 < 4 ifNot: [5]") == "nil")
-  assert(run("3 < 4 if: [1] else: [2]") == "1")
-  assert(run("3 < 4 ifNot: [1] else: [2]") == "2")
-  assert(run("5 < 4 ifNot: [1] else: [2]") == "1")
-  assert(run("5 < 4 if: [1] else: [2]") == "2")
+  # then:, then:else:, unless:, unless:else:
+  assert(run("x = true x then: [true]") == "true")
+  assert(run("false then: [12]") == "nil")
+  assert(run("x = false x then: [true]") == "nil")
+  assert(run("(3 < 4) then: [\"yay\"]") == "\"yay\"")
+  assert(run("(3 > 4) then: [\"yay\"]") == "nil")
+  assert(run("(3 > 4) then: [\"yay\"] else: ['ok]") == "'ok")
+  assert(run("(3 > 4) then: [true] else: [false]") == "false")
+  assert(run("(4 > 3) then: [true] else: [false]") == "true")
+  assert(run("(3 < 4) then: [5]") == "5")
+  assert(run("3 < 4 then: [5]") == "5")
+  assert(run("3 < 4 else: [5]") == "nil")
+  assert(run("3 < 4 then: [1] else: [2]") == "1")
+  assert(run("3 < 4 else: [1] then: [2]") == "2")
+  assert(run("5 < 4 else: [1] then: [2]") == "1")
+  assert(run("5 < 4 then: [1] else: [2]") == "2")
 
   # loops, eva will
   assert(run("x = 0 5 timesRepeat: [x = (x + 1)] eva x") == "5")
@@ -397,8 +396,8 @@ when true:
   # Does not work since there is a semantic glitch - who is the argParent?
   #assert(run("sum = 0 sum-until-zero = func [[:a > 0] whileTrue: [sum = sum + a]] (sum-until-zero 1 2 3 0 4 4)") == "6")
   # This func does not pull second arg if first is < 0.
-  assert(run("add = func [ :a < 0 if: [^ nil] ^ (a + :b) ] add -4 3") == "3")
-  assert(run("add = func [ :a < 0 if: [^ nil] ^ (a + :b) ] add 1 3") == "4")
+  assert(run("add = func [ :a < 0 then: [^ nil] ^ (a + :b) ] add -4 3") == "3")
+  assert(run("add = func [ :a < 0 then: [^ nil] ^ (a + :b) ] add 1 3") == "4")
 
   # Macros, they need to be able to return multipe nodes...
   assert(run("z = 5 foo = func [:$a ^ func [a + 10]] fupp = foo z z = 3 fupp") == "13")
@@ -408,7 +407,7 @@ when true:
 
   # Ok, but now we can do arguments so...
   assert(run("""
-  factorial = func [:n > 0 if: [n * factorial (n - 1)] else: [1]]
+  factorial = func [:n > 0 then: [n * factorial (n - 1)] else: [1]]
   factorial 12
   """) == "479001600")
 
@@ -587,6 +586,12 @@ when true:
   assert(run("x type") == "'undefined")
   assert(run("x = nil x type") == "'novalue")
   assert(run("x = true x type") == "'boolean")
+
+  # Implementing prefix minus
+  assert(run("mm = func [0 - :n] mm 7 + 2") == "-5")
+  assert(run("mm = func [:n negated] mm 7 + 2") == "-5")
+  assert(run("7 negated + 2") == "-5")
+
 when true:
   # Demonstrate extension from extend.nim
   assert(show("'''abc'''") == "\"abc\"")

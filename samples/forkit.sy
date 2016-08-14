@@ -7,7 +7,7 @@ code = [
   factorial = func [
     # Arguments are sucked in as we go, so no need to declare n first
     :n > 0
-      if: [n * factorial (n - 1)]
+      then: [n * factorial (n - 1)]
       else: [1]
   ]
   # Echo is a prefix function.

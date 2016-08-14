@@ -3,7 +3,7 @@
 # we can await on spawned jobs, right now we don't know
 # when they are done.
 foo = func [
-  factorial = func [:n > 0 if: [n * factorial (n - 1)] else: [1]]
+  factorial = func [:n > 0 then: [n * factorial (n - 1)] else: [1]]
   1000 timesRepeat: [factorial 12]
   echo "thread done"
 ]
