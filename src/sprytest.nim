@@ -527,6 +527,9 @@ when true:
 
   # Clone
   # Checks that we do get a clone, but a shallow one
+  assert(run("a = 12 b = (a clone) a = 9 eva b") == "12")
+  assert(run("a = \"abc\" b = (a clone) a = \"zzz\" eva b") == "\"abc\"")
+  assert(run("a = \"a bob bob world\" b = (a clone) a replace: \"bob\" with: \"zap\" (b, a)") == "\"a bob bob worlda zap zap world\"")
   assert(run("a = [[1 2]] b = (a clone) (b at: 0) at: 0 put: 5 eval a") == "[[5 2]]")
   assert(run("a = [[1 2]] b = (a clone) b add: 5 eval a") == "[[1 2]]")
   assert(run("x = $(3 4) $x clone") == "(3 4)") # Works for Paren

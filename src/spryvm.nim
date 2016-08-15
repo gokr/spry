@@ -535,6 +535,13 @@ proc removeLast*(self: SeqComposite) =
 method clone*(self: Node): Node {.base.} =
   raiseRuntimeException("Should not happen..." & $self)
 
+method clone*(self: Value): Node =
+  # Do nothing for most values
+  self
+
+method clone*(self: StringVal): Node =
+  newValue(self.value)
+
 method clone*(self: Map): Node =
   newMap(self.bindings)
 
