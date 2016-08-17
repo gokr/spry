@@ -186,7 +186,7 @@ when true:
   assert(run("x = 4 ^ x") == "4")
   assert(run("x = 1 x = (x + 2) eval x") == "3")
   assert(run("x = 4 k = do [y = (x + 3) eval y] k + x") == "11")
-  assert(run("x = 1 do [x = (x + 1)] eval x") == "2")
+  assert(run("x = 1 do [..x = (x + 1)] eval x") == "2")
 
   # Use parse word
   assert(run("parse \"[3 + 4]\"") == "[3 + 4]")
@@ -194,12 +194,12 @@ when true:
 
   # Boolean
   assert(run("true") == "true")
-  assert(run("not true") == "false")
+  assert(run("true not") == "false")
   assert(run("false") == "false")
-  assert(run("not false") == "true")
+  assert(run("false not") == "true")
   assert(run("3 < 4") == "true")
   assert(run("3 > 4") == "false")
-  assert(run("not (3 > 4)") == "true")
+  assert(run("(3 > 4) not") == "true")
   assert(run("false or false") == "false")
   assert(run("true or false") == "true")
   assert(run("false or true") == "true")
@@ -325,11 +325,11 @@ when true:
   assert(run("5 < 4 then: [1] else: [2]") == "2")
 
   # loops, eva will
-  assert(run("x = 0 5 timesRepeat: [x = (x + 1)] eva x") == "5")
-  assert(run("x = 0 0 timesRepeat: [x = (x + 1)] eva x") == "0")
-  assert(run("x = 0 5 timesRepeat: [x = (x + 1)] eva x") == "5")
-  assert(run("x = 0 [x > 5] whileFalse: [x = (x + 1)] eva x") == "6")
-  assert(run("x = 10 [x > 5] whileTrue: [x = (x - 1)] eva x") == "5")
+  assert(run("x = 0 5 timesRepeat: [..x = (x + 1)] eva x") == "5")
+  assert(run("x = 0 0 timesRepeat: [..x = (x + 1)] eva x") == "0")
+  assert(run("x = 0 5 timesRepeat: [..x = (x + 1)] eva x") == "5")
+  assert(run("x = 0 [x > 5] whileFalse: [..x = (x + 1)] eva x") == "6")
+  assert(run("x = 10 [x > 5] whileTrue: [..x = (x - 1)] eva x") == "5")
   assert(run("foo = func [x = 10 [x > 5] whileTrue: [x = (x - 1) ^11] ^x] eva foo") == "11") # Return inside
   assert(run("foo = func [x = 10 [x > 5 ^99] whileTrue: [x = (x - 1)] ^x] eva foo") == "99") # Return inside
 
@@ -373,11 +373,11 @@ when true:
   assert(run("d = 5 do [eval $d]") == "5")
   assert(run("d = 5 do [eval $@d]") == "undef")
   assert(run("d = 5 do [eval $..d]") == "5")
-  assert(run("d = 5 do [(locals at: 'd put: 3) $..d + d]") == "8")
+  assert(run("d = 5 do [d = 3 $..d + d]") == "8")
   assert(run("d = 5 do [eval d]") == "5")
   assert(run("d = 5 do [eval @d]") == "undef")
   assert(run("d = 5 do [eval ..d]") == "5")
-  assert(run("d = 5 do [(locals at: 'd put: 3) ..d + d]") == "8")
+  assert(run("d = 5 do [d = 3 ..d + d]") == "8")
 
   # Not an object
   assert(run("o = {x = 5} o tag: 'object o tags") == "['object]")
@@ -386,7 +386,7 @@ when true:
   assert(run("o = {x = 5} getx = method [^ @x] o tag: 'object o getx") == "5")
   assert(run("o = {x = 5} getx = method [eva @x] o tag: 'object o getx") == "5")
   assert(run("o = {x = 5} xplus = method [@x + 1] o tag: 'object o xplus") == "6")
-  assert(run("o = {x = 5} xplus = method [do [locals at: 'x put: 4 @x + 1]] o tag: 'object o xplus") == "6")
+  assert(run("o = {x = 5} xplus = method [do [x = 4 @x + 1]] o tag: 'object o xplus") == "6")
 
   # func infix works too, and with 3 or more arguments too...
   assert(run("xx = func [:a :b a + b + b] xx 2 (xx 5 4)") == "28") # 2 + (5+4+4) + (5+4+4)
@@ -422,16 +422,16 @@ when true:
     x = n
     [x <= m] whileTrue: [
       do blk x
-      x = (x + 1)]]
+      ..x = (x + 1)]]
   r = 0
-  for 2 5 [r = (r + :i)]
+  for 2 5 [..r = (r + :i)]
   eval r
   """) == "14")
 
   # Smalltalk do: in spry
   assert(run("""
     r = 0 y = [1 2 3]
-    y do: [r = (r + :e)]
+    y do: [..r = (r + :e)]
     eval r
   """) == "6")
 
@@ -582,8 +582,8 @@ when true:
   assert(stringRun(code & " commented") == code)
 
   # Collections
-  assert(run("x = 0 [1 2 3] do: [x = (x + :y)] eva x") == "6")
-  assert(run("x = 0 1 to: 3 do: [x = (x + :y)] eva x ") == "6")
+  assert(run("x = 0 [1 2 3] do: [..x = (x + :y)] eva x") == "6")
+  assert(run("x = 0 1 to: 3 do: [..x = (x + :y)] eva x ") == "6")
   assert(run("y = [] -2 to: 2 do: [y add: :n] eva y") == "[-2 -1 0 1 2]")
   assert(run("x = [] 1 to: 3 do: [x add: :y] eva x ") == "[1 2 3]")
 

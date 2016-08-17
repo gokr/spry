@@ -393,18 +393,21 @@ method print*(self: Blok): string =
   print(self.nodes)
 
 
-# Map lookups
+# Map lookups and bindings
 proc lookup*(self: Map, key: Node): Binding =
   self.bindings.getOrDefault(key)
-
-proc makeBinding*(self: Map, key: Node, val: Node): Binding =
-  result = Binding(key: key, val: val)
-  self.bindings[key] = result
 
 proc removeBinding*(self: Map, key: Node): Binding =
   if self.bindings.hasKey(key):
     result = self.bindings[key]
     self.bindings.del(key)
+
+proc makeBinding*(self: Map, key: Node, val: Node): Binding =
+  if val of UndefVal:
+    return self.removeBinding(key)
+  result = Binding(key: key, val: val)
+  self.bindings[key] = result
+
 
 # Constructor procs
 proc raiseParseException(msg: string) =
@@ -1056,7 +1059,7 @@ iterator stack*(spry: Interpreter): Activation =
     yield activation
     activation = activation.parent
 
-proc getLocals(self: BlokActivation): Map =
+template getLocals(self: BlokActivation): Map =
   ## Forces creation of the Map, only use if that is what you need
   if self.locals.isNil:
     self.locals = newMap()
@@ -1295,39 +1298,69 @@ proc lookupParent(spry: Interpreter, key: Node): Binding =
   var inParent = false
   for activation in mapWalk(spry.currentActivation):
     if inParent:
-      return activation.lookup(key)
+      let hit = activation.lookup(key)
+      if hit.notNil:
+        return hit
     else:
       inParent = true
 
+
 method makeBinding(self: Activation, key: Node, val: Node): Binding {.base.} =
-  nil
+  raiseRuntimeException("This activation should not be called with makeBinding")
 
 method makeBinding(self: BlokActivation, key: Node, val: Node): Binding =
   self.getLocals().makeBinding(key, val)
 
-method removeBinding(self: Activation, key: Node): Binding {.base.} =
-  nil
 
-method removeBinding(self: BlokActivation, key: Node): Binding =
-  self.getLocals().removeBinding(key)
+method findMap(spry: Interpreter, key: Node): Map {.base.} =
+  # Bind in first activation with locals
+  for activation in mapWalk(spry.currentActivation):
+    return BlokActivation(activation).getLocals()
 
-proc makeBinding(spry: Interpreter, key: Node, val: Node): Binding =
+method findMap(spry: Interpreter, key: EvalOuterWord): Map =
+  # Bind in first activation with locals outside this one
+  # or where we find an existing binding.
+  var inParent = false
+  var fallback: Activation
+  for activation in mapWalk(spry.currentActivation):
+    if inParent:
+      fallback = activation
+      if activation.lookup(key).notNil:
+        return BlokActivation(activation).locals
+    else:
+      inParent = true
+  return BlokActivation(fallback).getLocals()
+
+method findMap(spry: Interpreter, key: EvalWord): Map =
+  # Bind in first activation with locals
+  for activation in mapWalk(spry.currentActivation):
+    return BlokActivation(activation).getLocals()
+
+method findMap(spry: Interpreter, key: EvalModuleWord): Map =
+  # Bind in module
+  let binding = spry.lookup(EvalModuleWord(key).module)
+  if binding.notNil:
+    let module = binding.val
+    if module.notNil:
+      return Map(module)
+
+
+proc makeLocalBinding(spry: Interpreter, key: Node, val: Node): Binding =
   # Bind in first activation with locals. The root activation has root as its locals
   for activation in mapWalk(spry.currentActivation):
     return activation.makeBinding(key, val)
 
-proc removeBinding(spry: Interpreter, key: Node): Binding =
-  for activation in mapWalk(spry.currentActivation):
-    return activation.removeBinding(key)
-
-proc setBinding*(spry: Interpreter, key: Node, value: Node): Binding =
-  if value of UndefVal:
-    return spry.removeBinding(key)
+proc setLocalBinding*(spry: Interpreter, key: Node, value: Node): Binding =
   result = spry.lookup(key)
   if result.notNil:
     result.val = value
   else:
-    result = spry.makeBinding(key, value)
+    result = spry.makeLocalBinding(key, value)
+
+proc assign*(spry: Interpreter, word: Node, val: Node) =
+  # Find activation for word, then call makeBinding
+  let map = spry.findMap(word)
+  discard map.makeBinding(word, val)
 
 proc argInfix*(spry: Interpreter): Node =
   ## Pull self
@@ -1483,11 +1516,11 @@ method eval(self: EvalArgWord, spry: Interpreter): Node =
   spry.currentActivation = previousActivation
   result = arg.eval(spry)
   spry.currentActivation = here
-  discard spry.setBinding(self, result)
+  discard spry.setLocalBinding(self, result)
 
 method eval(self: GetArgWord, spry: Interpreter): Node =
   result = spry.argParent().next()
-  discard spry.setBinding(self, result)
+  discard spry.setLocalBinding(self, result)
 
 method eval(self: NimProc, spry: Interpreter): Node =
   self.prok(spry)
@@ -1658,15 +1691,15 @@ proc newInterpreter*(): Interpreter =
   # Assignment
   nimPrim("=", true):
     result = evalArg(spry) # Perhaps we could make it eager here? Pulling in more?
-    discard spry.setBinding(argInfix(spry), result)
+    spry.assign(argInfix(spry), result)
+  nimPrim("set:", true):
+    result = evalArg(spry)
+    spry.assign(evalArgInfix(spry), result)
   nimPrim("?", false):
     let binding = spry.lookup(arg(spry))
     if binding.isNil:
       return spry.falseVal
     return spry.trueVal
-  nimPrim("set:", true):
-    result = evalArg(spry)
-    discard spry.setBinding(evalArgInfix(spry), result)
   nimPrim("set?", false):
     newValue(not (evalArgInfix(spry) of UndefVal))
 
@@ -1689,7 +1722,7 @@ proc newInterpreter*(): Interpreter =
   nimPrim("!==", true): newValue(not system.`==`(evalArgInfix(spry), evalArg(spry)))
 
   # Booleans
-  nimPrim("not", false): newValue(not BoolVal(evalArg(spry)).value)
+  nimPrim("not", true): newValue(not BoolVal(evalArgInfix(spry)).value)
   nimPrim("and", true):
     let arg1 = BoolVal(evalArgInfix(spry)).value
     let arg2 = arg(spry) # We need to make sure we consume this one, since "and" is shortcutting
