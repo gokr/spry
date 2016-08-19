@@ -1332,7 +1332,7 @@ method makeBindingInMap(spry: Interpreter, key: EvalWord, val: Node): Binding =
 
 method makeBindingInMap(spry: Interpreter, key: EvalModuleWord, val: Node): Binding =
   # Bind in module
-  let binding = spry.lookup(EvalModuleWord(key).module)
+  let binding = spry.lookup(key.module)
   if binding.notNil:
     let module = binding.val
     if module.notNil:
@@ -1875,7 +1875,9 @@ proc newInterpreter*(): Interpreter =
   nimPrim("third", true):  SeqComposite(evalArgInfix(spry))[2]
   nimPrim("fourth", true): SeqComposite(evalArgInfix(spry))[3]
   nimPrim("fifth", true):  SeqComposite(evalArgInfix(spry))[4]
-  nimPrim("last", true):   SeqComposite(evalArgInfix(spry)).nodes[^1]
+  nimPrim("last", true):
+    let nodes = SeqComposite(evalArgInfix(spry)).nodes
+    nodes[high(nodes)]
 
   # Collection primitives
   nimPrim("do:", true):
