@@ -1,7 +1,5 @@
 import spryvm
 
-import os
-
 method typeName*(self: Node): string {.base.} =
   raiseRuntimeException("Nodes need to implement typeName")
 
