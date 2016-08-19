@@ -4,8 +4,8 @@
 # Just import Spry
 import spryvm
 
-# Create an interpreter and have it evaluate a string of Ni code
+# Create an interpreter and have it evaluate a string of code
 proc factorial*(n: int): int {.exportc.} =
   IntVal(newInterpreter().eval("""[
-    factorial = func [ifelse (:n > 0) [n * factorial (n - 1)] [1]]
+    factorial = func [:n > 0 then: [n * factorial (n - 1)] else: [1]]
     factorial """ & $n & "]")).value
