@@ -42,6 +42,6 @@ proc addOO*(spry: Interpreter) =
   # Shorthand for making a tagged method
   nimPrim("->", true):
     let tags = evalArgInfix(spry)
-    let result = spry.meth(Blok(evalArg(spry)))
+    result = spry.meth(Blok(evalArg(spry)))
     result.tags = Blok(tags)
-    return result
+
