@@ -599,6 +599,10 @@ when true:
   assert(run("x = nil x type") == "'novalue")
   assert(run("x = true x type") == "'boolean")
 
+  # Maps and Words, all variants should end up as same key
+  assert(run("map = {x = 1} map at: 'x put: 2 map at: (reify '$x) put: 3 map at: (reify ':x) put: 4 eval map") == "{:x = 4}")
+
+
   # Implementing prefix minus
   assert(run("mm = func [0 - :n] mm 7 + 2") == "-5")
   assert(run("mm = func [:n negated] mm 7 + 2") == "-5")
