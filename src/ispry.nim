@@ -17,7 +17,7 @@ when defined(readLine):
 import spryvm
 
 # Spry extra modules, as much as possible!
-import spryextend, sprymath, spryos, spryio, sprythread, spryoo, sprydebug, sprycompress, sprystring, sprymodules, spryreflect
+import spryextend, sprymath, spryos, spryio, sprythread, spryoo, sprydebug, sprycompress, sprystring, sprymodules, spryreflect, sprymemfile
 
 # Not included by default
 # import sprypython
@@ -57,6 +57,7 @@ proc main() =
   spry.addString()
   spry.addModules()
   spry.addReflect()
+  spry.addMemfile()
 
   var
     lines, stashed, fileLines = newSeq[string]()

@@ -82,9 +82,6 @@ type
   UndefVal* = ref object of Value
   NilVal* = ref object of Value
 
-  PointerVal* = ref object of Value
-    value*: pointer
-
   # Abstract
   Composite* = ref object of Node
     commentEnd*: string
@@ -491,9 +488,6 @@ proc newValue*(v: float): FloatVal =
 
 proc newValue*(v: string): StringVal =
   StringVal(value: v)
-
-proc newValue*(v: pointer): PointerVal =
-  PointerVal(value: v)
 
 proc newValue*(v: bool): BoolVal =
   if v:
@@ -1065,7 +1059,7 @@ template getLocals(self: BlokActivation): Map =
     self.locals = newMap()
   self.locals
 
-proc reset(self: Activation) =
+proc reset*(self: Activation) =
   self.returned = false
   self.pos = 0
 
@@ -1305,19 +1299,19 @@ proc lookupParent(spry: Interpreter, key: Node): Binding =
       inParent = true
 
 
-method makeBinding(self: Activation, key: Node, val: Node): Binding {.base.} =
+method makeBinding(self: Activation, key, val: Node): Binding {.base.} =
   raiseRuntimeException("This activation should not be called with makeBinding")
 
-method makeBinding(self: BlokActivation, key: Node, val: Node): Binding =
+method makeBinding(self: BlokActivation, key, val: Node): Binding =
   self.getLocals().makeBinding(key, val)
 
 
-method findMap(spry: Interpreter, key: Node): Map {.base.} =
+method makeBindingInMap(spry: Interpreter, key, val: Node): Binding {.base.} =
   # Bind in first activation with locals
   for activation in mapWalk(spry.currentActivation):
-    return BlokActivation(activation).getLocals()
+    return BlokActivation(activation).getLocals().makeBinding(key, val)
 
-method findMap(spry: Interpreter, key: EvalOuterWord): Map =
+method makeBindingInMap(spry: Interpreter, key: EvalOuterWord, val: Node): Binding =
   # Bind in first activation with locals outside this one
   # or where we find an existing binding.
   var inParent = false
@@ -1326,23 +1320,23 @@ method findMap(spry: Interpreter, key: EvalOuterWord): Map =
     if inParent:
       fallback = activation
       if activation.lookup(key).notNil:
-        return BlokActivation(activation).locals
+        return BlokActivation(activation).locals.makeBinding(newEvalWord(key.word), val)
     else:
       inParent = true
-  return BlokActivation(fallback).getLocals()
+  return BlokActivation(fallback).getLocals().makeBinding(newEvalWord(key.word), val)
 
-method findMap(spry: Interpreter, key: EvalWord): Map =
+method makeBindingInMap(spry: Interpreter, key: EvalWord, val: Node): Binding =
   # Bind in first activation with locals
   for activation in mapWalk(spry.currentActivation):
-    return BlokActivation(activation).getLocals()
+    return BlokActivation(activation).getLocals().makeBinding(key, val)
 
-method findMap(spry: Interpreter, key: EvalModuleWord): Map =
+method makeBindingInMap(spry: Interpreter, key: EvalModuleWord, val: Node): Binding =
   # Bind in module
   let binding = spry.lookup(EvalModuleWord(key).module)
   if binding.notNil:
     let module = binding.val
     if module.notNil:
-      return Map(module)
+      return Map(module).makeBinding(newEvalWord(key.word), val)
 
 
 proc makeLocalBinding(spry: Interpreter, key: Node, val: Node): Binding =
@@ -1358,9 +1352,7 @@ proc setLocalBinding*(spry: Interpreter, key: Node, value: Node): Binding =
     result = spry.makeLocalBinding(key, value)
 
 proc assign*(spry: Interpreter, word: Node, val: Node) =
-  # Find activation for word, then call makeBinding
-  let map = spry.findMap(word)
-  discard map.makeBinding(word, val)
+  discard spry.makeBindingInMap(word, val)
 
 proc argInfix*(spry: Interpreter): Node =
   ## Pull self
@@ -1455,60 +1447,60 @@ method canEval*(self: Curly, spry: Interpreter):bool =
   true
 
 # The heart of the interpreter - eval
-method eval(self: Node, spry: Interpreter): Node =
-  raiseRuntimeException("Should not happen")
+method eval*(self: Node, spry: Interpreter): Node =
+  raiseRuntimeException("Should not happen " & $self)
 
-method eval(self: Word, spry: Interpreter): Node =
+method eval*(self: Word, spry: Interpreter): Node =
   ## Look up
   let binding = spry.lookup(self)
   if binding.isNil:
     raiseRuntimeException("Word not found: " & $self)
   return binding.val.eval(spry)
 
-method eval(self: GetModuleWord, spry: Interpreter): Node =
+method eval*(self: GetModuleWord, spry: Interpreter): Node =
   ## Look up only
   let hit = spry.lookup(self)
   if hit.isNil: spry.undefVal else: hit.val
 
-method eval(self: GetWord, spry: Interpreter): Node =
+method eval*(self: GetWord, spry: Interpreter): Node =
   ## Look up only
   let hit = spry.lookup(self)
   if hit.isNil: spry.undefVal else: hit.val
 
-method eval(self: GetSelfWord, spry: Interpreter): Node =
+method eval*(self: GetSelfWord, spry: Interpreter): Node =
   ## Look up only
   let hit = spry.lookupSelf(self)
   if hit.isNil: spry.undefVal else: hit.val
 
-method eval(self: GetOuterWord, spry: Interpreter): Node =
+method eval*(self: GetOuterWord, spry: Interpreter): Node =
   ## Look up only
   let hit = spry.lookupParent(self)
   if hit.isNil: spry.undefVal else: hit.val
 
-method eval(self: EvalModuleWord, spry: Interpreter): Node =
+method eval*(self: EvalModuleWord, spry: Interpreter): Node =
   ## Look up and eval
   let hit = spry.lookup(self)
   if hit.isNil: spry.undefVal else: hit.val.eval(spry)
 
-method eval(self: EvalWord, spry: Interpreter): Node =
+method eval*(self: EvalWord, spry: Interpreter): Node =
   ## Look up and eval
   let hit = spry.lookup(self)
   if hit.isNil: spry.undefVal else: hit.val.eval(spry)
 
-method eval(self: EvalSelfWord, spry: Interpreter): Node =
+method eval*(self: EvalSelfWord, spry: Interpreter): Node =
   ## Look up and eval
   let hit = spry.lookupSelf(self)
   if hit.isNil: spry.undefVal else: hit.val.eval(spry)
 
-method eval(self: EvalOuterWord, spry: Interpreter): Node =
+method eval*(self: EvalOuterWord, spry: Interpreter): Node =
   ## Look up and eval
   let hit = spry.lookupParent(self)
   if hit.isNil: spry.undefVal else: hit.val.eval(spry)
 
-method eval(self: LitWord, spry: Interpreter): Node =
+method eval*(self: LitWord, spry: Interpreter): Node =
   self
 
-method eval(self: EvalArgWord, spry: Interpreter): Node =
+method eval*(self: EvalArgWord, spry: Interpreter): Node =
   let previousActivation = spry.argParent()
   let arg = previousActivation.next()
   # This evaluation needs to be done in parent activation!
@@ -1518,14 +1510,14 @@ method eval(self: EvalArgWord, spry: Interpreter): Node =
   spry.currentActivation = here
   discard spry.setLocalBinding(self, result)
 
-method eval(self: GetArgWord, spry: Interpreter): Node =
+method eval*(self: GetArgWord, spry: Interpreter): Node =
   result = spry.argParent().next()
   discard spry.setLocalBinding(self, result)
 
-method eval(self: NimProc, spry: Interpreter): Node =
+method eval*(self: NimProc, spry: Interpreter): Node =
   self.prok(spry)
 
-proc eval(current: Activation, spry: Interpreter): Node =
+proc eval*(current: Activation, spry: Interpreter): Node =
   ## This is the inner chamber of the heart :)
   spry.pushActivation(current)
   while not current.atEnd:
@@ -1543,18 +1535,18 @@ proc eval(current: Activation, spry: Interpreter): Node =
   spry.popActivation()
   return current.last
 
-method eval(self: Funk, spry: Interpreter): Node =
+method eval*(self: Funk, spry: Interpreter): Node =
   newActivation(self).eval(spry)
 
-method eval(self: Meth, spry: Interpreter): Node =
+method eval*(self: Meth, spry: Interpreter): Node =
   let act = newActivation(self)
   discard setSelf(spry)
   act.eval(spry)
 
-method eval(self: Paren, spry: Interpreter): Node =
+method eval*(self: Paren, spry: Interpreter): Node =
   newActivation(self).eval(spry)
 
-method eval(self: Curly, spry: Interpreter): Node =
+method eval*(self: Curly, spry: Interpreter): Node =
   let activation = newActivation(self)
   discard activation.eval(spry)
   activation.returned = true
@@ -1573,16 +1565,16 @@ method evalDo(self: Curly, spry: Interpreter): Node =
   # Calling do on a curly doesn't do the locals trick
   newActivation(self).eval(spry)
 
-method eval(self: Blok, spry: Interpreter): Node =
+method eval*(self: Blok, spry: Interpreter): Node =
   self
 
-method eval(self: Value, spry: Interpreter): Node =
+method eval*(self: Value, spry: Interpreter): Node =
   self
 
-method eval(self: Map, spry: Interpreter): Node =
+method eval*(self: Map, spry: Interpreter): Node =
   self
 
-method eval(self: Binding, spry: Interpreter): Node =
+method eval*(self: Binding, spry: Interpreter): Node =
   self.val
 
 proc eval*(spry: Interpreter, code: string): Node =

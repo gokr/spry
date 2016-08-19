@@ -9,7 +9,8 @@ when defined(profiler):
 import os
 import spryvm
 import spryextend, sprymath, spryos, spryio, sprythread,
- spryoo, sprydebug, sprycompress, sprystring, sprymodules, spryreflect
+ spryoo, sprydebug, sprycompress, sprystring, sprymodules,
+ spryreflect, sprymemfile
 
 # import sprypython
 
@@ -28,6 +29,7 @@ spry.addCompress()
 spry.addString()
 spry.addModules()
 spry.addReflect()
+spry.addMemfile()
 
 # Just run a given file as argument, the hash-bang trick works also
 let params = commandLineParams()

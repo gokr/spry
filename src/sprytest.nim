@@ -1,7 +1,7 @@
 import spryvm
 
 import spryextend, sprymath, spryio, sprydebug, sprycompress, spryos, sprythread, sprypython, spryoo,
-  sprystring, sprymodules, spryreflect
+  sprystring, sprymodules, spryreflect, sprymemfile
 
 proc newVM(): Interpreter =
   var spry = newInterpreter()
@@ -17,6 +17,7 @@ proc newVM(): Interpreter =
   spry.addString()
   spry.addModules()
   spry.addReflect()
+  spry.addMemfile()
   return spry
 
 # Some helpers for tests below
@@ -138,6 +139,8 @@ when true:
   assert(run("x = 5 x") == "x") # Peculiarity, a word is not evaluated by default
   assert(run("x = 5 eval x") == "5") # But we can eval it
   assert(run("f = func [3 + 4] f") == "7") # Functions are evaluated though
+  assert(run("Foo = {x = 5} Foo::x = 3 eval Foo") == "{x = 3}")
+
 
   # Nil vs undef, set? set:
   assert(run("eval x") == "undef")
@@ -604,6 +607,9 @@ when true:
   # Implementing ifTrue: using then:, two variants
   assert(run("ifTrue: = method [:blk self then: [^do blk] else: [^nil]] 3 > 2 ifTrue: [99] ") == "99")
   assert(run("ifTrue: = method [:blk self then: [^do blk] nil] 1 > 2 ifTrue: [99] ") == "nil")
+
+  # Memfile
+  assert(run("(readLines \"data.spry\") size") == "14")
 
 when true:
   # Demonstrate extension from extend.nim
