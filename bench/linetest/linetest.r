@@ -1,0 +1,1 @@
+notes: read/string %lotslines
