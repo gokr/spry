@@ -39,7 +39,6 @@ type
 
   # Nodes form an AST which we later eval directly using Interpreter
   Node* = ref object of RootObj
-    comment*: string
     tags*: Blok
   Word* = ref object of Node
     word*: string
@@ -84,7 +83,6 @@ type
 
   # Abstract
   Composite* = ref object of Node
-    commentEnd*: string
   SeqComposite* = ref object of Composite
     nodes*: seq[Node]
 
@@ -134,12 +132,6 @@ method `$`*(self: Node): string {.base.} =
   else:
     repr(self)
 
-method commented*(self: Node): string {.base.} =
-  if self.comment.isNil:
-    $self
-  else:
-    self.comment & $self
-
 method `$`*(self: Binding): string =
   if self.key.isNil:
     return "nil = " & $self.val
@@ -157,21 +149,6 @@ method `$`*(self: Map): string =
     else:
       result.add(" " & $v)
   return result & "}"
-
-method commented*(self: Map): string =
-  if self.comment.isNil:
-    result = "{"
-  else:
-    result = self.comment & "{"
-  var first = true
-  for k,v in self.bindings:
-    if first:
-      result.add(commented(v))
-      first = false
-    else:
-      result.add(commented(v))
-  return result & "}"
-
 
 method `$`*(self: IntVal): string =
   $self.value
@@ -196,9 +173,6 @@ method `$`*(self: UndefVal): string =
 
 proc `$`*(self: seq[Node]): string =
   self.map(proc(n: Node): string = $n).join(" ")
-
-proc commented*(self: seq[Node]): string =
-  self.map(proc(n: Node): string = commented(n)).join()
 
 method `$`*(self: Word): string =
   self.word
@@ -239,54 +213,16 @@ method `$`*(self: GetArgWord): string =
 method `$`*(self: Blok): string =
   "[" & $self.nodes & "]"
 
-method commented*(self: Blok): string =
-  if self.comment.isNil:
-    result = "["
-  else:
-    result = self.comment & "["
-  result = result & commented(self.nodes)
-  if self.commentEnd.isNil:
-    result = result & "]"
-  else:
-    result = result & self.commentEnd & "]"
-
 method `$`*(self: Paren): string =
   "(" & $self.nodes & ")"
 
-method commented*(self: Paren): string =
-  if self.comment.isNil:
-    result = "("
-  else:
-    result = self.comment & "("
-  result = result & commented(self.nodes)
-  if self.commentEnd.isNil:
-    result = result & ")"
-  else:
-    result = result & self.commentEnd & ")"
-
 method `$`*(self: Curly): string =
   "{" & $self.nodes & "}"
-
-method commented*(self: Curly): string =
-  if self.comment.isNil:
-    result = "{"
-  else:
-    result = self.comment & "{"
-  result = result & commented(self.nodes)
-  if self.commentEnd.isNil:
-    result = result & "}"
-  else:
-    result = result & self.commentEnd & "}"
 
 method `$`*(self: KeyWord): string =
   result = ""
   for i in 0 .. self.keys.len - 1:
     result = result & self.keys[i] & " " & $self.args[i]
-
-method commented*(self: KeyWord): string =
-  result = ""
-  for i in 0 .. self.keys.len - 1:
-    result = result & self.keys[i] & commented(self.args[i])
 
 # Hash and == implementations
 method hash*(self: Node): Hash {.base.} =
@@ -774,13 +710,10 @@ proc newWordOrValue(self: Parser): Node =
   for p in self.valueParsers:
     let valueOrNil = p.parseValue(token)
     if valueOrNil.notNil:
-      valueOrNil.comment = ws
       return valueOrNil
 
   # Then it must be a word
   result = newWord(self, token)
-  if result.notNil:
-    result.comment = ws
 
 proc addNode(self: Parser) =
   # If there is a token we figure out what to make of it
@@ -856,41 +789,29 @@ proc parse*(self: Parser, str: string): Node =
             # Paren
             of '(':
               let n = newParen()
-              n.comment = self.ws
-              self.ws = ""
               self.addNode()
               self.push(n)
             # Block
             of '[':
               let n = newBlok()
-              n.comment = self.ws
-              self.ws = ""
               self.addNode()
               self.push(n)
            # Curly
             of '{':
               let n = newCurly()
-              n.comment = self.ws
-              self.ws = ""
               self.addNode()
               self.push(n)
             of ')':
               self.addNode()
               let n = self.pop
-              Composite(n).commentEnd = self.ws
-              self.ws = ""
             # Block
             of ']':
               self.addNode()
               let n = self.pop
-              Composite(n).commentEnd = self.ws
-              self.ws = ""
             # Curly
             of '}':
               self.addNode()
               let n = self.pop
-              Composite(n).commentEnd = self.ws
-              self.ws = ""
             # Ok, otherwise we just collect the char
             else:
               if ch in SpecialChars:
@@ -938,6 +859,7 @@ type
   # An executable Ni function
   Funk* = ref object of Blok
     parent*: Activation
+    source*: string # compressed
   Meth* = ref object of Funk
 
   # The activation record used by the Interpreter.
@@ -1738,8 +1660,6 @@ proc newInterpreter*(): Interpreter =
   # Conversions
   nimPrim("print", true):
     newValue(print(evalArgInfix(spry)))
-  nimPrim("commented", true):
-    newValue(commented(evalArgInfix(spry)))
   nimPrim("asFloat", true):
     let val = evalArgInfix(spry)
     if val of FloatVal:

@@ -562,28 +562,6 @@ when true:
   # String
   assert(run("\"abc.de\" split: \".\"") == "[\"abc\" \"de\"]")
 
-  # Commented
-  assert(stringRun("[  1 2  3 ] commented") == "[  1 2  3 ]")
-
-  # This test ensures that the commented func produces the same
-  # code string (comments and formatting) that the AST was built from.
-  let code ="""[# A Map is just a bunch of assignments inside a Curly. A Curly in Spry is just a sequence of Nodes.
-# After parsing we have a Curly which is still just "data". If we evaluate the Curly Spry will
-# execute the code inside it and at the end return the Map of locals that was populated by the code.
-{
-  # First is a very minimal meta Map holding the name of the Module in
-  # the form of a literal Word which is similar to a Symbol in Ruby/Smalltalk.
-  # There is no mandatory information, nor is the meta Map itself mandatory.
-  meta = { name = 'Foo }
-
-  # This just assigns 13 to x in the local scope Map
-  foo = 13
-
-  # Same again, but we can of course have funcs or whatever in a Module
-  adder = func [:x + :y]
-}]"""
-  assert(stringRun(code & " commented") == code)
-
   # Collections
   assert(run("x = 0 [1 2 3] do: [..x = (x + :y)] eva x") == "6")
   assert(run("x = 0 1 to: 3 do: [..x = (x + :y)] eva x ") == "6")
