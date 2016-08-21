@@ -783,8 +783,6 @@ proc newWordOrValue(self: Parser): Node =
     result.comment = ws
 
 proc addNode(self: Parser) =
-  # Cancel any special char token collection
-  self.specialCharDetected = false
   # If there is a token we figure out what to make of it
   if self.token.len > 0:
     let node = self.newWordOrValue()
@@ -805,96 +803,95 @@ proc parse*(self: Parser, str: string): Node =
   while pos < str.len:
     ch = str[pos]
     inc pos
-    # If we are inside a literal value let the valueParser decide when complete
-    if currentValueParser.notNil:
-      let found = currentValueParser.tokenReady(self.token, ch)
-      if found.notNil:
-        self.token = found
-        self.addNode()
-        currentValueParser = nil
-      else:
-        self.token.add(ch)
+    # If a SpecialChar is detected we end previous token and
+    # then all following chars must be SpecialChars too, otherwise end token
+    # and start a new one. This makes Spry less sensitive to whitespace
+    # since you can write things like "^x" and "add: 3;" and have it
+    # tokenized as "^ x" and "add: 3 ;"
+    if self.specialCharDetected and ch in SpecialChars:
+      # Ok, the previos char was a special and this one too, keep collecting...
+      self.token.add(ch)
     else:
-      # If we are not parsing a literal with a valueParser whitespace is consumed
-      if currentValueParser.isNil and ch in Whitespace:
-        # But first we make sure to finish the token if any
+      if self.specialCharDetected:
+        # We ran out of specials, add a node for it, and proceed processing this char
         self.addNode()
-        # Collect for formatting
-        self.ws.add(ch)
+        self.specialCharDetected = false
+
+      # If we are inside a literal value let the valueParser decide when complete
+      if currentValueParser.notNil:
+        let found = currentValueParser.tokenReady(self.token, ch)
+        if found.notNil:
+          self.token = found
+          self.addNode()
+          currentValueParser = nil
+        else:
+          self.token.add(ch)
       else:
-        # Check if a valueParser wants to take over, only 5 first chars are checked
-        let tokenLen = self.token.len + 1
-        if currentValueParser.isNil and tokenLen < 5:
-          for p in self.valueParsers:
-            if p.prefixLength == tokenLen and p.tokenStart(self.token, ch):
-              currentValueParser = p
-              break
-        # If still no valueParser active we do regular token handling
-        if currentValueParser.isNil:
-          case ch
-          # Comments are collected and added to next node
-          of '#':
-            self.addNode()
-            self.ws.add('#')
-            while (pos < str.len) and (str[pos] != '\l'):
-              self.ws.add(str[pos])
-              inc pos
-            #if (pos < str.len):
-            #  self.ws.add('\l')
-          # Paren
-          of '(':
-            let n = newParen()
-            n.comment = self.ws
-            self.ws = ""
-            self.addNode()
-            self.push(n)
-          # Block
-          of '[':
-            let n = newBlok()
-            n.comment = self.ws
-            self.ws = ""
-            self.addNode()
-            self.push(n)
-         # Curly
-          of '{':
-            let n = newCurly()
-            n.comment = self.ws
-            self.ws = ""
-            self.addNode()
-            self.push(n)
-          of ')':
-            self.addNode()
-            let n = self.pop
-            Composite(n).commentEnd = self.ws
-            self.ws = ""
-          # Block
-          of ']':
-            self.addNode()
-            let n = self.pop
-            Composite(n).commentEnd = self.ws
-            self.ws = ""
-          # Curly
-          of '}':
-            self.addNode()
-            let n = self.pop
-            Composite(n).commentEnd = self.ws
-            self.ws = ""
-          # Ok, otherwise we just collect the char
-          else:
-            # If a SpecialChar is detected we end previous token and
-            # then all following chars must be SpecialChars too, otherwise end token
-            # and start a new one. This makes Spry less sensitive to whitespace
-            # since you can write things like "^x" and "add: 3;" and have it
-            # tokenized as "^ x" and "add: 3 ;"
-            if self.specialCharDetected:
-              # Ok, the last char was a special...
-              if ch in SpecialChars:
-                # This one too, keep collecting...
-                self.token.add(ch)
-              else:
-                # We ran out of specials, add a node for it!
-                self.addNode()
-                self.token.add(ch)
+        # If we are not parsing a literal with a valueParser whitespace is consumed
+        if currentValueParser.isNil and ch in Whitespace:
+          # But first we make sure to finish the token if any
+          self.addNode()
+          # Collect for formatting
+          self.ws.add(ch)
+        else:
+          # Check if a valueParser wants to take over, only 5 first chars are checked
+          let tokenLen = self.token.len + 1
+          if currentValueParser.isNil and tokenLen < 5:
+            for p in self.valueParsers:
+              if p.prefixLength == tokenLen and p.tokenStart(self.token, ch):
+                currentValueParser = p
+                break
+          # If still no valueParser active we do regular token handling
+          if currentValueParser.isNil:
+            case ch
+            # Comments are collected and added to next node
+            of '#':
+              self.addNode()
+              self.ws.add('#')
+              while (pos < str.len) and (str[pos] != '\l'):
+                self.ws.add(str[pos])
+                inc pos
+              #if (pos < str.len):
+              #  self.ws.add('\l')
+            # Paren
+            of '(':
+              let n = newParen()
+              n.comment = self.ws
+              self.ws = ""
+              self.addNode()
+              self.push(n)
+            # Block
+            of '[':
+              let n = newBlok()
+              n.comment = self.ws
+              self.ws = ""
+              self.addNode()
+              self.push(n)
+           # Curly
+            of '{':
+              let n = newCurly()
+              n.comment = self.ws
+              self.ws = ""
+              self.addNode()
+              self.push(n)
+            of ')':
+              self.addNode()
+              let n = self.pop
+              Composite(n).commentEnd = self.ws
+              self.ws = ""
+            # Block
+            of ']':
+              self.addNode()
+              let n = self.pop
+              Composite(n).commentEnd = self.ws
+              self.ws = ""
+            # Curly
+            of '}':
+              self.addNode()
+              let n = self.pop
+              Composite(n).commentEnd = self.ws
+              self.ws = ""
+            # Ok, otherwise we just collect the char
             else:
               if ch in SpecialChars:
                 # We found a special, so quit the previous word
@@ -903,10 +900,12 @@ proc parse*(self: Parser, str: string): Node =
                 self.specialCharDetected = true
                 self.token.add(ch)
               else:
+                # Just regular word collection
                 self.token.add(ch)
-        else:
-          # Just collect for current value parser
-          self.token.add(ch)
+          else:
+            # Just collect for current value parser
+            self.token.add(ch)
+
   self.addNode()
   if self.currentKeyword().notNil:
     self.closeKeyword()

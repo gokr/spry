@@ -10,9 +10,9 @@ red = object [red] (apple clone)
 red::color = "red"
 
 # Create a polyfunc price that is polymorphic
-price = polyfunc reduce [
-  [apple] -> [:apple "Apple costs ", (apple::price print)]           # Base for Apples
-  [red] -> [:apple "Red apple costs " , ((apple::price * 3) print)]  # For Red Apples
+price = polymethod reduce [
+  [apple] -> [ "Apple costs ", (@price print)]         # Base for Apples
+  [red] -> [ "Red apple costs " , (@price * 3 print)]  # For Red Apples
 ]
 
 echo apple
@@ -22,7 +22,6 @@ echo apple::color
 echo red
 echo (red tags)
 echo red::color
-
 
 echo (apple price)
 echo (red price)
