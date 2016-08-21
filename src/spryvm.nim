@@ -546,18 +546,8 @@ proc newParser*(): Parser =
   for ex in parserExts:
     ex(result)
 
-
-proc len(self: Node): int =
-  0
-
-proc len(self: SeqComposite): int =
-  self.nodes.len
-
 proc addKey(self: KeyWord, key: string) =
   self.keys.add(key)
-
-proc addArg(self: KeyWord, arg: Node) =
-  self.args.add(arg)
 
 proc inBalance(self: KeyWord): bool =
   return self.args.len == self.keys.len
@@ -702,7 +692,6 @@ template newWord*(token: string): Node =
 proc newWordOrValue(self: Parser): Node =
   ## Decide what to make, a word or value
   let token = self.token
-  let ws = self.ws
   self.token = ""
   self.ws = ""
 
@@ -803,15 +792,15 @@ proc parse*(self: Parser, str: string): Node =
               self.push(n)
             of ')':
               self.addNode()
-              let n = self.pop
+              discard self.pop
             # Block
             of ']':
               self.addNode()
-              let n = self.pop
+              discard self.pop
             # Curly
             of '}':
               self.addNode()
-              let n = self.pop
+              discard self.pop
             # Ok, otherwise we just collect the char
             else:
               if ch in SpecialChars:
@@ -1204,9 +1193,6 @@ proc lookupSelf(spry: Interpreter, key: Node): Binding =
   let self = spry.currentActivation.self
   if self of Map:
     return Map(self).lookup(key)
-
-proc lookupLocal(spry: Interpreter, key: Node): Binding =
-  return spry.currentActivation.lookup(key)
 
 proc lookupParent(spry: Interpreter, key: Node): Binding =
   # Silly way of skipping to get to parent
