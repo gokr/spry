@@ -1799,15 +1799,15 @@ proc newInterpreter*(): Interpreter =
     for each in blk1.nodes:
       current.body.nodes[0] = each
       # evalDo will increase pos, but we set it back below
-      discard activation.eval(spry)
+      result = activation.eval(spry)
       activation.reset()
-      current.pos = 0
       # Or else non local returns don't work :)
       if current.returned:
         # Reset our trick
         current.body.nodes[0] = orig
         current.pos = oldpos
-        return current.last
+        return
+      current.pos = 0
     # Reset our trick
     current.body.nodes[0] = orig
     current.pos = oldpos
@@ -1911,11 +1911,11 @@ proc newInterpreter*(): Interpreter =
     for i in frm .. to:
       current.body.nodes[0] = newValue(i)
       # evalDo will increase pos, but we set it back below
-      discard activation.eval(spry)
+      result = activation.eval(spry)
       activation.reset()
       current.pos = 0
       # Or else non local returns don't work :)
-      if spry.currentActivation.returned:
+      if current.returned:
         # Reset our trick
         current.body.nodes[0] = orig
         current.pos = oldpos
