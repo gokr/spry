@@ -500,7 +500,7 @@ when true:
 
   # spry math
   assert(run("10 fac") == "3628800")
-  assert(run("10.0 sin") == "-0.5440211108893698")
+  assert(run("4.0 cos") == "-0.6536436208636119")
 
   # spry polymeth (reduce should not be needed here)
   assert(run("p = polymethod reduce [method [self + 1] method [self]]") == "polymethod [method [self + 1] method [self]]")
@@ -523,7 +523,7 @@ when true:
   assert(run("(parse readFile \"data.spry\") first first") == "121412")
 
   # spry OS
-  assert(run("shell \"stat --printf='%s' data.spry\"") == "\"1665\\x0A\"")
+  assert(run("shell \"ls data.spry\"") == "\"data.spry\\x0A\"")
 
   # Library code
   assert(run("assert (3 < 4)") == "true")
@@ -597,7 +597,3 @@ when true:
   # Demonstrate extension from extend.nim
   assert(show("'''abc'''") == "\"abc\"")
   assert(run("reduce [1 + 2 3 + 4]") == "[3 7]")
-
-
-
-
