@@ -1595,7 +1595,7 @@ proc newInterpreter*(): Interpreter =
     result = evalArg(spry)
     spry.assign(evalArgInfix(spry), result)
   nimPrim("?", false):
-    let binding = spry.lookup(arg(spry))
+    let binding = spry.lookup(argInfix(spry))
     if binding.isNil:
       return spry.falseVal
     return spry.trueVal
