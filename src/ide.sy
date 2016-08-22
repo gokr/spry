@@ -1,0 +1,53 @@
+#!/usr/bin/env spry
+
+# Initialize libui
+uiInit
+
+# Create a new Window
+win = newWindow "Spry Says Hi to ESUG 2016!" 200 200 true
+
+# Create a multiline text entry field for code
+code = newMultilineEntryText
+
+# And one for output
+out = newMultilineEntryText
+
+# And a vertical box to put stuff in
+bx = newVerticalBox
+
+# A button to doit
+doit = newButton "Do it"
+doit onClicked: [
+  # Pull out code from text field, parse and do it
+  result = (do parse ("[", (code text), "]"))
+  # Append result to out text field
+  out append: (result print, "\x0A")
+]
+
+
+# Put things in the box
+bx padding: 0
+bx append: code stretch: 1
+bx append: out stretch: 1
+bx append: doit stretch: 0
+
+# Add box to window
+win setChild: bx
+
+# Set initial text
+code text: "3 + 4"
+
+# Set a handler on closing window
+win onClosing: [
+  win message: "...you bet!" title: "Spry takes first steps with native x-platform UI for Windows, OSX and Unix!"
+  echo "Okidoki closing window..."
+  controlDestroy win
+  echo "And quitting..."
+  uiQuit
+]
+
+# Show the window
+win show
+
+# Enter libui's event loop
+win uiMain

@@ -5,6 +5,12 @@ Files and what they are.
 * spryvm.nim    - The Spry interpreter and parser.
 * sprytest.nim  - Accompanying tests for the Spry interpreter
 
+# IDE experiment
+
+* makeide.sh    - Compiles and creates ide.nim (from ide.sy) on Linux a single binary IDE
+* ide.sy        - Source code for the IDE
+* libui.a       - Static library of libui, bundled just for now
+
 # Spry executables
 
 * spry.nim      - The kitchen sink Spry interpreter useful for scripting
@@ -13,7 +19,7 @@ Files and what they are.
 * sprymicro.nim - As small as it can get, source is embedded instead of accessed as file
 
 # Going small
-The Spry interpreter is fairly small, only around 1100 lines of code but it does include the Nim soft realtime GC so we can't
+The Spry interpreter is fairly small, but it does include the Nim soft realtime GC so we can't
 go ultra small. But using for example musl-libc or diet-libc you can make a statically linked stripped 64 bit x86_64 VM
 that is only around 100kb. Clang makes a smaller non-size optimized binary, but larger size optimized.
 
