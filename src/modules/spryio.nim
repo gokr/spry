@@ -6,6 +6,7 @@ import os
 proc addIO*(spry: Interpreter) =
   # IO
   nimPrim("echo", false):
+    result = spry.nilVal
     echo(print(evalArg(spry)))
   nimPrim("probe", false):
     result = evalArg(spry)
