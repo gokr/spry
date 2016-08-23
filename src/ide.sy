@@ -31,7 +31,10 @@ printit onClicked: [
 clearit = newButton "Clear"
 clearit onClicked: [out text: ""]
 quitit = newButton "Quit"
-quitit onClicked: [quit 0]
+quitit onClicked: [
+  do closeHandler
+  uiQuit
+]
 
 # Group
 group = newGroup "Workspace"
@@ -54,12 +57,15 @@ win windowSetChild: group
 # Set initial text
 code text: "3 + 4"
 
-# Set a handler on closing window
-win onClosing: [
+# Close handler
+closeHandler = [
   win message: "Thanks for trying it out!" title: "Spry native cross-platform IDE for Windows, OSX and Unix!"
   controlDestroy win
   uiQuit
 ]
+
+# Set a handler on closing window
+win onClosing: closeHandler
 
 # Show the window
 win show
