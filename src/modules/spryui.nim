@@ -11,6 +11,7 @@ type
   MultilineEntryNode = ref object of ControlNode
     onChanged*: Blok
   BoxNode = ref object of ControlNode
+  GroupNode = ref object of ControlNode
   ButtonNode = ref object of ControlNode
     onClicked*: Blok
 
@@ -23,6 +24,8 @@ method `$`*(self: MultilineEntryNode): string =
   "MultilineEntryNode"
 method `$`*(self: BoxNode): string =
   "BoxNode"
+method `$`*(self: GroupNode): string =
+  "GroupNode"
 method `$`*(self: ButtonNode): string =
   "ButtonNode"
 
@@ -76,11 +79,6 @@ proc addUI*(spry: Interpreter) =
     let node = ControlNode(evalArgInfix(spry))
     controlHide(node.control)
     return node
-  nimPrim("setChild:", false):
-    let win = WindowNode(evalArgInfix(spry))
-    let node = ControlNode(evalArg(spry))
-    windowSetChild(cast[ptr Window](win.control), node.control)
-    return win
 
   # Window
   nimPrim("newWindow", false):
@@ -89,7 +87,7 @@ proc addUI*(spry: Interpreter) =
     let height = IntVal(evalArg(spry)).value
     let bar = if BoolVal(evalArg(spry)).value: 1 else: 0
     result = WindowNode(control: newWindow(title.cstring, width.cint, height.cint, bar.cint), spry: spry)
-  nimPrim("margin:", true):
+  nimPrim("windowMargin:", true):
     var node = WindowNode(evalArgInfix(spry))
     let margin = IntVal(evalArg(spry)).value
     windowSetMargined(toUiWindow(node.control), margin.cint)
@@ -111,7 +109,34 @@ proc addUI*(spry: Interpreter) =
     let title = StringVal(evalArg(spry)).value
     msgBoxError(toUiWindow(win.control), title.cstring, description.cstring)
     return win
+  nimPrim("windowSetChild:", false):
+    let win = WindowNode(evalArgInfix(spry))
+    let node = ControlNode(evalArg(spry))
+    windowSetChild(cast[ptr Window](win.control), node.control)
+    return win
 
+   # Groups
+  nimPrim("newGroup", false):
+    let title = StringVal(evalArg(spry)).value
+    GroupNode(control: newGroup(title.cstring), spry: spry)
+  nimPrim("groupSetChild:", false):
+    let group = GroupNode(evalArgInfix(spry))
+    let node = ControlNode(evalArg(spry))
+    groupSetChild(toUiGroup(group.control), node.control)
+    return group
+  nimPrim("groupMargin:", true):
+    var node = GroupNode(evalArgInfix(spry))
+    var margin = IntVal(evalArg(spry))
+    groupSetMargined(toUiGroup(node.control), margin.value.cint)
+    return node
+  nimPrim("title", true):
+    var node = GroupNode(evalArgInfix(spry))
+    return newValue($(groupTitle(toUiGroup(node.control))))
+  nimPrim("title:", true):
+    var node = GroupNode(evalArgInfix(spry))
+    let title = StringVal(evalArg(spry)).value
+    groupSetTitle(toUiGroup(node.control), title.cstring)
+    return node
 
   # MultilineEntry
   nimPrim("newMultilineEntryText", false):
