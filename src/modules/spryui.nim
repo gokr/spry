@@ -14,6 +14,18 @@ type
   ButtonNode = ref object of ControlNode
     onClicked*: Blok
 
+# Useful during playing around with this
+method type*(self: ControlNode): string =
+  "ControlNode"
+method `$`*(self: WindowNode): string =
+  "WindowNode"
+method `$`*(self: MultilineEntryNode): string =
+  "MultilineEntryNode"
+method `$`*(self: BoxNode): string =
+  "BoxNode"
+method `$`*(self: ButtonNode): string =
+  "ButtonNode"
+
 method eval*(self: ControlNode, spry: Interpreter): Node =
   self
 
@@ -53,13 +65,17 @@ proc addUI*(spry: Interpreter) =
 
   # Controls
   nimPrim("controlDestroy", false):
-    controlDestroy(ControlNode(evalArg(spry)).control)
+    let node = ControlNode(evalArg(spry))
+    controlDestroy(node.control)
+    return spry.nilVal
   nimPrim("show", true):
-    let control = ControlNode(evalArgInfix(spry)).control
-    controlShow(control)
+    let node = ControlNode(evalArgInfix(spry))
+    controlShow(node.control)
+    return node
   nimPrim("hide", true):
-    let control = ControlNode(evalArgInfix(spry)).control
-    controlHide(control)
+    let node = ControlNode(evalArgInfix(spry))
+    controlHide(node.control)
+    return node
   nimPrim("setChild:", false):
     let win = WindowNode(evalArgInfix(spry))
     let node = ControlNode(evalArg(spry))
@@ -77,6 +93,7 @@ proc addUI*(spry: Interpreter) =
     var node = WindowNode(evalArgInfix(spry))
     node.onClosing = Blok(evalArg(spry))
     windowOnClosing(toUiWindow(node.control), onClosing, cast[ptr WindowNode](node))
+    return node
   nimPrim("message:title:", true):
     var win = WindowNode(evalArgInfix(spry))
     let description = StringVal(evalArg(spry)).value
@@ -100,24 +117,32 @@ proc addUI*(spry: Interpreter) =
   nimPrim("text:", true):
     var node = MultilineEntryNode(evalArgInfix(spry))
     multilineEntrySetText(cast[ptr MultilineEntry](node.control), StringVal(evalArg(spry)).value.cstring)
+    return node
   nimPrim("append:", true):
     var node = MultilineEntryNode(evalArgInfix(spry))
     multilineEntryAppend(cast[ptr MultilineEntry](node.control), StringVal(evalArg(spry)).value.cstring)
+    return node
   nimPrim("onChanged:", true):
     var node = MultilineEntryNode(evalArgInfix(spry))
     node.onChanged = Blok(evalArg(spry))
     multilineEntryOnChanged(cast[ptr MultilineEntry](node.control), onChanged, cast[ptr MultilineEntryNode](node))
+    return node
 
   # Boxes
   nimPrim("newVerticalBox", false):
     BoxNode(control: newVerticalBox(), spry: spry)
   nimPrim("newHorizontalBox", false):
-    BoxNode(control: newVerticalBox(), spry: spry)
+    BoxNode(control: newHorizontalBox(), spry: spry)
   nimPrim("append:stretch:", true):
     var node = BoxNode(evalArgInfix(spry))
     var control = ControlNode(evalArg(spry))
     var stretchy = IntVal(evalArg(spry))
     boxAppend(cast[ptr Box](node.control), cast[ptr Control](control.control), stretchy.value.cint)
+    return node
+  nimPrim("delete:", true):
+    var node = BoxNode(evalArgInfix(spry))
+    var index = IntVal(evalArg(spry))
+    boxDelete(cast[ptr Box](node.control), index.value.cuint)
     return node
   nimPrim("padding", true):
     var node = BoxNode(evalArgInfix(spry))
@@ -136,4 +161,5 @@ proc addUI*(spry: Interpreter) =
     var node = ButtonNode(evalArgInfix(spry))
     node.onClicked = Blok(evalArg(spry))
     buttonOnClicked(cast[ptr Button](node.control), onClicked, cast[ptr ButtonNode](node))
+    return node
     
