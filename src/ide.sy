@@ -13,36 +13,48 @@ code = newMultilineEntryText
 out = newMultilineEntryText
 
 # And a vertical box to put stuff in
-bx = newVerticalBox
+layout = newVerticalBox
+buttons = newHorizontalBox
 
-# A button to doit
+# Function to parse and evaluate code
+run = func [do parse ("[", (code text), "]")]
+
+# Some buttons and their handlers
 doit = newButton "Do it"
-doit onClicked: [
-  # Pull out code from text field, parse and do it
-  result = (do parse ("[", (code text), "]"))
+doit onClicked: [run]
+
+printit = newButton "Print it"
+printit onClicked: [
   # Append result to out text field
-  out append: (result print, "\x0A")
+  out append: ("\x0A", (run print))
 ]
 
+clearit = newButton "Clear"
+clearit onClicked: [out text: ""]
 
-# Put things in the box
-bx padding: 0
-bx append: code stretch: 1
-bx append: out stretch: 1
-bx append: doit stretch: 0
+quitit = newButton "Quit"
+quitit onClicked: [quit 0]
+
+# Put things in the boxes
+layout padding: 0
+layout append: code stretch: 1
+layout append: out stretch: 1
+layout append: buttons stretch: 0
+buttons append: doit stretch: 0
+buttons append: printit stretch: 0
+buttons append: clearit stretch: 0
+buttons append: quitit stretch: 0
 
 # Add box to window
-win setChild: bx
+win setChild: layout
 
 # Set initial text
 code text: "3 + 4"
 
 # Set a handler on closing window
 win onClosing: [
-  win message: "...you bet!" title: "Spry takes first steps with native x-platform UI for Windows, OSX and Unix!"
-  echo "Okidoki closing window..."
+  win message: "Thanks for trying it out!" title: "Spry native cross-platform IDE for Windows, OSX and Unix!"
   controlDestroy win
-  echo "And quitting..."
   uiQuit
 ]
 
