@@ -5,6 +5,7 @@ uiInit
 
 # Create a new Window
 win = newWindow "Spry Says Hi to ESUG 2016!" 200 200 true
+win margin: 1
 
 # Create a multiline text entry field for code
 code = newMultilineEntryText

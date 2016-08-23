@@ -89,6 +89,11 @@ proc addUI*(spry: Interpreter) =
     let height = IntVal(evalArg(spry)).value
     let bar = if BoolVal(evalArg(spry)).value: 1 else: 0
     result = WindowNode(control: newWindow(title.cstring, width.cint, height.cint, bar.cint), spry: spry)
+  nimPrim("margin:", true):
+    var node = WindowNode(evalArgInfix(spry))
+    let margin = IntVal(evalArg(spry)).value
+    windowSetMargined(toUiWindow(node.control), margin.cint)
+    return node
   nimPrim("onClosing:", true):
     var node = WindowNode(evalArgInfix(spry))
     node.onClosing = Blok(evalArg(spry))
