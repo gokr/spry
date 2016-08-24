@@ -1108,6 +1108,8 @@ method `eq`(a, b: BoolVal): Node {.inline.} =
   newValue(a.value == b.value)
 method `eq`(a: Blok, b: Node): Node {.inline.} =
   newValue(b of Blok and (a == b))
+method `eq`(a: Word, b: Node): Node {.inline.} =
+  newValue(b of Word and (Word(a).word == Word(b).word))
 
 
 method `&`(a: Node, b: Node): Node {.inline,base.} =
@@ -1439,6 +1441,7 @@ proc eval*(current: Activation, spry: Interpreter): Node =
     let next = current.next()
     # Then we eval the node if it canEval
     if next.canEval(spry):
+      #echo "NEXT: " & $next
       current.last = next.eval(spry)
       if current.returned:
         spry.currentActivation.doReturn(spry)

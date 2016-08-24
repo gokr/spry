@@ -250,6 +250,10 @@ when true:
   assert(run("nil === nil") == "true")
   assert(run("undef === undef") == "true")
   assert(run("'foo === 'foo") == "true") # Litwords are canonicalized
+  assert(run("'foo == 'foo") == "true") # Words are equal
+  assert(run("$(reify 'foo) == (reify 'foo)") == "true") # Words are equal
+  assert(run("$(reify 'foo) == (reify '$foo)") == "true") # Words are equal
+  assert(run("$(reify 'foo) === (reify 'foo)") == "false") # Other words are not canonicalized
   assert(run("1 === 1") == "false")
   assert(run("[1 2] == [1 2]") == "true")
   assert(run("[1 2] === [1 2]") == "false")
@@ -543,8 +547,8 @@ when true:
   assert(run("a = {x = [1]} b = (a clone) (b set: y to: 2) (a get: y)") == "undef")
 
   # Modules
-  assert(run("Foo = {x = 10} eva Foo::x") == "10")
-  assert(run("Foo = {x = 10} eva Foo::y") == "undef")
+  assert(run("Foo = {x = 10} eva Foo::x") == "10") # Direct access works
+  assert(run("Foo = {x = 10} eva Foo::y") == "undef") # and missing key works too
   assert(run("Foo = {x = 10} Foo::x = 3 eva Foo::x") == "3")
   assert(run("eva Foo::y") == "undef")
   assert(run("Foo = {x = 10} eva $Foo::x") == "10")
