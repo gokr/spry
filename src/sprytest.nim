@@ -593,6 +593,10 @@ when true:
   # Memfile
   assert(run("(readLines \"data.spry\") size") == "14")
 
+  # Source
+  assert(run("mm = func [1 + :n] $mm source: \"1 + :n\" $mm source") == "\"1 + :n\"")
+  assert(run("mm = method [self + 1] $mm source: \"self + 1\" $mm source") == "\"self + 1\"")
+
 when true:
   # Demonstrate extension from extend.nim
   assert(show("'''abc'''") == "\"abc\"")
