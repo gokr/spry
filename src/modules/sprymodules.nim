@@ -11,12 +11,14 @@ proc addModules*(spry: Interpreter) =
     ]
 
     loadString:as: = func [:code :name
-      loadMap: eval parse code as: name
+      loadMap: (eval parse code) as: name
     ]
 
-    loadFile: = func [loadString: readFile :fileName]
+    loadFile: = func [
+      loadString: readFile :fileName]
 
-    loadFile:as: = func [loadString: readFile :fileName as: :name]
+    loadFile:as: = func [
+      loadString: (readFile :fileName) as: :name]
 
     loadMap:as: = func [:map :name
       root at: name put: map
