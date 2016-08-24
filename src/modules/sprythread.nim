@@ -10,5 +10,5 @@ proc spawnDo(node: Blok) {.gcsafe.} =
   discard node.evalRootDo(spry)
 
 proc addThread*(spry: Interpreter) =
-  nimPrim("spawn", false):
+  nimFunc("spawn"):
     spawn spawnDo(Blok(evalArg(spry)))

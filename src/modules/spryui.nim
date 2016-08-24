@@ -51,7 +51,7 @@ proc onClicked*(w: ptr Button; data: pointer) {.cdecl.} =
 # Spry UI module
 proc addUI*(spry: Interpreter) =
   # libui
-  nimPrim("uiInit", false):
+  nimFunc("uiInit"):
     var o: ui.InitOptions
     var err: cstring
     err = ui.init(addr(o))
@@ -59,135 +59,135 @@ proc addUI*(spry: Interpreter) =
       echo "error initializing ui: ", err
       freeInitError(err)
       return
-  nimPrim("uiMain", false):
+  nimFunc("uiMain"):
     ui.main()
-  nimPrim("uiQuit", false):
+  nimFunc("uiQuit"):
     ui.quit()
-  nimPrim("uiUninit", false):
+  nimFunc("uiUninit"):
     ui.uninit()
 
   # Controls
-  nimPrim("controlDestroy", false):
+  nimFunc("controlDestroy"):
     let node = ControlNode(evalArg(spry))
     controlDestroy(node.control)
     return spry.nilVal
-  nimPrim("show", true):
+  nimMeth("show"):
     let node = ControlNode(evalArgInfix(spry))
     controlShow(node.control)
     return node
-  nimPrim("hide", true):
+  nimMeth("hide"):
     let node = ControlNode(evalArgInfix(spry))
     controlHide(node.control)
     return node
 
   # Window
-  nimPrim("newWindow", false):
+  nimFunc("newWindow"):
     let title = StringVal(evalArg(spry)).value
     let width = IntVal(evalArg(spry)).value
     let height = IntVal(evalArg(spry)).value
     let bar = if BoolVal(evalArg(spry)).value: 1 else: 0
     result = WindowNode(control: newWindow(title.cstring, width.cint, height.cint, bar.cint), spry: spry)
-  nimPrim("windowMargin:", true):
+  nimMeth("windowMargin:"):
     var node = WindowNode(evalArgInfix(spry))
     let margin = IntVal(evalArg(spry)).value
     windowSetMargined(toUiWindow(node.control), margin.cint)
     return node
-  nimPrim("onClosing:", true):
+  nimMeth("onClosing:"):
     var node = WindowNode(evalArgInfix(spry))
     node.onClosing = Blok(evalArg(spry))
     windowOnClosing(toUiWindow(node.control), onClosing, cast[ptr WindowNode](node))
     return node
-  nimPrim("message:title:", true):
+  nimMeth("message:title:"):
     var win = WindowNode(evalArgInfix(spry))
     let description = StringVal(evalArg(spry)).value
     let title = StringVal(evalArg(spry)).value
     msgBox(toUiWindow(win.control), title.cstring, description.cstring)
     return win
-  nimPrim("error:title:", true):
+  nimMeth("error:title:"):
     var win = WindowNode(evalArgInfix(spry))
     let description = StringVal(evalArg(spry)).value
     let title = StringVal(evalArg(spry)).value
     msgBoxError(toUiWindow(win.control), title.cstring, description.cstring)
     return win
-  nimPrim("windowSetChild:", false):
+  nimFunc("windowSetChild:"):
     let win = WindowNode(evalArgInfix(spry))
     let node = ControlNode(evalArg(spry))
     windowSetChild(cast[ptr Window](win.control), node.control)
     return win
 
    # Groups
-  nimPrim("newGroup", false):
+  nimFunc("newGroup"):
     let title = StringVal(evalArg(spry)).value
     GroupNode(control: newGroup(title.cstring), spry: spry)
-  nimPrim("groupSetChild:", false):
+  nimFunc("groupSetChild:"):
     let group = GroupNode(evalArgInfix(spry))
     let node = ControlNode(evalArg(spry))
     groupSetChild(toUiGroup(group.control), node.control)
     return group
-  nimPrim("groupMargin:", true):
+  nimMeth("groupMargin:"):
     var node = GroupNode(evalArgInfix(spry))
     var margin = IntVal(evalArg(spry))
     groupSetMargined(toUiGroup(node.control), margin.value.cint)
     return node
-  nimPrim("title", true):
+  nimMeth("title"):
     var node = GroupNode(evalArgInfix(spry))
     return newValue($(groupTitle(toUiGroup(node.control))))
-  nimPrim("title:", true):
+  nimMeth("title:"):
     var node = GroupNode(evalArgInfix(spry))
     let title = StringVal(evalArg(spry)).value
     groupSetTitle(toUiGroup(node.control), title.cstring)
     return node
 
   # MultilineEntry
-  nimPrim("newMultilineEntryText", false):
+  nimFunc("newMultilineEntryText"):
     MultilineEntryNode(control: newMultilineEntry(), spry: spry)
-  nimPrim("text", true):
+  nimMeth("text"):
     var node = MultilineEntryNode(evalArgInfix(spry))
     newValue($(multilineEntryText(cast[ptr MultilineEntry](node.control))))
-  nimPrim("text:", true):
+  nimMeth("text:"):
     var node = MultilineEntryNode(evalArgInfix(spry))
     multilineEntrySetText(cast[ptr MultilineEntry](node.control), StringVal(evalArg(spry)).value.cstring)
     return node
-  nimPrim("append:", true):
+  nimMeth("append:"):
     var node = MultilineEntryNode(evalArgInfix(spry))
     multilineEntryAppend(cast[ptr MultilineEntry](node.control), StringVal(evalArg(spry)).value.cstring)
     return node
-  nimPrim("onChanged:", true):
+  nimMeth("onChanged:"):
     var node = MultilineEntryNode(evalArgInfix(spry))
     node.onChanged = Blok(evalArg(spry))
     multilineEntryOnChanged(cast[ptr MultilineEntry](node.control), onChanged, cast[ptr MultilineEntryNode](node))
     return node
 
   # Boxes
-  nimPrim("newVerticalBox", false):
+  nimFunc("newVerticalBox"):
     BoxNode(control: newVerticalBox(), spry: spry)
-  nimPrim("newHorizontalBox", false):
+  nimFunc("newHorizontalBox"):
     BoxNode(control: newHorizontalBox(), spry: spry)
-  nimPrim("append:stretch:", true):
+  nimMeth("append:stretch:"):
     var node = BoxNode(evalArgInfix(spry))
     var control = ControlNode(evalArg(spry))
     var stretchy = IntVal(evalArg(spry))
     boxAppend(cast[ptr Box](node.control), cast[ptr Control](control.control), stretchy.value.cint)
     return node
-  nimPrim("delete:", true):
+  nimMeth("delete:"):
     var node = BoxNode(evalArgInfix(spry))
     var index = IntVal(evalArg(spry))
     boxDelete(cast[ptr Box](node.control), index.value.cuint)
     return node
-  nimPrim("padding", true):
+  nimMeth("padding"):
     var node = BoxNode(evalArgInfix(spry))
     return newValue(int(boxPadded(cast[ptr Box](node.control))))
-  nimPrim("padding:", true):
+  nimMeth("padding:"):
     var node = BoxNode(evalArgInfix(spry))
     let padding = IntVal(evalArg(spry)).value
     boxSetPadded(cast[ptr Box](node.control), padding.cint)
     return node
 
   # Buttons
-  nimPrim("newButton", false):
+  nimFunc("newButton"):
     let label = StringVal(evalArg(spry)).value
     ButtonNode(control: newButton(label.cstring), spry: spry)
-  nimPrim("onClicked:", true):
+  nimMeth("onClicked:"):
     var node = ButtonNode(evalArgInfix(spry))
     node.onClicked = Blok(evalArg(spry))
     buttonOnClicked(cast[ptr Button](node.control), onClicked, cast[ptr ButtonNode](node))

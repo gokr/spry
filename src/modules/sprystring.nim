@@ -4,7 +4,7 @@ import strutils
 
 # Spry string module
 proc addString*(spry: Interpreter) =
-  nimPrim("split:", true):
+  nimMeth("split:"):
     let s = StringVal(evalArgInfix(spry)).value
     let sep = StringVal(evalArg(spry)).value
     # Should probably be a converter
@@ -12,7 +12,7 @@ proc addString*(spry: Interpreter) =
     for token in s.split(sep):
       blk.add(newValue(token))
     return blk
-  nimPrim("replace:with:", true):
+  nimMeth("replace:with:"):
     let self = StringVal(evalArgInfix(spry))
     let sub = StringVal(evalArg(spry)).value
     let by = StringVal(evalArg(spry)).value

@@ -35,15 +35,12 @@ method eval*(self: PolyMeth, spry: Interpreter): Node =
 
 # Spry OO module
 proc addOO*(spry: Interpreter) =
-  # Create a polymeth with a block of tagged funcs/funcis as argument
-  nimPrim("polymethod", false):
+  # Create a polymeth with a block of tagged methods as argument
+  nimFunc("polymethod"):
     polymeth(Blok(evalArg(spry)), spry)
 
-  #nimPrim("polyfunci", false):
-  #  polymeth(Blok(evalArg(spry)), true, spry)
-
   # Shorthand for making a tagged method
-  nimPrim("->", true):
+  nimMeth("->"):
     let tags = evalArgInfix(spry)
     result = spry.meth(Blok(evalArg(spry)))
     result.tags = Blok(tags)

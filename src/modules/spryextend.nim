@@ -69,5 +69,5 @@ proc primReduce*(spry: Interpreter): Node =
 
 # This proc does the work extending an Interpreter instance
 proc addExtend*(spry: Interpreter) =
-  spry.makeWord("reduce", newNimProc(primReduce, false))
+  spry.makeWord("reduce", newPrimFunc(primReduce))
 

@@ -11,20 +11,20 @@ method eval*(self: MemfileNode, spry: Interpreter): Node =
 # Spry Memfile module
 proc addMemfile*(spry: Interpreter) =
   # IO
-  nimPrim("openMemfile", false):
+  nimFunc("openMemfile"):
     let path = StringVal(evalArg(spry)).value
     result = MemfileNode(memfile: memfiles.open(path))
-  nimPrim("closeMemfile", true):
+  nimMeth("closeMemfile"):
     let node = MemfileNode(evalArgInfix(spry))
     memfiles.close(node.memfile)
-  nimPrim("readLines", false):
+  nimFunc("readLines"):
     let path = StringVal(evalArg(spry)).value
     var memfile = memfiles.open(path)
     result = newBlok()
     for line in lines(memfile):
       Blok(result).add(StringVal(value: string(line)))
     memfiles.close(memfile)
-  nimPrim("linesDo:", true):
+  nimMeth("linesDo:"):
     result = MemfileNode(evalArgInfix(spry))
     let memfile = MemfileNode(result).memfile
     let blk = Blok(evalArg(spry))

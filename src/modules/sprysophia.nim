@@ -3,7 +3,7 @@ import sophia
 
 # Spry Sophia module
 proc addSophia*(spry: Interpreter) =
-  nimPrim("env", false, 0):
+  nimFunc("env"):
     # proc env*(): pointer {.cdecl, importc: "sp_env", dynlib: libname.}
     newValue(env())
 

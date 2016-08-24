@@ -5,20 +5,20 @@ import os
 # Spry IO module
 proc addIO*(spry: Interpreter) =
   # IO
-  nimPrim("echo", false):
+  nimFunc("echo"):
     result = spry.nilVal
     echo(print(evalArg(spry)))
-  nimPrim("probe", false):
+  nimFunc("probe"):
     result = evalArg(spry)
     echo($result)
-  nimPrim("existsFile", false):
+  nimFunc("existsFile"):
     let fn = StringVal(evalArg(spry)).value
     newValue(existsFile(fn))
-  nimPrim("readFile", false):
+  nimFunc("readFile"):
     let fn = StringVal(evalArg(spry)).value
     let contents = readFile(fn).string
     newValue(contents)
-  nimPrim("writeFile", false):
+  nimFunc("writeFile"):
     let fn = StringVal(evalArg(spry)).value
     result = evalArg(spry)
     writeFile(fn, StringVal(result).value)
