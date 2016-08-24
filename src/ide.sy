@@ -3,8 +3,26 @@
 # Initialize libui
 uiInit
 
+# Build menu
+menu = newMenu "File"
+item = (menu menuAppendItem: "Open")
+menu onShouldQuit: [do closeHandler]
+item onMenuItemClicked: [echo (win openFile)]
+item = (menu menuAppendItem: "Save")
+item onMenuItemClicked: [echo (win saveFile)]
+item = (menu menuAppendQuitItem)
+editMenu = newMenu "Edit"
+item = (editMenu menuAppendCheckItem: "Checkable Item")
+editMenu menuAppendSeparator
+item = (editMenu menuAppendItem: "Disabled Item")
+item menuItemDisable
+editMenu menuAppendPreferencesItem
+helpMenu = newMenu "Help"
+item = (helpMenu menuAppendItem: "Help")
+helpMenu menuAppendAboutItem
+
 # Create a new Window
-win = newWindow "Spry Says Hi to ESUG 2016!" 200 200 true
+win = newWindow "Rely on Spry!" 640 400 true
 win windowMargin: 1
 
 # Create a multiline text entry field for code
@@ -33,7 +51,6 @@ clearit onClicked: [out text: ""]
 quitit = newButton "Quit"
 quitit onClicked: [
   do closeHandler
-  uiQuit
 ]
 
 # Group
@@ -59,7 +76,7 @@ code text: "3 + 4"
 
 # Close handler
 closeHandler = [
-  win message: "Thanks for trying it out!" title: "Spry native cross-platform IDE for Windows, OSX and Unix!"
+  win message: "Thanks for trying it out!" title: "Spry cross-platform IDE!"
   controlDestroy win
   uiQuit
 ]

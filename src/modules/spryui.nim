@@ -14,6 +14,11 @@ type
   GroupNode = ref object of ControlNode
   ButtonNode = ref object of ControlNode
     onClicked*: Blok
+  MenuNode = ref object of ControlNode
+    onClicked*: Blok
+    onShouldQuit*: Blok
+  MenuItemNode = ref object of ControlNode
+    onClicked*: Blok
 
 # Useful during playing around with this
 method type*(self: ControlNode): string =
@@ -33,20 +38,26 @@ method eval*(self: ControlNode, spry: Interpreter): Node =
   self
 
 # Handlers
-proc onClosing*(w: ptr Window; data: pointer): cint {.cdecl.} =
+proc onClosing*(sender: ptr Window; data: pointer): cint {.cdecl.} =
   var node = cast[WindowNode](data)
   discard node.onClosing.evalDo(node.spry)
   return 0 #?
 
-proc onChanged*(w: ptr MultilineEntry; data: pointer) {.cdecl.} =
+proc onChanged*(sender: ptr MultilineEntry; data: pointer) {.cdecl.} =
   var node = cast[MultilineEntryNode](data)
   discard node.onChanged.evalDo(node.spry)
 
-proc onClicked*(w: ptr Button; data: pointer) {.cdecl.} =
+proc onClicked*(sender: ptr Button; data: pointer) {.cdecl.} =
   var node = cast[ButtonNode](data)
   discard node.onClicked.evalDo(node.spry)
 
+proc onClicked*(sender: ptr MenuItem; window: ptr Window; data: pointer) {.cdecl.} =
+  var node = cast[MenuItemNode](data)
+  discard node.onClicked.evalDo(node.spry)
 
+proc onShouldQuit*(data: pointer): cint {.cdecl.} =
+  var node = cast[MenuNode](data)
+  discard node.onShouldQuit.evalDo(node.spry)
 
 # Spry UI module
 proc addUI*(spry: Interpreter) =
@@ -65,6 +76,66 @@ proc addUI*(spry: Interpreter) =
     ui.quit()
   nimFunc("uiUninit"):
     ui.uninit()
+
+  # File dialogs
+  nimMeth("openFile"):
+    var win = WindowNode(evalArgInfix(spry))
+    newValue($openFile(toUiWindow(win.control)))
+  nimMeth("saveFile"):
+    var win = WindowNode(evalArgInfix(spry))
+    newValue($saveFile(toUiWindow(win.control)))
+
+  # Menu
+  nimFunc("newMenu"):
+    let name = StringVal(evalArg(spry)).value
+    MenuNode(control: newMenu(name.cstring), spry: spry)
+  nimMeth("menuAppendItem:"):
+    let node = MenuNode(evalArgInfix(spry))
+    let name = StringVal(evalArg(spry)).value
+    MenuItemNode(control: menuAppendItem(toUiMenu(node.control), name.cstring), spry: spry)
+  nimMeth("menuAppendCheckItem:"):
+    let node = MenuNode(evalArgInfix(spry))
+    let name = StringVal(evalArg(spry)).value
+    MenuItemNode(control: menuAppendCheckItem(toUiMenu(node.control), name.cstring), spry: spry)
+  nimMeth("menuAppendQuitItem"):
+    let node = MenuNode(evalArgInfix(spry))
+    MenuItemNode(control: menuAppendQuitItem(toUiMenu(node.control)), spry: spry)
+  nimMeth("menuAppendPreferencesItem"):
+    let node = MenuNode(evalArgInfix(spry))
+    MenuItemNode(control: menuAppendPreferencesItem(toUiMenu(node.control)), spry: spry)
+  nimMeth("menuAppendAboutItem"):
+    let node = MenuNode(evalArgInfix(spry))
+    MenuItemNode(control: menuAppendAboutItem(toUiMenu(node.control)), spry: spry)
+  nimMeth("menuAppendSeparator"):
+    let node = MenuNode(evalArgInfix(spry))
+    menuAppendSeparator(toUiMenu(node.control))
+    return node
+  nimMeth("menuItemEnable"):
+    let node = MenuItemNode(evalArgInfix(spry))
+    menuItemEnable(toUiMenuItem(node.control))
+    return node
+  nimMeth("menuItemDisable"):
+    let node = MenuItemNode(evalArgInfix(spry))
+    menuItemDisable(toUiMenuItem(node.control))
+    return node
+  nimMeth("checked"):
+    let node = MenuItemNode(evalArgInfix(spry))
+    newValue(menuItemChecked(toUiMenuItem(node.control)).int)
+  nimMeth("checked:"):
+    let node = MenuItemNode(evalArgInfix(spry))
+    let checked = BoolVal(evalArg(spry)).value
+    menuItemSetChecked(toUiMenuItem(node.control), if checked: 1 else: 0)
+    return node
+  nimMeth("onMenuItemClicked:"):
+    var node = MenuItemNode(evalArgInfix(spry))
+    node.onClicked = Blok(evalArg(spry))
+    menuItemOnClicked(toUiMenuItem(node.control), onClicked, cast[ptr MenuItemNode](node))
+    return node
+  nimMeth("onShouldQuit:"):
+    var node = MenuNode(evalArgInfix(spry))
+    node.onShouldQuit = Blok(evalArg(spry))
+    onShouldQuit(onShouldQuit, cast[ptr MenuNode](node))
+    return node
 
   # Controls
   nimFunc("controlDestroy"):
@@ -86,7 +157,7 @@ proc addUI*(spry: Interpreter) =
     let width = IntVal(evalArg(spry)).value
     let height = IntVal(evalArg(spry)).value
     let bar = if BoolVal(evalArg(spry)).value: 1 else: 0
-    result = WindowNode(control: newWindow(title.cstring, width.cint, height.cint, bar.cint), spry: spry)
+    WindowNode(control: newWindow(title.cstring, width.cint, height.cint, bar.cint), spry: spry)
   nimMeth("windowMargin:"):
     var node = WindowNode(evalArgInfix(spry))
     let margin = IntVal(evalArg(spry)).value
@@ -192,4 +263,4 @@ proc addUI*(spry: Interpreter) =
     node.onClicked = Blok(evalArg(spry))
     buttonOnClicked(cast[ptr Button](node.control), onClicked, cast[ptr ButtonNode](node))
     return node
-    
+
