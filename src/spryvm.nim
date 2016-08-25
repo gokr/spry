@@ -977,22 +977,19 @@ proc reset*(self: Activation) =
   self.returned = false
   self.pos = 0
 
-method hasLocals(self: Activation): bool {.base.} =
-  true
+template hasLocals(self: Activation): bool =
+  not (self of ParenActivation)
 
-method hasLocals(self: ParenActivation): bool =
-  false
-
-method outer(self: Activation): Activation {.base.} =
-  # Just go caller parent, which works for Paren and Blok since they are
-  # not lexical closures.
-  self.parent
-
-method outer(self: FunkActivation): Activation =
-  # Instead of looking at my parent, which would be the caller
-  # we go to the activation where I was created, thus a Funk is a lexical
-  # closure.
-  Funk(self.body).parent
+template outer(self: Activation): Activation =
+  if self of FunkActivation:
+    # Instead of looking at my parent, which would be the caller
+    # we go to the activation where I was created, thus a Funk is a lexical
+    # closure.
+    Funk(self.body).parent
+  else:
+    # Just go caller parent, which works for Paren and Blok since they are
+    # not lexical closures.
+    self.parent
 
 # Walk maps for lookups and binds. Skips parens since they do not have
 # locals and uses outer() that will let Funks go to their "lexical parent"
@@ -2015,7 +2012,7 @@ proc newInterpreter*(): Interpreter =
       ^nil
     ]
 
-    select: = method [:pred
+    spryselect: = method [:pred
       result = ([] clone)
       self reset
       [self end?] whileFalse: [
