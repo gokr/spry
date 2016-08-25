@@ -1,7 +1,8 @@
 import spryvm
 
-import spryextend, sprymath, spryio, sprydebug, sprycompress, spryos, sprythread, sprypython, spryoo,
-  sprystring, sprymodules, spryreflect, sprymemfile
+import spryextend, sprymath, spryio, sprydebug, sprycompress, spryos,
+  sprythread, sprypython, spryoo, sprystring, sprymodules, spryreflect,
+  sprymemfile, spryblock
 
 proc newVM(): Interpreter =
   var spry = newInterpreter()
@@ -18,6 +19,7 @@ proc newVM(): Interpreter =
   spry.addModules()
   spry.addReflect()
   spry.addMemfile()
+  spry.addBlock()
   return spry
 
 # Some helpers for tests below
@@ -450,9 +452,12 @@ when true:
     [1 2 3 4] detect: [:each > 2]
   """) == "3")
 
-  # Implementing select:
+  # Testing select: (prim) and spryselect: (spry)
   assert(run("""
     [1 2 3 4] select: [:each > 2]
+  """) == "[3 4]")
+  assert(run("""
+    [1 2 3 4] spryselect: [:each > 2]
   """) == "[3 4]")
 
   # Implementing collect: as do: and map:
@@ -565,6 +570,9 @@ when true:
 
   # String
   assert(run("\"abc.de\" split: \".\"") == "[\"abc\" \"de\"]")
+  assert(run("\"abc.de\" findString: \"bc\"") == "1")
+  assert(run("\"abc.de\" findString: \"zz\"") == "-1")
+  assert(run("\"aabcaaaaaabc\" findString: \"bc\" startingAt: 5") == "10")
 
   # Collections
   assert(run("x = 0 [1 2 3] do: [..x = (x + :y)] eva x") == "6")

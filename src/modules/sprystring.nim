@@ -19,3 +19,17 @@ proc addString*(spry: Interpreter) =
     self.value = replace(self.value, sub, by)
     echo self.value
     return self
+  #nimMeth("find:"):
+  #  let self = StringVal(evalArgInfix(spry))
+  #  let sub = StringVal(evalArg(spry)).value
+  #  newValue(find(self, sub))
+  nimMeth("findString:startingAt:"):
+    let self = StringVal(evalArgInfix(spry)).value
+    let sub = StringVal(evalArg(spry)).value
+    let start = IntVal(evalArg(spry)).value
+    newValue(find(self, sub, start))
+
+  # This should be a Module, right? String
+  discard spry.evalRoot """[
+    findString: = method [self findString: :s startingAt: 0]
+  ]"""
