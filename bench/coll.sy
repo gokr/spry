@@ -9,7 +9,7 @@ echo ("Block of size: " , (blk size print))
 
 sum1 = 0
 tim = ([
-blk do: [sum1 = (sum1 + :each)]
+blk do: [..sum1 = (sum1 + :each)]
 ] timeToRun)
 
 echo ("Sum: " , (sum1 print))
