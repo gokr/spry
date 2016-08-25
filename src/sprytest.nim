@@ -1,7 +1,7 @@
 import spryvm
 
-import spryextend, sprymath, spryio, sprydebug, sprycompress, spryos,
-  sprythread, sprypython, spryoo, sprystring, sprymodules, spryreflect,
+import spryextend, sprymath, spryio, sprydebug, spryos,
+  sprythread, sprypython, spryoo, sprystring, sprymodules,
   sprymemfile, spryblock
 
 proc newVM(): Interpreter =
@@ -13,11 +13,9 @@ proc newVM(): Interpreter =
   spry.addThread()
   spry.addPython()
   spry.addDebug()
-  spry.addCompress()
   spry.addOO()
   spry.addString()
   spry.addModules()
-  spry.addReflect()
   spry.addMemfile()
   spry.addBlock()
   return spry
@@ -36,11 +34,7 @@ proc run(code: string): string =
   result = $newVM().evalRoot("[" & code & "]")
   echo("RESULT:" & result)
   echo("---------------------")
-proc stringRun(code: string): string =
-  # Expects a StringVal to compare with
-  result = StringVal(newVM().evalRoot("[" & code & "]")).value
-  echo("RESULT:" & result)
-  echo("---------------------")
+
 
 # A bunch of tests for Parser
 when true:
@@ -520,10 +514,6 @@ when true:
   assert(run("inc = polymethod reduce [[int] -> [self + 1] [string] -> [self , \"c\"]] (42 tag: 'int) inc") == "43")
   assert(run("inc = polymethod reduce [[int] -> [self + 1] [string] -> [self , \"c\"]] (\"ab\" tag: 'string) inc") == "\"abc\"")
 
-  # spry compress
-  assert(run("compress \"abc123\"") == "\"\\x06\\x00\\x00\\x00`abc123\"")
-  assert(run("uncompress (compress \"abc123\")") == "\"abc123\"")
-
   # spry serialize parse
   assert(run("serialize [1 2 3 \"abc\" {3.14}]") == "\"[1 2 3 \\\"abc\\\" {3.14}]\"")
   assert(run("parse serialize [1 2 3 \"abc\" {3.14}]") == "[1 2 3 \"abc\" {3.14}]")
@@ -580,15 +570,6 @@ when true:
   assert(run("y = [] -2 to: 2 do: [y add: :n] eva y") == "[-2 -1 0 1 2]")
   assert(run("x = [] 1 to: 3 do: [x add: :y] eva x ") == "[1 2 3]")
 
-  # Types
-  assert(run("x = 0 x type") == "'int")
-  assert(run("x = 0.5 x type") == "'float")
-  assert(run("x = \"a\" x type") == "'string")
-  assert(run("x = [] x type") == "'block")
-  assert(run("x type") == "'undefined")
-  assert(run("x = nil x type") == "'novalue")
-  assert(run("x = true x type") == "'boolean")
-
   # Maps and Words, all variants should end up as same key
   assert(run("map = {x = 1} map at: 'x put: 2 map at: (reify '$x) put: 3 map at: (reify ':x) put: 4 eval map") == "{:x = 4}")
 
@@ -602,12 +583,6 @@ when true:
   assert(run("ifTrue: = method [:blk self then: [^do blk] else: [^nil]] 3 > 2 ifTrue: [99] ") == "99")
   assert(run("ifTrue: = method [:blk self then: [^do blk] nil] 1 > 2 ifTrue: [99] ") == "nil")
 
-  # Memfile
-  assert(run("(readLines \"data.spry\") size") == "14")
-
-  # Source
-  assert(run("mm = func [1 + :n] $mm source: \"1 + :n\" $mm source") == "\"1 + :n\"")
-  assert(run("mm = method [self + 1] $mm source: \"self + 1\" $mm source") == "\"self + 1\"")
 
 when true:
   # Demonstrate extension from extend.nim

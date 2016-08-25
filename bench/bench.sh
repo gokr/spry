@@ -1,15 +1,15 @@
-rm -f ./spryv2 ./spry
+rm -f ./spryclang ./spry
 nim c -d:release --out:$PWD/spry ../src/spry.nim
-nim c -d:release --gc:v2 --out:$PWD/spryv2 ../src/spry.nim
+nim c -d:release --cc:clang --out:$PWD/spryclang ../src/spry.nim
 
 echo
-echo "Spry with default gc:"
+echo "Spry with gcc:"
 /usr/bin/time -v ./spry factorial.sy
+echo
+echo "Spry with clang:"
+/usr/bin/time -v ./spryclang factorial.sy
 echo
 echo "Spry using nimath fac primitive function:"
 /usr/bin/time -v ./spry fac.sy
 
-# v2 fails currently with "in loop" or something
-echo "Spry with default gc v2:"
-/usr/bin/time -v ./spryv2 fac.sy
 

@@ -1,0 +1,6 @@
+*.ndb
+all
+spryreflecttest
+sprymemfiletest
+sprycompresstest
+

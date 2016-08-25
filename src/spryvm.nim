@@ -13,7 +13,7 @@ const
   # '-','+','*','/' are enabled right now. '-' gets into trouble with negative
   # number literals and '?' should be able to be used with alphabetical words.
   # This can surely be improved...
-  SpecialChars: CharSet = {';','\\','^','&','%','|',',','~'} #
+  SpecialChars: set[char] = {';','\\','^','&','%','|',',','~'} #
 
 type
   ParseException* = object of Exception
@@ -1106,7 +1106,7 @@ method `eq`(a, b: BoolVal): Node {.inline.} =
 method `eq`(a: Blok, b: Node): Node {.inline.} =
   newValue(b of Blok and (a == b))
 method `eq`(a: Word, b: Node): Node {.inline.} =
-  newValue(b of Word and (Word(a).word == Word(b).word))
+  newValue(b of Word and (a.word == Word(b).word))
 
 
 method `&`(a: Node, b: Node): Node {.inline,base.} =
@@ -1307,12 +1307,12 @@ proc boolVal(val: bool, spry: Interpreter): Node =
 proc reify(word: LitWord): Node =
   newWord(word.word)
 
-# A template reducing boilerplate for registering nim primitives
-template nimFunc*(name: string, body: stmt): stmt {.immediate, dirty.} =
+# Two templates reducing boilerplate for registering nim primitives
+template nimFunc*(name: string, body: untyped): untyped {.dirty.} =
   spry.makeWord(name, newPrimFunc(
     proc (spry: Interpreter): Node = body))
 
-template nimMeth*(name: string, body: stmt): stmt {.immediate, dirty.} =
+template nimMeth*(name: string, body: untyped): untyped {.dirty.} =
   spry.makeWord(name, newPrimMeth(
     proc (spry: Interpreter): Node = body))
 

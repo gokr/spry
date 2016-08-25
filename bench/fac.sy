@@ -2,5 +2,3 @@
 
 # Do it over and over :)
 100000 timesRepeat: [12 fac]
-
-echo "hey"
