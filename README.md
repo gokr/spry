@@ -39,15 +39,12 @@ Included is a VagrantFile for Ubuntu 16.04. Just do `vagrant up` and `vagrant ss
 ### Linux
 1. Get [Nim](http://www.nim-lang.org)! I recommend following the [instructions at the bottom](http://nim-lang.org/download.html).
 2. Install Nimble, [the Nim package manager](https://github.com/nim-lang/nimble). Yeah, its very nice and simple to use. Its not really needed but makes some things easier.
-3. Clone this repo. Then `./scripts/test.sh`. If it ends with "ALL GOOD"... **its all good :)**
+3. Clone this repo. Then run `nimble install` in it.
+4. Finally try `./scripts/test.sh`. If it ends with "ALL GOOD"... **its all good :)**
 
 
 The tests in `sprytest.nim` is simply a range of asserts verifying that small Spry
 programs execute and produce the expected output.
-
-At this point you can use nimble to build & install Spry:
-
-	nimble install
 
 For the other platforms the steps are basically the same.
 
