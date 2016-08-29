@@ -1,7 +1,29 @@
 import spryvm
 
+import algorithm
+
+proc newBlok*(size: int): Blok =
+  Blok(nodes: newSeq[Node](size))
+
 # Spry block module
 proc addBlock*(spry: Interpreter) =
+  # Explicit creation
+  nimFunc("newBlock"):
+    return newBlok()
+  nimFunc("newBlock:"):
+    let size = IntVal(evalArg(spry))
+    let blok = newBlok(size.value)
+    blok.nodes.fill(spry.nilVal)
+    return blok
+  nimMeth("fill:"):
+    let self = Blok(evalArgInfix(spry))
+    let filler = evalArg(spry)
+    self.nodes.fill(filler)
+    return self
+  nimMeth("reverse"):
+    let self = Blok(evalArgInfix(spry))
+    self.nodes.reverse()
+    return self
   nimMeth("select:"):
     let self = SeqComposite(evalArgInfix(spry))
     let blk = Blok(evalArg(spry))
