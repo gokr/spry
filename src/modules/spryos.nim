@@ -7,7 +7,11 @@ proc addOS*(spry: Interpreter) =
     sleep(IntVal(evalArg(spry)).value)
   nimFunc("shell"):
     newValue(execProcess(StringVal(evalArg(spry)).value))
-  nimMeth("timeToRun"):
+  nimMeth("cpuTimeToRun"):
     var t = cpuTime()
     discard evalArgInfix(spry).evalDo(spry)
-    newValue(cpuTime() - t)
+    newValue((cpuTime() - t) * 1000 ) # Milliseconds
+  nimMeth("timeToRun"):
+    var t = epochTime()
+    discard evalArgInfix(spry).evalDo(spry)
+    newValue((epochTime() - t) * 1000 ) # Milliseconds
