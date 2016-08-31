@@ -1,11 +1,12 @@
 import spryvm
 
-import spryextend, sprymath, spryio, sprydebug, spryos,
+import sprycore, spryextend, sprymath, spryio, sprydebug, spryos,
   sprythread, sprypython, spryoo, sprystring, sprymodules,
-  sprymemfile, spryblock
+  sprymemfile, spryblock, sprylib
 
 proc newVM(): Interpreter =
   var spry = newInterpreter()
+  spry.addCore()
   spry.addExtend()
   spry.addMath()
   spry.addOS()
@@ -18,6 +19,7 @@ proc newVM(): Interpreter =
   spry.addModules()
   spry.addMemfile()
   spry.addBlock()
+  spry.addLib()
   return spry
 
 # Some helpers for tests below
@@ -90,9 +92,9 @@ blue
 
   # Keyword syntax sugar
   assert(show("[[1 2] at: 0 put: 1]") == "[[1 2] at:put: 0 1]")
-  assert(show("[4 timesRepeat: [echo 34]]") == "[4 timesRepeat: [echo 34]]")
-  assert(show("[[3 < 4] whileTrue: [5 timesRepeat: [echo 42]]]") == "[[3 < 4] whileTrue: [5 timesRepeat: [echo 42]]]")
-  assert(show("[[3 4] at: [1 2 [hey]] put: [5 timesRepeat: [echo 42]]]") == "[[3 4] at:put: [1 2 [hey]] [5 timesRepeat: [echo 42]]]")
+  assert(show("[4 repeat: [echo 34]]") == "[4 repeat: [echo 34]]")
+  assert(show("[[3 < 4] whileTrue: [5 repeat: [echo 42]]]") == "[[3 < 4] whileTrue: [5 repeat: [echo 42]]]")
+  assert(show("[[3 4] at: [1 2 [hey]] put: [5 repeat: [echo 42]]]") == "[[3 4] at:put: [1 2 [hey]] [5 repeat: [echo 42]]]")
 
   assert(show(">") == ">")
 
@@ -114,7 +116,7 @@ when true:
   assert(run("func [3 + 4]") == "func [3 + 4]")
 
   # Which will evaluate itself when being evaluated
-  assert(run("foo = func [3 + 4] foo") == "7")
+  assert(run("'foo = func [3 + 4] foo") == "7")
 
   # Map
   assert(run("{}") == "{}")
@@ -132,9 +134,9 @@ when true:
 
   # Assignment is a prim
   assert(run("x = 5") == "5")
-  assert(run("x = 5 x") == "x") # Peculiarity, a word is not evaluated by default
-  assert(run("x = 5 eval x") == "5") # But we can eval it
-  assert(run("f = func [3 + 4] f") == "7") # Functions are evaluated though
+  assert(run("x = 5 x") == "5")
+  assert(run("x = 5 eval x") == "5") # We can also eval it
+  assert(run("f = func [3 + 4] f") == "7") # Functions are evaluated
   assert(run("Foo = {x = 5} Foo::x = 3 eval Foo") == "{x = 3}")
 
 
@@ -328,9 +330,9 @@ when true:
   assert(run("5 < 4 then: [1] else: [2]") == "2")
 
   # loops, eva will
-  assert(run("x = 0 5 timesRepeat: [..x = (x + 1)] eva x") == "5")
-  assert(run("x = 0 0 timesRepeat: [..x = (x + 1)] eva x") == "0")
-  assert(run("x = 0 5 timesRepeat: [..x = (x + 1)] eva x") == "5")
+  assert(run("x = 0 5 repeat: [..x = (x + 1)] eva x") == "5")
+  assert(run("x = 0 0 repeat: [..x = (x + 1)] eva x") == "0")
+  assert(run("x = 0 5 repeat: [..x = (x + 1)] eva x") == "5")
   assert(run("x = 0 [x > 5] whileFalse: [..x = (x + 1)] eva x") == "6")
   assert(run("x = 10 [x > 5] whileTrue: [..x = (x - 1)] eva x") == "5")
   assert(run("foo = func [x = 10 [x > 5] whileTrue: [x = (x - 1) ^11] ^x] eva foo") == "11") # Return inside
@@ -401,8 +403,6 @@ when true:
   assert(run("pick2add = method [self at: :b + (self at: :c)] [1 2 3] pick2add 0 2") == "4") # 1+3
 
   # Variadic and dynamic args
-  # Does not work since there is a semantic glitch - who is the argParent?
-  #assert(run("sum = 0 sum-until-zero = func [[:a > 0] whileTrue: [sum = sum + a]] (sum-until-zero 1 2 3 0 4 4)") == "6")
   # This func does not pull second arg if first is < 0.
   assert(run("add = func [ :a < 0 then: [^ nil] ^ (a + :b) ] add -4 3") == "3")
   assert(run("add = func [ :a < 0 then: [^ nil] ^ (a + :b) ] add 1 3") == "4")
@@ -477,8 +477,8 @@ when true:
   assert(run("self") == "undef") # self not bound for funcs
   assert(run("xx = func [self] xx") == "undef") # self not bound for funcs
   assert(run("xx = method [self + self] o = 12 o xx") == "24") # Multiple self
-  assert(run("xx = func [node] foo xx") == "foo") # Access to unevaled self
-  assert(run("xx = func [node] $(3 + 4) xx") == "(3 + 4)") # Access to unevaled self
+  assert(run("xx = method [node] foo xx") == "foo") # Access to unevaled self
+  assert(run("xx = method [node] $(3 + 4) xx") == "(3 + 4)") # Access to unevaled self
   assert(run("[] add: 1 ; add: $ + ; add: 2 echo ; do ;") == "3") # Access to last self ;
 
   assert(run("x = object [] {a = 1 foo = method [self at: 'a]} x::foo") == "1")

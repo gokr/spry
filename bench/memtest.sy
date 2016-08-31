@@ -2,7 +2,7 @@
 
 # Do it over and over :)
 files = []
-5000 timesRepeat: [
+5000 repeat: [
   # Load a file into a string
   str = readFile "onemb" 
   echo ("Str: ", (str size print))

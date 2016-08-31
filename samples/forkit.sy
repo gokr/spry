@@ -18,7 +18,7 @@ code = [
 # Spry also has closures and non local returns so we can implement Smalltalkish
 # control structures and things like select: or reject: easily. Or we can write
 # them as Nim primitive functions.
-10 timesRepeat: [
+10 repeat: [
   # Spry is homoiconic so we can modify the block as if it is code.
   # We remove the last element of the code block (the number) and add
   # a random number from 1-20.

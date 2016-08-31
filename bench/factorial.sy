@@ -4,4 +4,4 @@
 factorial = func [:n > 0 then: [n * factorial (n - 1)] else: [1]]
 
 # Do it over and over :)
-100000 timesRepeat: [factorial 12]
+100000 repeat: [factorial 12]

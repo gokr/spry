@@ -1,8 +1,9 @@
-import unittest, spryvm, spryunittest, spryreflect
+import unittest, spryvm, spryunittest, sprycore, spryreflect
 
 suite "spry reflect":
   setup:
     let vm = newInterpreter()
+    vm.addCore()
     vm.addReflect()
   test "type":
     check:

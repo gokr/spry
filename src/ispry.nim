@@ -17,7 +17,7 @@ when defined(readLine):
 import spryvm
 
 # Spry extra modules, as much as possible!
-import spryextend, sprymath, spryos, spryio, sprythread, spryoo, sprydebug,
+import sprycore, spryextend, sprymath, spryos, spryio, sprythread, spryoo, sprydebug,
   sprycompress, sprystring, sprymodules, spryreflect, sprymemfile, spryblock
 
 # Not included by default
@@ -46,6 +46,7 @@ proc getLine(prompt: string): string =
 proc main() =
   # Let's create a Spry interpreter. It also holds all state.
   let spry = newInterpreter()
+  spry.addCore()
   spry.addExtend()
   spry.addMath()
   spry.addOS()

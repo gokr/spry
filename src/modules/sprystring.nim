@@ -2,7 +2,7 @@ import spryvm
 
 import strutils
 
-# Spry string module
+# Spry string module, depends on sprycore.nim
 proc addString*(spry: Interpreter) =
   nimMeth("split:"):
     let s = StringVal(evalArgInfix(spry)).value

@@ -2,20 +2,29 @@
 
 import spryvm
 
-import spryextend, sprymath, spryoo, sprydebug, sprystring, sprymodules,
- spryreflect
+import sprycore, spryextend, sprymath, spryoo, sprydebug, sprystring, sprymodules,
+ spryreflect, spryblock
 
-var vm = newInterpreter()
-vm.addDebug()
-vm.addExtend()
-vm.addMath()
-vm.addOO()
-vm.addString()
-vm.addModules()
-vm.addReflect()
+var spry = newInterpreter()
+
+spry.addCore()
+spry.addExtend()
+spry.addMath()
+#spry.addOS()
+#spry.addIO()
+#spry.addThread()
+#spry.addPython()
+spry.addOO()
+spry.addDebug()
+#spry.addCompress()
+spry.addString()
+spry.addModules()
+spry.addReflect()
+#spry.addUI()
+spry.addBlock()
 
 proc spryEval*(code: cstring): cstring {.exportc.} =
-  $vm.evalRoot("[" & $code & "]")
+  $spry.evalRoot("[" & $code & "]")
 
 when isMainModule and not defined(js):
   echo spryEval("[3 + 4]")

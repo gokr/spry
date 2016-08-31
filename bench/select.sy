@@ -1,3 +1,3 @@
 b = []
-2000000 timesRepeat: [b add: (10 random)]
+2000000 repeat: [b add: (10 random)]
 echo ([b spryselect: [:x > 8]] timeToRun)

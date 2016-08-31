@@ -1,11 +1,12 @@
 import unittest, spryvm, spryunittest
 
 # The VM module to test
-import spryblock
+import sprycore, spryblock
 
 suite "spry block":
   setup:
     let vm = newInterpreter()
+    vm.addCore()
     vm.addBlock()
   test "newBlock":
     check run("a = newBlock a add: 1 a add: 2") == "[1 2]"
