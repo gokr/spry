@@ -3,7 +3,7 @@
 import spryvm
 
 import sprycore, spryextend, sprymath, spryoo, sprydebug, sprystring, sprymodules,
- spryreflect, spryblock
+ spryreflect, spryblock, sprybrowser
 
 var spry = newInterpreter()
 
@@ -22,6 +22,7 @@ spry.addModules()
 spry.addReflect()
 #spry.addUI()
 spry.addBlock()
+spry.addBrowser()
 
 proc spryEval*(code: cstring): cstring {.exportc.} =
   $spry.evalRoot("[" & $code & "]")

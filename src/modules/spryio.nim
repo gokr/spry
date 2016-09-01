@@ -4,13 +4,15 @@ import os
 
 # Spry IO module
 proc addIO*(spry: Interpreter) =
-  # IO
+  # stdin/stdout
   nimFunc("echo"):
     result = spry.nilVal
     echo(print(evalArg(spry)))
   nimFunc("probe"):
     result = evalArg(spry)
     echo($result)
+  
+  # Files
   nimFunc("existsFile"):
     let fn = StringVal(evalArg(spry)).value
     newValue(existsFile(fn))

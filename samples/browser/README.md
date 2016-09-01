@@ -1,18 +1,23 @@
 Trivial app that implements factorial in Spry
 =============================================
-Run make.sh and then open factorial.html in a browser.
+Open factorial.html in a browser:
 
-To also minify try:
+  firefox factorial.html
+
+To build, run make.sh.
+To enable minification, install minify first:
 
   sudo npm install -g minifier
-  minify -o fact.js fact.js
 
 
 Trivial example of a REPL
 =========================
-Run makespry.sh and then open spry.html in a browser.
+Open spry.html in a browser:
 
-To also minify try:
+  firefox spry.html
+
+To build, run makespry.sh.
+To enable minification, install minify first:
 
   sudo npm install -g minifier
-  minify -o spry.js spry.js
+
