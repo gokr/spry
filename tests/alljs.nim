@@ -9,3 +9,4 @@ import spryootest
 import spryreflecttest
 #import sprycompresstest
 #import sprymemfiletest
+import spryextendtest

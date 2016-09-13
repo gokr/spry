@@ -308,7 +308,7 @@ suite "spry core":
     factorial = func [:n > 0 then: [n * factorial (n - 1)] else: [1]]
     factorial 12
     """) == "479001600"
-  test "a":
+
     # Implement simple for loop
     check run("""
     for = func [:n :m :blk
@@ -320,24 +320,23 @@ suite "spry core":
     for 2 5 [..r = (r + :i)]
     eval r
     """) == "14"
-  test "b":
+
     check run("""
     r = 0 y = [1 2 3]
     y do: [..r = (r + :e)]
     eval r
     """) == "6"
 
-    # Reflection
-    # The word locals gives access to the local Map
   test "reflection":
+    # The word locals gives access to the local Map
     check run("do [d = 5 locals]") == "{d = 5}"
     check run("do [d = 5 locals at: 'd]") == "5"
     check run("locals at: 'd put: 5 d + 2") == "7"
     check run("map = do [a = 1 b = 2 locals] (map at: 'a) + (map at: 'b) ") == "3"
     check run("map = do [a = 1 b = 2 c = 3 (locals)] (map get: a) + (map get: b) + (map get: c)") == "6"
 
-    # The word self gives access to the receiver for methods only
   test "self":
+    # The word self gives access to the receiver for methods only
     check run("self") == "undef" # self not bound for funcs
     check run("xx = func [self] xx") == "undef" # self not bound for funcs
     check run("xx = method [self + self] o = 12 o xx") == "24" # Multiple self
