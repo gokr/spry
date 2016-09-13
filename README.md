@@ -40,7 +40,7 @@ Included is a VagrantFile for Ubuntu 16.04. Just do `vagrant up` and `vagrant ss
 1. Get [Nim](http://www.nim-lang.org)! I recommend following the [instructions at the bottom](http://nim-lang.org/download.html).
 2. Install Nimble, [the Nim package manager](https://github.com/nim-lang/nimble). Yeah, its very nice and simple to use. Its not really needed but makes some things easier.
 3. Clone this repo. Then run `nimble install` in it.
-4. Finally run all tests using `cd tests && nim c -r all.nim`
+4. Finally run all tests using `cd tests && ./run.sh` (runjs.sh is for running them in nodejs, but not fully green right now)
 
 For the other platforms the steps are basically the same.
 
