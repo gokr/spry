@@ -8,9 +8,9 @@ when defined(profiler):
 
 import os
 import spryvm
-import sprycore, spryextend, sprymath, spryos, spryio, sprythread,
+import sprycore, sprylib, spryextend, sprymath, spryos, spryio, sprythread,
  spryoo, sprydebug, sprycompress, sprystring, sprymodules, spryreflect,
- spryblock
+ spryblock, sprynet
 
 # import sprypython
 
@@ -32,7 +32,8 @@ spry.addModules()
 spry.addReflect()
 #spry.addUI()
 spry.addBlock()
-
+spry.addNet()
+spry.addLib()
 
 import parseopt2
 

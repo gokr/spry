@@ -119,3 +119,34 @@ proc addBlock*(spry: Interpreter) =
       if IntVal(each).value > 8:
         returnBlok.add(each)
     return returnBlok
+
+  # Library code
+  discard spry.evalRoot """[
+    # Collections
+    sprydo: = method [:fun
+      self reset
+      [self end?] whileFalse: [do fun (self next)]
+    ]
+
+    detect: = method [:pred
+      self reset
+      [self end?] whileFalse: [
+        n = (self next)
+        do pred n then: [^n]]
+      ^nil
+    ]
+
+    spryselect: = method [:pred
+      result = ([] clone)
+      self reset
+      [self end?] whileFalse: [
+        n = (self next)
+        do pred n then: [result add: n]]
+      ^result]
+
+    spryselectdo: = method [:pred
+      result = ([] clone)
+      self do: [
+        do pred :n then: [result add: n]]
+      ^result]
+]"""

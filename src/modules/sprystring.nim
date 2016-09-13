@@ -17,7 +17,6 @@ proc addString*(spry: Interpreter) =
     let sub = StringVal(evalArg(spry)).value
     let by = StringVal(evalArg(spry)).value
     self.value = replace(self.value, sub, by)
-    echo self.value
     return self
   #nimMeth("find:"):
   #  let self = StringVal(evalArgInfix(spry))

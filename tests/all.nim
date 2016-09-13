@@ -1,1 +1,3 @@
-import spryreflecttest, sprycompresstest, sprymemfiletest, spryblocktest
+import spryvmtest, sprycoretest, sprymathtest, sprystringtest, spryblocktest,
+  spryootest, spryiotest, spryostest, spryreflecttest, sprycompresstest,
+  sprymemfiletest

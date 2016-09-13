@@ -21,6 +21,11 @@ proc addMath*(spry: Interpreter) =
       return newValue(random(FloatVal(max).value))
     else:
       return newValue(random(IntVal(max).value))
-  nimMeth("sqrt"): newValue(sqrt(FloatVal(evalArgInfix(spry)).value))
+  nimMeth("sqrt"):
+    let self = evalArgInfix(spry)
+    if self of FloatVal:
+      return newValue(sqrt(FloatVal(self).value))
+    else:
+      return newValue(sqrt(float(IntVal(self).value)))
   nimMeth("sin"): newValue(sin(FloatVal(evalArgInfix(spry)).value))
   nimMeth("cos"): newValue(cos(FloatVal(evalArgInfix(spry)).value))

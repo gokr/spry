@@ -1,6 +1,4 @@
 *.ndb
 all
-spryreflecttest
-sprymemfiletest
-sprycompresstest
+spry*test
 

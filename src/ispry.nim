@@ -18,7 +18,8 @@ import spryvm
 
 # Spry extra modules, as much as possible!
 import sprycore, spryextend, sprymath, spryos, spryio, sprythread, spryoo, sprydebug,
-  sprycompress, sprystring, sprymodules, spryreflect, sprymemfile, spryblock
+  sprycompress, sprystring, sprymodules, spryreflect, sprymemfile, spryblock,
+  sprynet
 
 # Not included by default
 # import sprypython
@@ -62,7 +63,7 @@ proc main() =
   spry.addMemfile()
 #  spry.addUI()
   spry.addBlock()
-
+  spry.addNet()
   var
     lines, stashed, fileLines = newSeq[string]()
     suspended: bool = true

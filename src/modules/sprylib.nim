@@ -1,6 +1,6 @@
 import spryvm
 
-# Spry core lib module
+# Spry core lib module, only depends on core
 proc addLib*(spry: Interpreter) =
   discard spry.evalRoot """[
     # Trivial error function
@@ -20,26 +20,4 @@ proc addLib*(spry: Interpreter) =
       object [] :map
       map tag: 'module
       ^ map]
-
-    # Collections
-    sprydo: = method [:fun
-      self reset
-      [self end?] whileFalse: [do fun (self next)]
-    ]
-
-    detect: = method [:pred
-      self reset
-      [self end?] whileFalse: [
-        n = (self next)
-        do pred n then: [^n]]
-      ^nil
-    ]
-
-    spryselect: = method [:pred
-      result = ([] clone)
-      self reset
-      [self end?] whileFalse: [
-        n = (self next)
-        do pred n then: [result add: n]]
-      ^result]
   ]"""
