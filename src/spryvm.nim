@@ -1603,7 +1603,3 @@ when isMainModule and not defined(js):
   let fn = commandLineParams()[0]
   let code = readFile(fn)
   discard newInterpreter().eval("[" & code & "]")
-
-
-
-
