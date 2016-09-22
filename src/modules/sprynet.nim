@@ -7,4 +7,7 @@ proc addNet*(spry: Interpreter) =
     let url = StringVal(evalArg(spry)).value
     let fn = StringVal(evalArg(spry)).value
     downloadFile(url, fn)
-    return newValue(fn)
+    newValue(fn)
+  nimFunc("getUrl"):
+    let url = StringVal(evalArg(spry)).value
+    newValue(getContent(url))

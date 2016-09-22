@@ -10,7 +10,7 @@ import os
 import spryvm
 import sprycore, sprylib, spryextend, sprymath, spryos, spryio, sprythread,
  spryoo, sprydebug, sprycompress, sprystring, sprymodules, spryreflect,
- spryblock, sprynet
+ spryblock, sprynet, spryjson
 
 # import sprypython
 
@@ -33,6 +33,7 @@ spry.addReflect()
 #spry.addUI()
 spry.addBlock()
 spry.addNet()
+spry.addJSON()
 spry.addLib()
 
 import parseopt2
