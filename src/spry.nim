@@ -6,11 +6,13 @@
 when defined(profiler):
   import nimprof
 
-import os
+import os, parseopt2
+
 import spryvm
+
 import sprycore, sprylib, spryextend, sprymath, spryos, spryio, sprythread,
  spryoo, sprydebug, sprycompress, sprystring, sprymodules, spryreflect,
- spryblock, sprynet, spryjson
+ spryblock, sprynet, spryjson, sprysophia
 
 # import sprypython
 
@@ -34,9 +36,9 @@ spry.addReflect()
 spry.addBlock()
 spry.addNet()
 spry.addJSON()
+spry.addSophia()
 spry.addLib()
 
-import parseopt2
 
 let doc = """
 

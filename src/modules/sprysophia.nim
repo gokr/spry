@@ -1,15 +1,85 @@
 import spryvm
 import sophia
 
+type
+    SophiaNode = ref object of PointerVal
+    SophiaEnvironmentNode = ref object of SophiaNode
+    SophiaObjectNode = ref object of SophiaNode
+    SophiaDocumentNode = ref object of SophiaNode
+
+method `$`*(self: SophiaNode): string =
+  "SophiaNode"
+method `$`*(self: SophiaEnvironmentNode): string =
+  "SophiaEnvironmentNode"
+method `$`*(self: SophiaObjectNode): string =
+  "SophiaObjectNode"
+method `$`*(self: SophiaDocumentNode): string =
+  "SophiaDocumentNode"
+
+method eval*(self: SophiaNode, spry: Interpreter): Node =
+  self
+
+proc free(obj: pointer) {.importc: "free", header: "<stdio.h>"}
+
+proc toString(p: pointer): string =
+  result = $(cast[ptr cstring](p)[])
+  free(p)
+
 # Spry Sophia module
 proc addSophia*(spry: Interpreter) =
-  nimFunc("env"):
+  nimFunc("newEnvironment"):
     # proc env*(): pointer {.cdecl, importc: "sp_env", dynlib: libname.}
-    newValue(env())
+    SophiaEnvironmentNode(value: env())
+  nimFunc("openEnvironment"):
+    let env = SophiaEnvironmentNode(evalArgInfix(spry)).value
+    newValue(open(env).int)
+  nimMeth("getObject:"):
+    let env = SophiaEnvironmentNode(evalArgInfix(spry)).value
+    let key = StringVal(evalArg(spry)).value
+    SophiaObjectNode(value: env.getobject(key.cstring))
+  nimMeth("newDocument"):
+    let db = SophiaObjectNode(evalArgInfix(spry)).value
+    SophiaDocumentNode(value: document(db))
+  nimMeth("setString:to:"):
+    let docOrEnv = PointerVal(evalArgInfix(spry)).value
+    let key = StringVal(evalArg(spry)).value
+    let val = print(evalArg(spry))
+    newValue(docOrEnv.setstring(key.cstring, val.cstring, 0).int)
+  nimMeth("setInt:to:"):
+    let docOrEnv = PointerVal(evalArgInfix(spry)).value
+    let key = StringVal(evalArg(spry)).value
+    let val = IntVal(evalArg(spry)).value
+    newValue(docOrEnv.setint(key.cstring, val.int64).int)
+  nimMeth("getString:"):
+    let docOrEnv = PointerVal(evalArgInfix(spry)).value
+    let key = StringVal(evalArg(spry)).value
+    var size: cint # we don't use it, just pass it along
+    var p = docOrEnv.getstring(key.cstring, addr size)
+    echo "size:" & $size
+    let res = toString(p)
+    newValue(res)
+  nimMeth("getInt:"):
+    let docOrEnv = PointerVal(evalArgInfix(spry)).value
+    let key = StringVal(evalArg(spry)).value
+    let res = docOrEnv.getint(key.cstring).int
+    newValue(res)
+  nimMeth("destroy"):
+    let target = PointerVal(evalArgInfix(spry)).value
+    let res = target.destroy().int
+    newValue(res)
+  nimMeth("set:"):
+    let db = SophiaObjectNode(evalArgInfix(spry)).value
+    let doc = SophiaDocumentNode(evalArg(spry)).value
+    let res = db.set(doc)
+    newValue(res)
+  nimMeth("get:"):
+    let db = SophiaObjectNode(evalArgInfix(spry)).value
+    let doc = SophiaDocumentNode(evalArg(spry)).value
+    let res = db.get(doc)
+    newValue(res)
 
-#proc document*(a2: pointer): pointer {.cdecl, importc: "sp_document", dynlib: libname.}
-#proc setstring*(a2: pointer; a3: cstring; a4: pointer; a5: cint): cint {.cdecl,
-#    importc: "sp_setstring", dynlib: libname.}
+#proc destroy*(a2: pointer): cint {.cdecl, importc: "sp_destroy", dynlib: libname.}
+
 #proc setint*(a2: pointer; a3: cstring; a4: int64): cint {.cdecl, importc: "sp_setint",
 #    dynlib: libname.}
 #proc getobject*(a2: pointer; a3: cstring): pointer {.cdecl, importc: "sp_getobject",

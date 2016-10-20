@@ -69,6 +69,7 @@ type
     keys*: seq[string]
     args*: seq[Node]
 
+  # Common type for all atomic values
   Value* = ref object of Node
   IntVal* = ref object of Value
     value*: int
@@ -76,6 +77,8 @@ type
     value*: float
   StringVal* = ref object of Value
     value*: string
+  PointerVal* = ref object of Value
+    value*: pointer
   BoolVal* = ref object of Value
   TrueVal* = ref object of BoolVal
   FalseVal* = ref object of BoolVal
@@ -160,6 +163,9 @@ method `$`*(self: FloatVal): string =
 
 method `$`*(self: StringVal): string =
   escape(self.value)
+
+method `$`*(self: PointerVal): string =
+  repr(self.value)
 
 method `$`*(self: TrueVal): string =
   "true"
@@ -247,23 +253,29 @@ method hash*(self: Word): Hash =
 method `==`*(self: Word, other: Node): bool =
   other of Word and (self.word == Word(other).word)
 
+method hash*(self: FloatVal): Hash =
+  self.value.hash
+
 method hash*(self: IntVal): Hash =
+  self.value.hash
+
+method hash*(self: StringVal): Hash =
+  self.value.hash
+
+method hash*(self: PointerVal): Hash =
   self.value.hash
 
 method `==`*(self: IntVal, other: Node): bool =
   other of IntVal and (self.value == IntVal(other).value)
 
-method hash*(self: FloatVal): Hash =
-  self.value.hash
-
 method `==`*(self: FloatVal, other: Node): bool =
   other of FloatVal and (self.value == FloatVal(other).value)
 
-method hash*(self: StringVal): Hash =
-  self.value.hash
-
 method `==`*(self: StringVal, other: Node): bool =
   other of StringVal and (self.value == StringVal(other).value)
+
+method `==`*(self: PointerVal, other: Node): bool =
+  other of PointerVal and (self.value == PointerVal(other).value)
 
 method hash*(self: TrueVal): Hash =
   hash(1)
@@ -346,8 +358,13 @@ proc removeBinding*(self: Map, key: Node): Binding =
 proc makeBinding*(self: Map, key: Node, val: Node): Binding =
   if val of UndefVal:
     return self.removeBinding(key)
-  result = Binding(key: key, val: val)
-  self.bindings[key] = result
+  if self.bindings.hasKey(key):
+    result = self.bindings[key]
+    result.val = val
+    result.key = key
+  else:
+    result = Binding(key: key, val: val)
+    self.bindings[key] = result
 
 
 # Constructor procs
@@ -438,6 +455,9 @@ proc newValue*(v: float): FloatVal =
 
 proc newValue*(v: string): StringVal =
   StringVal(value: v)
+
+proc newValue*(v: pointer): PointerVal =
+  PointerVal(value: v)
 
 proc newValue*(v: bool): BoolVal =
   if v:
@@ -1282,13 +1302,6 @@ proc makeLocalBinding(spry: Interpreter, key: Node, val: Node): Binding =
   for activation in mapWalk(spry.currentActivation):
     return activation.makeBinding(key, val)
 
-proc setLocalBinding*(spry: Interpreter, key: Node, value: Node): Binding =
-  result = spry.lookup(key)
-  if result.notNil:
-    result.val = value
-  else:
-    result = spry.makeLocalBinding(key, value)
-
 proc assign*(spry: Interpreter, word: Node, val: Node) =
   discard spry.makeBindingInMap(word, val)
 
@@ -1468,11 +1481,11 @@ method eval*(self: EvalArgWord, spry: Interpreter): Node =
   spry.currentActivation = previousActivation
   result = arg.eval(spry)
   spry.currentActivation = here
-  discard spry.setLocalBinding(self, result)
+  discard spry.makeLocalBinding(self, result)
 
 method eval*(self: GetArgWord, spry: Interpreter): Node =
   result = spry.argParent().next()
-  discard spry.setLocalBinding(self, result)
+  discard spry.makeLocalBinding(self, result)
 
 method eval*(self: PrimFunc, spry: Interpreter): Node =
   self.primitive(spry)
