@@ -20,7 +20,7 @@ before_install:
   - sudo apt-get install -qq 
 install:
   - |
-    # Too old, we need r131: sudo apt-get install liblz4-dev
+    # Too old, even in Trusty, we need r131: sudo apt-get install liblz4-dev
     # We want a new GCC 4.8 instead of 4.6.x
     # install gcc-4.8 with c++11 support: https://github.com/travis-ci-tester/travis-test-gcc-cxx-11
     sudo add-apt-repository ppa:ubuntu-toolchain-r/test -y
@@ -35,6 +35,8 @@ install:
     cd lz4-r131
     sudo make install
     sudo ldconfig
+
+    # Bootstrap Nim and install Nimble
     if [ ! -x nim-$BRANCH/bin/nim ]; then
       git clone -b $BRANCH --depth 1 git://github.com/nim-lang/nim nim-$BRANCH/
       cd nim-$BRANCH
@@ -72,9 +74,9 @@ before_script:
     - nimble refresh
 script:
     # Let nimble get dependencies
-    - nimble c src/sprytest
+    - nimble c tests/all
     # Test
-    - cd src && ../scripts/test.sh
+    - cd tests && ./run.sh
     # Optional: build docs.
     # nim doc --docSeeSrcUrl:https://github.com/AUTHOR/MYPROJECT/blob/master --project MYFILE.nim
 cache:
