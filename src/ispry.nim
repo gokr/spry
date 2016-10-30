@@ -19,7 +19,7 @@ import spryvm
 # Spry extra modules, as much as possible!
 import sprycore, spryextend, sprymath, spryos, spryio, sprythread, spryoo, sprydebug,
   sprycompress, sprystring, sprymodules, spryreflect, sprymemfile, spryblock,
-  sprynet, spryjson, sprysophia
+  sprynet, spryjson
 
 # Not included by default
 # import sprypython
@@ -65,7 +65,7 @@ proc main() =
   spry.addBlock()
   spry.addNet()
   spry.addJSON()
-  spry.addSophia()
+#  spry.addSophia()
   var
     lines, stashed, fileLines = newSeq[string]()
     suspended: bool = true

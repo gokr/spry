@@ -12,7 +12,7 @@ import spryvm
 
 import sprycore, sprylib, spryextend, sprymath, spryos, spryio, sprythread,
  spryoo, sprydebug, sprycompress, sprystring, sprymodules, spryreflect,
- spryblock, sprynet, spryjson, sprysophia
+ spryblock, sprynet, spryjson
 
 # import sprypython
 
@@ -36,7 +36,7 @@ spry.addReflect()
 spry.addBlock()
 spry.addNet()
 spry.addJSON()
-spry.addSophia()
+#spry.addSophia()
 spry.addLib()
 
 
