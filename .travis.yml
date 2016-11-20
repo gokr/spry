@@ -35,6 +35,8 @@ install:
     cd lz4-r131
     sudo make install
     sudo ldconfig
+    cd ..
+    rm -rf lz4-r131
 
     # Bootstrap Nim and install Nimble
     if [ ! -x nim-$BRANCH/bin/nim ]; then
@@ -47,18 +49,21 @@ install:
       rm -rf csources
       bin/nim c koch
       ./koch boot -d:release
+      ./bin/nim e install_nimble.nims
     else
       cd nim-$BRANCH
       git fetch origin
       if ! git merge FETCH_HEAD | grep "Already up-to-date"; then
         bin/nim c koch
         ./koch boot -d:release
+        ./bin/nim e install_nimble.nims
       fi
     fi
     cd ..
     # So we can see nim compiler
     export PATH=$PWD/nim-$BRANCH/bin:$PATH
     export PATH=$HOME/.nimble/bin:$PATH
+  
     # Install nimble
     #if [ ! -x $HOME/.nimble/bin/nimble ]; then
     #  git clone --depth 1 https://github.com/nim-lang/nimble.git
