@@ -49,19 +49,20 @@ install:
       rm -rf csources
       bin/nim c koch
       ./koch boot -d:release
-      ./bin/nim e install_nimble.nims
+      export PATH=$PWD/bin:$PATH
+      nim e install_nimble.nims
     else
       cd nim-$BRANCH
       git fetch origin
       if ! git merge FETCH_HEAD | grep "Already up-to-date"; then
         bin/nim c koch
         ./koch boot -d:release
-        ./bin/nim e install_nimble.nims
+        export PATH=$PWD/bin:$PATH
+        nim e install_nimble.nims
       fi
     fi
     cd ..
-    # So we can see nim compiler
-    export PATH=$PWD/nim-$BRANCH/bin:$PATH
+    # So we can see nimble
     export PATH=$HOME/.nimble/bin:$PATH
   
     # Install nimble
