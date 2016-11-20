@@ -21,6 +21,7 @@ before_install:
 install:
   - |
     # Too old, even in Trusty, we need r131: sudo apt-get install liblz4-dev
+
     # We want a new GCC 4.8 instead of 4.6.x
     # install gcc-4.8 with c++11 support: https://github.com/travis-ci-tester/travis-test-gcc-cxx-11
     sudo add-apt-repository ppa:ubuntu-toolchain-r/test -y
@@ -28,6 +29,9 @@ install:
     sudo apt-get install g++-4.8
     sudo update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-4.8 90
     sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-4.8 90    # Install Nim
+
+    # Let's grab default clang
+    sudo apt-get install clang-3.5
 
     # Install LZ4 r131
     wget https://github.com/Cyan4973/lz4/archive/r131.tar.gz
