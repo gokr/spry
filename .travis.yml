@@ -60,14 +60,14 @@ install:
     export PATH=$PWD/nim-$BRANCH/bin:$PATH
     export PATH=$HOME/.nimble/bin:$PATH
     # Install nimble
-    if [ ! -x $HOME/.nimble/bin/nimble ]; then
-      git clone --depth 1 https://github.com/nim-lang/nimble.git
-      cd nimble
-      nim -d:release c -r src/nimble -y install
-      cd ..
-    else
-      nimble install nimble  
-    fi
+    #if [ ! -x $HOME/.nimble/bin/nimble ]; then
+    #  git clone --depth 1 https://github.com/nim-lang/nimble.git
+    #  cd nimble
+    #  nim -d:release c -r src/nimble -y install
+    #  cd ..
+    #else
+    #  nimble install nimble  
+    #fi
 before_script:
     - cd $TRAVIS_BUILD_DIR
     - pwd && ls
