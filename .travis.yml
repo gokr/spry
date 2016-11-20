@@ -43,42 +43,21 @@ install:
     rm -rf lz4-r131
 
     # Bootstrap Nim and install Nimble
-    if [ ! -x nim-$BRANCH/bin/nim ]; then
-      git clone -b $BRANCH --depth 1 git://github.com/nim-lang/nim nim-$BRANCH/
-      cd nim-$BRANCH
-      git clone -b $BRANCH --depth 1 git://github.com/nim-lang/csources csources/
-      cd csources
-      sh build.sh
-      cd ..
-      rm -rf csources
-      bin/nim c koch
-      ./koch boot -d:release
-      export PATH=$PWD/bin:$PATH
-      nim e install_nimble.nims
-    else
-      cd nim-$BRANCH
-      git fetch origin
-      if ! git merge FETCH_HEAD | grep "Already up-to-date"; then
-        bin/nim c koch
-        ./koch boot -d:release
-        export PATH=$PWD/bin:$PATH
-        nim e install_nimble.nims
-      fi
-    fi
+    git clone -b $BRANCH --depth 1 git://github.com/nim-lang/nim nim-$BRANCH/
+    cd nim-$BRANCH
+    git clone -b $BRANCH --depth 1 git://github.com/nim-lang/csources csources/
+    cd csources
+    sh build.sh
+    cd ..
+    rm -rf csources
+    bin/nim c koch
+    ./koch boot -d:release
+    export PATH=$PWD/bin:$PATH
+    nim e install_nimble.nims
     cd ..
   
-    # Install nimble
-    #if [ ! -x $HOME/.nimble/bin/nimble ]; then
-    #  git clone --depth 1 https://github.com/nim-lang/nimble.git
-    #  cd nimble
-    #  nim -d:release c -r src/nimble -y install
-    #  cd ..
-    #else
-    #  nimble install nimble  
-    #fi
 before_script:
     - export PATH=$HOME/nim-$BRANCH/bin:$PATH
-    - export PATH=$HOME/.nimble/bin:$PATH
     - cd $TRAVIS_BUILD_DIR
     - pwd && ls
     - nimble refresh
