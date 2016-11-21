@@ -7,9 +7,7 @@ env:
   - BRANCH=master
   - BRANCH=devel
 compiler:
-  # Build and test using both gcc and clang
   - gcc
-  - clang
 matrix:
   allow_failures:
     # Ignore failures when building against the devel Nim branch
@@ -31,8 +29,10 @@ install:
     sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-4.8 90    # Install Nim
 
     # Let's grab default clang
-    sudo apt-get install clang-3.5
-
+    #sudo apt-get install clang-3.5
+    #sudo update-alternatives --install /usr/bin/cc cc /usr/bin/clang-3.5 100
+    #sudo update-alternatives --install /usr/bin/c++ c++ /usr/bin/clang++-3.5 100
+    
     # Install LZ4 r131
     wget https://github.com/Cyan4973/lz4/archive/r131.tar.gz
     tar xzf r131.tar.gz
