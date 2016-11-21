@@ -45,7 +45,7 @@ install:
     # Bootstrap Nim and install Nimble
     git clone -b $BRANCH --depth 1 git://github.com/nim-lang/nim nim-$BRANCH/
     cd nim-$BRANCH
-    git clone -b $BRANCH --depth 1 git://github.com/nim-lang/csources csources/
+    git clone --depth 1 git://github.com/nim-lang/csources csources/
     cd csources
     sh build.sh
     cd ..
