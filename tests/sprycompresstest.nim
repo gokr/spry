@@ -9,6 +9,6 @@ suite "spry compress":
     vm.addCore()
     vm.addCompress()
   test "compress":
-    check run("compress \"abc123\"") == "\"\\x06\\x00\\x00\\x00`abc123\""
+    check run("compress \"abc123\"") == "\"\\x06\\x14abc123\""
   test "uncompress":
     check run("uncompress (compress \"abc123\")") == "\"abc123\""
