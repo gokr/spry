@@ -28,19 +28,25 @@ install:
     sudo update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-4.8 90
     sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-4.8 90    # Install Nim
 
+    # Not using clang for the moment
     # Let's grab default clang
     #sudo apt-get install clang-3.5
     #sudo update-alternatives --install /usr/bin/cc cc /usr/bin/clang-3.5 100
     #sudo update-alternatives --install /usr/bin/c++ c++ /usr/bin/clang++-3.5 100
     
+    # Not using LZ4, switched to snappy since it is more available
+    # on various platforms. LZ4 is faster though, we can switch back later.
     # Install LZ4 r131
-    wget https://github.com/Cyan4973/lz4/archive/r131.tar.gz
-    tar xzf r131.tar.gz
-    cd lz4-r131
-    sudo make install
-    sudo ldconfig
-    cd ..
-    rm -rf lz4-r131
+    #wget https://github.com/Cyan4973/lz4/archive/r131.tar.gz
+    #tar xzf r131.tar.gz
+    #cd lz4-r131
+    #sudo make install
+    #sudo ldconfig
+    #cd ..
+    #rm -rf lz4-r131
+
+    # Install snappy
+    sudo apt-get install libsnappy-dev
 
     # Bootstrap Nim and install Nimble
     git clone -b $BRANCH --depth 1 git://github.com/nim-lang/nim nim-$BRANCH/

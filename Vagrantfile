@@ -7,8 +7,8 @@ Vagrant.configure(2) do |config|
      vb.memory = "4096"
   end
   config.vm.provision "shell", privileged: false, inline: <<-SHELL
-    #sudo apt-get update && sudo apt-get upgrade
-    sudo apt-get install -y git build-essential unzip liblz4-1
+    sudo apt-get update && sudo apt-get upgrade
+    sudo apt-get install -y git build-essential unzip libsnappy-dev
 
     # Install latest Nim and bootstrap it
     git clone https://github.com/nim-lang/Nim.git
@@ -24,17 +24,10 @@ Vagrant.configure(2) do |config|
     export PATH="$HOME/Nim/bin:$HOME/.nimble/bin:$PATH"
 
     # Then install nimble
-    nim e install_nimble.nims
+    ./koch nimble # nim e install_nimble.nims
 
     # Let it refresh the package list
     nimble refresh
-
-    # No need for new Ubuntu: Install LZ4 r131 manually
-    # wget https://github.com/Cyan4973/lz4/archive/r131.tar.gz
-    # tar xzf r131.tar.gz
-    # cd lz4-r131
-    # sudo make install
-    # sudo ldconfig
 
     # Use nimble to install spry
     nimble install spry
