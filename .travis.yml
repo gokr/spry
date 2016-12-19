@@ -59,7 +59,7 @@ install:
     bin/nim c koch
     ./koch boot -d:release
     export PATH=$PWD/bin:$PATH
-    nim e install_nimble.nims
+    ./koch nimble # nim e install_nimble.nims
     cd ..
   
 before_script:
