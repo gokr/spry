@@ -26,6 +26,7 @@ spry.addNet()
 spry.addLib()
 spry.addUI()
 
+discard spry.eval("""[
 EOF
 
 cat ide.sy >> ./ide.nim
@@ -35,5 +36,5 @@ cat << EOF >> ./ide.nim
 EOF
 
 # Through experiments this builds libui statically linked
-nim --verbosity:2 --dynlibOverride:ui  --passL:" ./libuiosx.a -lobjc -framework Foundation -framework AppKit" c ide
+nim --verbosity:2 --dynlibOverride:ui  --passL:" ./libuiosx.a -lobjc -framework Foundation -framework AppKit" c ide.nim
 mv ide ideosx
