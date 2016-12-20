@@ -9,4 +9,4 @@ srcDir        = "src"
 binDir        = "bin"
 
 [Deps]
-Requires      = "nim >= 0.11.2, python, nimsnappy"
+Requires      = "nim >= 0.11.2, python, ui, nimsnappy"

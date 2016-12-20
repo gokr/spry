@@ -243,7 +243,7 @@ proc addUI*(spry: Interpreter) =
   nimMeth("delete:"):
     var node = BoxNode(evalArgInfix(spry))
     var index = IntVal(evalArg(spry))
-    boxDelete(cast[ptr Box](node.control), index.value.cuint)
+    boxDelete(cast[ptr Box](node.control), index.value.cint)
     return node
   nimMeth("padding"):
     var node = BoxNode(evalArgInfix(spry))
