@@ -80,10 +80,18 @@ proc addUI*(spry: Interpreter) =
   # File dialogs
   nimMeth("openFile"):
     var win = WindowNode(evalArgInfix(spry))
-    newValue($openFile(toUiWindow(win.control)))
+    var path = openFile(toUiWindow(win.control))
+    if path.isNil:
+      spry.nilVal
+    else:
+      newValue($path)
   nimMeth("saveFile"):
     var win = WindowNode(evalArgInfix(spry))
-    newValue($saveFile(toUiWindow(win.control)))
+    var path = saveFile(toUiWindow(win.control))
+    if path.isNil:
+      spry.nilVal
+    else:
+      newValue($path)
 
   # Menu
   nimFunc("newMenu"):
