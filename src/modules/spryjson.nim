@@ -1,5 +1,5 @@
 import spryvm
-import json
+import json, tables
 
 type JsonSpryNode* = ref object of Value
   json*: JsonNode
@@ -33,6 +33,26 @@ proc jsonNodeToSpry(jnode: JsonNode, spry: Interpreter): Node =
   of JNull:
     result = spry.nilVal
 
+proc spryToJsonNode(node: Node, spry: Interpreter): JsonNode =  
+  if node of Blok:
+    result = newJArray()
+    for child in Blok(node).nodes:
+      result.add(spryToJsonNode(child, spry))
+  elif node of Map:
+    result = newJObject()
+    for n, b in Map(node).bindings:
+      result[StringVal(n).value] = spryToJsonNode(b.val, spry)
+  elif node of StringVal:
+    result = newJString(StringVal(node).value)
+  elif node of IntVal:
+    result = newJInt(IntVal(node).value)
+  elif node of FloatVal:
+    result = newJFloat(FloatVal(node).value)
+  elif node of BoolVal:
+    result = newJBool(BoolVal(node).value)
+  elif node of NilVal:
+    result = newJNull()
+
 # Spry JSON module
 proc addJSON*(spry: Interpreter) =
   nimFunc("parseJSON"):
@@ -44,5 +64,7 @@ proc addJSON*(spry: Interpreter) =
   nimMeth("toSpry"):
     let json = JsonSpryNode(evalArgInfix(spry)).json
     jsonNodeToSpry(json, spry)
-    
+  nimMeth("toJSON"):
+    let node = evalArgInfix(spry)
+    JsonSpryNode(json: spryToJsonNode(node, spry))
 
