@@ -63,7 +63,7 @@ proc addCore*(spry: Interpreter) =
     result = evalArgInfix(spry)
     result.tags = Blok(evalArg(spry))
 
-  # Assignment
+  # Assignment and tests
   nimMeth("="):
     result = evalArg(spry) # Perhaps we could make it eager here? Pulling in more?
     spry.assign(argInfix(spry), result)
@@ -75,6 +75,13 @@ proc addCore*(spry: Interpreter) =
     if binding.isNil:
       return spry.falseVal
     return spry.trueVal
+  nimMeth("nil?"):
+    let binding = spry.lookup(argInfix(spry))
+    if binding.isNil:
+      return spry.falseVal
+    if binding.val == spry.nilVal:
+      return spry.trueVal
+    return spry.falseVal
   nimMeth("set?"):
     newValue(not (evalArgInfix(spry) of UndefVal))
 
@@ -273,7 +280,8 @@ proc addCore*(spry: Interpreter) =
     newWord(StringVal(evalArg(spry)).value)
 
   # Cloning
-  nimMeth("clone"):    evalArgInfix(spry).clone()
+  nimMeth("clone"):
+    evalArgInfix(spry).clone()
 
   # Control structures
   nimFunc("^"):

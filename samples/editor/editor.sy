@@ -9,14 +9,16 @@ uiInit
 content = ""
 
 # Variable holding last path
-path = ""
+path = nil
 
 # File handling funcs
 openContent = func [
   # this is a wart, we shouldn't need ..
   ..path = (win openFile)
-  content = readFile path
-  contentEntry text: content
+  path nil? else: [
+    content = readFile path
+    contentEntry text: content
+  ]
 ]
 saveContent = func [:path
   content = (contentEntry text)
@@ -33,7 +35,9 @@ item onMenuItemClicked: [openContent]
 item = (menu menuAppendItem: "Save as ...")
 item onMenuItemClicked: [
   ..path = (win saveFile)
-  saveContent path
+  path nil? else: [
+    saveContent path
+  ]
 ]
 
 item = (menu menuAppendQuitItem)
@@ -60,8 +64,12 @@ buttons = newHorizontalBox
 # Some buttons and their handlers
 saveit = newButton "Save"
 saveit onClicked: [
-  echo ("PATH:", path)
-  saveContent path
+  path nil? then: [
+    ..path = (win saveFile)
+  ]
+  path nil? else: [
+    saveContent path
+  ]
 ]
 
 clearit = newButton "Clear"
