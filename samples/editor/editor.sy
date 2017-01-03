@@ -1,6 +1,6 @@
 #!/usr/bin/env spry
 
-# A sample Spry application that is a trivial file editor
+# A sample Spry application that is a trivial file editor.
 
 # First we need to initialize libui
 uiInit
@@ -8,12 +8,12 @@ uiInit
 # Variable holding file contents
 content = ""
 
-# Variable holding last path
+# Variable holding last known filepath
 path = nil
 
-# File handling funcs
+# Two funcs for opening and saving a file
 openContent = func [
-  # this is a wart, we shouldn't need ..
+  # this is a language wart I am fixing, we should not need ".."
   ..path = (win openFile)
   path nil? else: [
     content = readFile path
@@ -25,9 +25,16 @@ saveContent = func [:path
   writeFile path content
 ]
 
-# Build menu
+# A handler for closing
+closeHandler = [
+  win message: "Bye bye" title: "Braindead editor"
+  controlDestroy win
+  uiQuit
+]
+
+# Build the app menu
 menu = newMenu "File"
-menu onShouldQuit: [do closeHandler]
+menu onShouldQuit: closeHandler
 
 item = (menu menuAppendItem: "Open ...")
 item onMenuItemClicked: [openContent]
@@ -48,16 +55,20 @@ item onMenuItemClicked: [
   win message: "Sorry..." title: "No help to get"
 ]
 
-helpMenu menuAppendAboutItem
+# Silly About
+item = (helpMenu menuAppendAboutItem)
+item onMenuItemClicked: [
+  win message: "This is a truly trivial file editor." title: "About Braindead editor"
+]
 
-# Create a new Window
+# Create a new app Window
 win = newWindow "Braindead editor" 640 400 true
 win windowMargin: 1
 
 # Create a multiline text entry field for content
 contentEntry = newMultilineEntryText
 
-# And a vertical box to put stuff in
+# Some boxes put stuff in
 layout = newVerticalBox
 buttons = newHorizontalBox
 
@@ -71,12 +82,10 @@ saveit onClicked: [
     saveContent path
   ]
 ]
-
 clearit = newButton "Clear"
 clearit onClicked: [contentEntry text: ""]
-
 quitit = newButton "Quit"
-quitit onClicked: [do closeHandler]
+quitit onClicked: closeHandler
 
 # Put things in the boxes
 layout padding: 1
@@ -89,15 +98,8 @@ buttons append: quitit stretch: 0
 # Add box to window
 win windowSetChild: layout
 
-# Set initial text
+# Set initial text in text component
 contentEntry text: content
-
-# Close handler
-closeHandler = [
-  win message: "Bye bye" title: "Braindead editor"
-  controlDestroy win
-  uiQuit
-]
 
 # Set a handler on closing window
 win onClosing: closeHandler
