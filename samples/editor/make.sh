@@ -8,9 +8,9 @@
 rm -f editor.nim
 cat << EOF > ./editor.nim
 
-import spryvm, modules/sprycore, modules/sprylib, modules/spryextend, modules/spryos, modules/spryio,
- modules/spryoo, modules/sprydebug, modules/sprystring, modules/sprymodules, modules/spryreflect,
- modules/spryblock, modules/spryui
+import spryvm, sprycore, sprylib, spryextend, spryos, spryio,
+ spryoo, sprydebug, sprystring, sprymodules, spryreflect,
+ spryblock, spryui
 
 var spry = newInterpreter()
 
