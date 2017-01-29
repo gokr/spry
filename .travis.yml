@@ -7,9 +7,7 @@ env:
   - BRANCH=master
   - BRANCH=devel
 compiler:
-  # Build and test using both gcc and clang
   - gcc
-  - clang
 matrix:
   allow_failures:
     # Ignore failures when building against the devel Nim branch
@@ -20,7 +18,8 @@ before_install:
   - sudo apt-get install -qq 
 install:
   - |
-    # Too old, we need r131: sudo apt-get install liblz4-dev
+    # Too old, even in Trusty, we need r131: sudo apt-get install liblz4-dev
+
     # We want a new GCC 4.8 instead of 4.6.x
     # install gcc-4.8 with c++11 support: https://github.com/travis-ci-tester/travis-test-gcc-cxx-11
     sudo add-apt-repository ppa:ubuntu-toolchain-r/test -y
@@ -29,52 +28,50 @@ install:
     sudo update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-4.8 90
     sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-4.8 90    # Install Nim
 
+    # Not using clang for the moment
+    # Let's grab default clang
+    #sudo apt-get install clang-3.5
+    #sudo update-alternatives --install /usr/bin/cc cc /usr/bin/clang-3.5 100
+    #sudo update-alternatives --install /usr/bin/c++ c++ /usr/bin/clang++-3.5 100
+    
+    # Not using LZ4, switched to snappy since it is more available
+    # on various platforms. LZ4 is faster though, we can switch back later.
     # Install LZ4 r131
-    wget https://github.com/Cyan4973/lz4/archive/r131.tar.gz
-    tar xzf r131.tar.gz
-    cd lz4-r131
-    sudo make install
-    sudo ldconfig
-    if [ ! -x nim-$BRANCH/bin/nim ]; then
-      git clone -b $BRANCH --depth 1 git://github.com/nim-lang/nim nim-$BRANCH/
-      cd nim-$BRANCH
-      git clone -b $BRANCH --depth 1 git://github.com/nim-lang/csources csources/
-      cd csources
-      sh build.sh
-      cd ..
-      rm -rf csources
-      bin/nim c koch
-      ./koch boot -d:release
-    else
-      cd nim-$BRANCH
-      git fetch origin
-      if ! git merge FETCH_HEAD | grep "Already up-to-date"; then
-        bin/nim c koch
-        ./koch boot -d:release
-      fi
-    fi
+    #wget https://github.com/Cyan4973/lz4/archive/r131.tar.gz
+    #tar xzf r131.tar.gz
+    #cd lz4-r131
+    #sudo make install
+    #sudo ldconfig
+    #cd ..
+    #rm -rf lz4-r131
+
+    # Install snappy
+    sudo apt-get install libsnappy-dev
+
+    # Bootstrap Nim and install Nimble
+    git clone -b $BRANCH --depth 1 git://github.com/nim-lang/nim nim-$BRANCH/
+    cd nim-$BRANCH
+    git clone --depth 1 git://github.com/nim-lang/csources csources/
+    cd csources
+    sh build.sh
     cd ..
-    # So we can see nim compiler
-    export PATH=$PWD/nim-$BRANCH/bin:$PATH
-    export PATH=$HOME/.nimble/bin:$PATH
-    # Install nimble
-    if [ ! -x $HOME/.nimble/bin/nimble ]; then
-      git clone --depth 1 https://github.com/nim-lang/nimble.git
-      cd nimble
-      nim c -r src/nimble install
-      cd ..
-    else
-      nimble install nimble  
-    fi
+    rm -rf csources
+    bin/nim c koch
+    ./koch boot -d:release
+    export PATH=$PWD/bin:$PATH
+    ./koch nimble # nim e install_nimble.nims
+    cd ..
+  
 before_script:
+    - export PATH=$HOME/nim-$BRANCH/bin:$PATH
     - cd $TRAVIS_BUILD_DIR
     - pwd && ls
     - nimble refresh
 script:
     # Let nimble get dependencies
-    - nimble c src/sprytest
+    - nimble c tests/all
     # Test
-    - cd src && ./test.sh
+    - cd tests && ./run.sh
     # Optional: build docs.
     # nim doc --docSeeSrcUrl:https://github.com/AUTHOR/MYPROJECT/blob/master --project MYFILE.nim
 cache:

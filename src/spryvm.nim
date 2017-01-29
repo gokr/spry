@@ -4,12 +4,24 @@
 
 import strutils, sequtils, tables, hashes
 
+const
+  # These characters do not need whitespace to be recognized as tokens,
+  # this means cascades, returns, concatenation etc can be written without
+  # whitespace.
+  #
+  # Note that the comparison characters '<','>','=','!' as well as '?' nor
+  # '-','+','*','/' are enabled right now. '-' gets into trouble with negative
+  # number literals and '?' should be able to be used with alphabetical words.
+  # This can surely be improved...
+  SpecialChars: set[char] = {';','\\','^','&','%','|',',','~'} #
+
 type
   ParseException* = object of Exception
 
   # The iterative parser builds a Node tree using a stack for nested blocks
   Parser* = ref object
     token: string                       # Collects characters into a token
+    specialCharDetected: bool           # Flag for collecting special char tokens
     ws: string                          # Collects whitespace and comments
     stack: seq[Node]                    # Lexical stack of block Nodes
     valueParsers*: seq[ValueParser]     # Registered valueParsers for literals
@@ -27,7 +39,6 @@ type
 
   # Nodes form an AST which we later eval directly using Interpreter
   Node* = ref object of RootObj
-    comment*: string
     tags*: Blok
   Word* = ref object of Node
     word*: string
@@ -41,6 +52,7 @@ type
   EvalModuleWord* = ref object of EvalWord
     module*: Word
   EvalSelfWord* = ref object of EvalW
+  EvalLocalWord* = ref object of EvalW
   EvalOuterWord* = ref object of EvalW
   EvalArgWord* = ref object of EvalW
 
@@ -48,6 +60,7 @@ type
   GetModuleWord* = ref object of GetWord
     module*: Word
   GetSelfWord* = ref object of GetW
+  GetLocalWord* = ref object of GetW
   GetOuterWord* = ref object of GetW
   GetArgWord* = ref object of GetW
 
@@ -56,6 +69,7 @@ type
     keys*: seq[string]
     args*: seq[Node]
 
+  # Common type for all atomic values
   Value* = ref object of Node
   IntVal* = ref object of Value
     value*: int
@@ -63,6 +77,8 @@ type
     value*: float
   StringVal* = ref object of Value
     value*: string
+  PointerVal* = ref object of Value
+    value*: pointer
   BoolVal* = ref object of Value
   TrueVal* = ref object of BoolVal
   FalseVal* = ref object of BoolVal
@@ -70,22 +86,18 @@ type
   UndefVal* = ref object of Value
   NilVal* = ref object of Value
 
-  PointerVal* = ref object of Value
-    value*: pointer
-
   # Abstract
   Composite* = ref object of Node
-    commentEnd*: string
   SeqComposite* = ref object of Composite
     nodes*: seq[Node]
-    pos*: int
 
   # Concrete
   Paren* = ref object of SeqComposite
-  Blok* = ref object of SeqComposite
   Curly* = ref object of SeqComposite
+  Blok* = ref object of SeqComposite
+    pos*: int
   Map* = ref object of Composite
-    bindings*: OrderedTable[Node, Binding]
+    bindings*: Table[Node, Binding]
 
   # Dictionaries currently holds Bindings instead of the value directly.
   # This way we we can later reify Binding
@@ -114,8 +126,8 @@ template debug*(x: untyped) =
 type ParserExt = proc(p: Parser)
 var parserExts = newSeq[ParserExt]()
 
-proc addParserExtension*(prok: ParserExt) =
-  parserExts.add(prok)
+proc addParserExtension*(ext: ParserExt) =
+  parserExts.add(ext)
 
 # spry representations
 method `$`*(self: Node): string {.base.} =
@@ -124,12 +136,6 @@ method `$`*(self: Node): string {.base.} =
     echo "repr not available in js"
   else:
     repr(self)
-
-method commented*(self: Node): string {.base.} =
-  if self.comment.isNil:
-    $self
-  else:
-    self.comment & $self
 
 method `$`*(self: Binding): string =
   if self.key.isNil:
@@ -149,21 +155,6 @@ method `$`*(self: Map): string =
       result.add(" " & $v)
   return result & "}"
 
-method commented*(self: Map): string =
-  if self.comment.isNil:
-    result = "{"
-  else:
-    result = self.comment & "{"
-  var first = true
-  for k,v in self.bindings:
-    if first:
-      result.add(commented(v))
-      first = false
-    else:
-      result.add(commented(v))
-  return result & "}"
-
-
 method `$`*(self: IntVal): string =
   $self.value
 
@@ -172,6 +163,9 @@ method `$`*(self: FloatVal): string =
 
 method `$`*(self: StringVal): string =
   escape(self.value)
+
+method `$`*(self: PointerVal): string =
+  repr(self.value)
 
 method `$`*(self: TrueVal): string =
   "true"
@@ -188,9 +182,6 @@ method `$`*(self: UndefVal): string =
 proc `$`*(self: seq[Node]): string =
   self.map(proc(n: Node): string = $n).join(" ")
 
-proc commented*(self: seq[Node]): string =
-  self.map(proc(n: Node): string = commented(n)).join()
-
 method `$`*(self: Word): string =
   self.word
 
@@ -203,20 +194,26 @@ method `$`*(self: EvalModuleWord): string =
 method `$`*(self: EvalSelfWord): string =
   "@" & self.word
 
+method `$`*(self: EvalLocalWord): string =
+  "." & self.word
+
 method `$`*(self: EvalOuterWord): string =
   ".." & self.word
 
 method `$`*(self: GetWord): string =
-  "^" & self.word
+  "$" & self.word
 
 method `$`*(self: GetModuleWord): string =
-  "^" & $self.module & "::" & self.word
+  "$" & $self.module & "::" & self.word
 
 method `$`*(self: GetSelfWord): string =
-  "^@" & self.word
+  "$@" & self.word
+
+method `$`*(self: GetLocalWord): string =
+  "$." & self.word
 
 method `$`*(self: GetOuterWord): string =
-  "^.." & self.word
+  "$.." & self.word
 
 method `$`*(self: LitWord): string =
   "'" & self.word
@@ -225,59 +222,21 @@ method `$`*(self: EvalArgWord): string =
   ":" & self.word
 
 method `$`*(self: GetArgWord): string =
-  ":^" & self.word
+  ":$" & self.word
 
 method `$`*(self: Blok): string =
   "[" & $self.nodes & "]"
 
-method commented*(self: Blok): string =
-  if self.comment.isNil:
-    result = "["
-  else:
-    result = self.comment & "["
-  result = result & commented(self.nodes)
-  if self.commentEnd.isNil:
-    result = result & "]"
-  else:
-    result = result & self.commentEnd & "]"
-
 method `$`*(self: Paren): string =
   "(" & $self.nodes & ")"
 
-method commented*(self: Paren): string =
-  if self.comment.isNil:
-    result = "("
-  else:
-    result = self.comment & "("
-  result = result & commented(self.nodes)
-  if self.commentEnd.isNil:
-    result = result & ")"
-  else:
-    result = result & self.commentEnd & ")"
-
 method `$`*(self: Curly): string =
   "{" & $self.nodes & "}"
-
-method commented*(self: Curly): string =
-  if self.comment.isNil:
-    result = "{"
-  else:
-    result = self.comment & "{"
-  result = result & commented(self.nodes)
-  if self.commentEnd.isNil:
-    result = result & "}"
-  else:
-    result = result & self.commentEnd & "}"
 
 method `$`*(self: KeyWord): string =
   result = ""
   for i in 0 .. self.keys.len - 1:
     result = result & self.keys[i] & " " & $self.args[i]
-
-method commented*(self: KeyWord): string =
-  result = ""
-  for i in 0 .. self.keys.len - 1:
-    result = result & self.keys[i] & commented(self.args[i])
 
 # Hash and == implementations
 method hash*(self: Node): Hash {.base.} =
@@ -285,8 +244,8 @@ method hash*(self: Node): Hash {.base.} =
 
 method `==`*(self: Node, other: Node): bool {.base.} =
   # Fallback to identity check
-  system.`==`(self, other)
-  #raiseRuntimeException("Nodes need to implement ==")
+  #system.`==`(self, other)
+  raiseRuntimeException("Nodes need to implement ==")
 
 method hash*(self: Word): Hash =
   self.word.hash
@@ -294,23 +253,29 @@ method hash*(self: Word): Hash =
 method `==`*(self: Word, other: Node): bool =
   other of Word and (self.word == Word(other).word)
 
+method hash*(self: FloatVal): Hash =
+  self.value.hash
+
 method hash*(self: IntVal): Hash =
+  self.value.hash
+
+method hash*(self: StringVal): Hash =
+  self.value.hash
+
+method hash*(self: PointerVal): Hash =
   self.value.hash
 
 method `==`*(self: IntVal, other: Node): bool =
   other of IntVal and (self.value == IntVal(other).value)
 
-method hash*(self: FloatVal): Hash =
-  self.value.hash
-
 method `==`*(self: FloatVal, other: Node): bool =
   other of FloatVal and (self.value == FloatVal(other).value)
 
-method hash*(self: StringVal): Hash =
-  self.value.hash
-
 method `==`*(self: StringVal, other: Node): bool =
   other of StringVal and (self.value == StringVal(other).value)
+
+method `==`*(self: PointerVal, other: Node): bool =
+  other of PointerVal and (self.value == PointerVal(other).value)
 
 method hash*(self: TrueVal): Hash =
   hash(1)
@@ -357,33 +322,63 @@ method hash*(self: UndefVal): Hash =
 method `==`*(self: Undefval, other: Node): bool =
   other of UndefVal
 
+method hash*(self: Blok): Hash =
+  hash(self.nodes)
+
+method `==`*(self: Blok, other: Node): bool =
+  other of Blok and (self.nodes == Blok(other).nodes)
+
 
 # Human string representations
-method form*(self: Node): string {.base.} =
+method print*(self: Node): string {.base.} =
   # Default is to use $
   $self
 
-method form*(self: StringVal): string =
+method print*(self: StringVal): string =
   # No surrounding ""
   $self.value
 
-# Map lookups
+proc print*(self: seq[Node]): string =
+  self.map(proc(n: Node): string = print(n)).join(" ")
+
+method print*(self: Blok): string =
+  # No surrounding []
+  print(self.nodes)
+
+
+# Map lookups and bindings
 proc lookup*(self: Map, key: Node): Binding =
   self.bindings.getOrDefault(key)
 
+proc removeBinding*(self: Map, key: Node): Binding =
+  if self.bindings.hasKey(key):
+    result = self.bindings[key]
+    self.bindings.del(key)
+
 proc makeBinding*(self: Map, key: Node, val: Node): Binding =
-  result = Binding(key: key, val: val)
-  self.bindings[key] = result
+  if val of UndefVal:
+    return self.removeBinding(key)
+  if self.bindings.hasKey(key):
+    result = self.bindings[key]
+    result.val = val
+    result.key = key
+  else:
+    result = Binding(key: key, val: val)
+    self.bindings[key] = result
+
 
 # Constructor procs
 proc raiseParseException(msg: string) =
   raise newException(ParseException, msg)
 
 proc newMap*(): Map =
-  Map(bindings: initOrderedTable[Node, Binding]())
+  Map(bindings: initTable[Node, Binding]())
 
-proc newMap*(bindings: OrderedTable[Node, Binding]): Map =
-  Map(bindings: bindings)
+proc newMap*(bindings: Table[Node, Binding]): Map =
+  # A copy of the Map
+  result = newMap()
+  for key, binding in bindings:
+    discard result.makeBinding(key, binding.val)
 
 proc newEvalWord*(s: string): EvalWord =
   EvalWord(word: s)
@@ -403,6 +398,9 @@ proc newEvalModuleWord*(s: string): EvalWord =
 proc newEvalSelfWord*(s: string): EvalSelfWord =
   EvalSelfWord(word: s)
 
+proc newEvalLocalWord*(s: string): EvalLocalWord =
+  EvalLocalWord(word: s)
+
 proc newEvalOuterWord*(s: string): EvalOuterWord =
   EvalOuterWord(word: s)
 
@@ -415,6 +413,9 @@ proc newGetModuleWord*(s: string): GetWord =
 
 proc newGetSelfWord*(s: string): GetSelfWord =
   GetSelfWord(word: s)
+
+proc newGetLocalWord*(s: string): GetLocalWord =
+  GetLocalWord(word: s)
 
 proc newGetOuterWord*(s: string): GetOuterWord =
   GetOuterWord(word: s)
@@ -501,6 +502,13 @@ proc removeLast*(self: SeqComposite) =
 method clone*(self: Node): Node {.base.} =
   raiseRuntimeException("Should not happen..." & $self)
 
+method clone*(self: Value): Node =
+  # Do nothing for most values
+  self
+
+method clone*(self: StringVal): Node =
+  newValue(self.value)
+
 method clone*(self: Map): Node =
   newMap(self.bindings)
 
@@ -572,18 +580,8 @@ proc newParser*(): Parser =
   for ex in parserExts:
     ex(result)
 
-
-proc len(self: Node): int =
-  0
-
-proc len(self: SeqComposite): int =
-  self.nodes.len
-
 proc addKey(self: KeyWord, key: string) =
   self.keys.add(key)
-
-proc addArg(self: KeyWord, arg: Node) =
-  self.args.add(arg)
 
 proc inBalance(self: KeyWord): bool =
   return self.args.len == self.keys.len
@@ -642,7 +640,7 @@ proc newWord(self: Parser, token: string): Node =
 
   # All arg words (unique for Spry) are preceded with ":"
   if first == ':' and len > 1:
-    if token[1] == '^':
+    if token[1] == '$':
       if token.len < 3:
         raiseParseException("Malformed get argword, missing at least 1 character")
       # Then its a get arg word
@@ -650,8 +648,8 @@ proc newWord(self: Parser, token: string): Node =
     else:
       return newEvalArgWord(token[1..^1])
 
-  # All lookup words are preceded with "^"
-  if first == '^' and len > 1:
+  # All lookup words are preceded with "$"
+  if first == '$' and len > 1:
     if token[1] == '@':
       # Self lookup word
       if len > 2:
@@ -659,6 +657,7 @@ proc newWord(self: Parser, token: string): Node =
       else:
         raiseParseException("Malformed self lookup word, missing at least 1 character")
     elif token[1] == '.':
+      # Local or parent
       if len > 2:
         if token[2] == '.':
           if len > 3:
@@ -666,7 +665,7 @@ proc newWord(self: Parser, token: string): Node =
           else:
             raiseParseException("Malformed parent lookup word, missing at least 1 character")
         else:
-          raiseParseException("Malformed parent lookup word, missing at least a .")
+          return newGetLocalWord(token[2..^1])
       else:
         raiseParseException("Malformed parent lookup word, missing at least 2 characters")
     else:
@@ -698,7 +697,7 @@ proc newWord(self: Parser, token: string): Node =
         raiseParseException("Malformed keyword syntax, expecting an argument")
       return nil
 
-  # A regular eval word then, possibly prefixed with @ or ..
+  # A regular eval word then, possibly prefixed with @, . or ..
   if first == '@':
     # Self word
     if len > 1:
@@ -706,6 +705,7 @@ proc newWord(self: Parser, token: string): Node =
     else:
       raiseParseException("Malformed self eval word, missing at least 1 character")
   elif first == '.':
+    # Local or parent
     if len > 1:
       if token[1] == '.':
         if len > 2:
@@ -713,9 +713,9 @@ proc newWord(self: Parser, token: string): Node =
         else:
           raiseParseException("Malformed parent eval word, missing at least 1 character")
       else:
-        raiseParseException("Malformed parent eval word, missing a .")
+        return newEvalLocalWord(token[1..^1])
     else:
-      raiseParseException("Malformed parent eval word, missing at least 2 characters")
+      raiseParseException("Malformed local eval word, missing at least 1 character")
   else:
     if token.contains("::"):
       return newEvalModuleWord(token)
@@ -728,7 +728,6 @@ template newWord*(token: string): Node =
 proc newWordOrValue(self: Parser): Node =
   ## Decide what to make, a word or value
   let token = self.token
-  let ws = self.ws
   self.token = ""
   self.ws = ""
 
@@ -736,13 +735,10 @@ proc newWordOrValue(self: Parser): Node =
   for p in self.valueParsers:
     let valueOrNil = p.parseValue(token)
     if valueOrNil.notNil:
-      valueOrNil.comment = ws
       return valueOrNil
 
   # Then it must be a word
   result = newWord(self, token)
-  if result.notNil:
-    result.comment = ws
 
 proc addNode(self: Parser) =
   # If there is a token we figure out what to make of it
@@ -761,90 +757,101 @@ proc parse*(self: Parser, str: string): Node =
   # Wrap code in a block and later return last element as result.
   var blok = newBlok()
   self.push(blok)
-  # Parsing is done in a single pass char by char, recursive descent
+  # Parsing is done in a single pass char by char, iteratively
   while pos < str.len:
     ch = str[pos]
     inc pos
-    # If we are inside a literal value let the valueParser decide when complete
-    if currentValueParser.notNil:
-      let found = currentValueParser.tokenReady(self.token, ch)
-      if found.notNil:
-        self.token = found
-        self.addNode()
-        currentValueParser = nil
-      else:
-        self.token.add(ch)
+    # If a SpecialChar is detected we end previous token and
+    # then all following chars must be SpecialChars too, otherwise end token
+    # and start a new one. This makes Spry less sensitive to whitespace
+    # since you can write things like "^x" and "add: 3;" and have it
+    # tokenized as "^ x" and "add: 3 ;"
+    if self.specialCharDetected and ch in SpecialChars:
+      # Ok, the previos char was a special and this one too, keep collecting...
+      self.token.add(ch)
     else:
-      # If we are not parsing a literal with a valueParser whitespace is consumed
-      if currentValueParser.isNil and ch in Whitespace:
-        # But first we make sure to finish the token if any
+      if self.specialCharDetected:
+        # We ran out of specials, add a node for it, and proceed processing this char
         self.addNode()
-        # Collect for formatting
-        self.ws.add(ch)
-      else:
-        # Check if a valueParser wants to take over, only 5 first chars are checked
-        let tokenLen = self.token.len + 1
-        if currentValueParser.isNil and tokenLen < 5:
-          for p in self.valueParsers:
-            if p.prefixLength == tokenLen and p.tokenStart(self.token, ch):
-              currentValueParser = p
-              break
-        # If still no valueParser active we do regular token handling
-        if currentValueParser.isNil:
-          case ch
-          # Comments are collected and added to next node
-          of '#':
-            self.addNode()
-            self.ws.add('#')
-            while (pos < str.len) and (str[pos] != '\l'):
-              self.ws.add(str[pos])
-              inc pos
-            #if (pos < str.len):
-            #  self.ws.add('\l')
-          # Paren
-          of '(':
-            let n = newParen()
-            n.comment = self.ws
-            self.ws = ""
-            self.addNode()
-            self.push(n)
-          # Block
-          of '[':
-            let n = newBlok()
-            n.comment = self.ws
-            self.ws = ""
-            self.addNode()
-            self.push(n)
-         # Curly
-          of '{':
-            let n = newCurly()
-            n.comment = self.ws
-            self.ws = ""
-            self.addNode()
-            self.push(n)
-          of ')':
-            self.addNode()
-            let n = self.pop
-            Composite(n).commentEnd = self.ws
-            self.ws = ""
-          # Block
-          of ']':
-            self.addNode()
-            let n = self.pop
-            Composite(n).commentEnd = self.ws
-            self.ws = ""
-          # Curly
-          of '}':
-            self.addNode()
-            let n = self.pop
-            Composite(n).commentEnd = self.ws
-            self.ws = ""
-          # Ok, otherwise we just collect the char
-          else:
-            self.token.add(ch)
+        self.specialCharDetected = false
+
+      # If we are inside a literal value let the valueParser decide when complete
+      if currentValueParser.notNil:
+        let found = currentValueParser.tokenReady(self.token, ch)
+        if found.notNil:
+          self.token = found
+          self.addNode()
+          currentValueParser = nil
         else:
-          # Just collect for current value parser
           self.token.add(ch)
+      else:
+        # If we are not parsing a literal with a valueParser whitespace is consumed
+        if currentValueParser.isNil and ch in Whitespace:
+          # But first we make sure to finish the token if any
+          self.addNode()
+          # Collect for formatting
+          self.ws.add(ch)
+        else:
+          # Check if a valueParser wants to take over, only 5 first chars are checked
+          let tokenLen = self.token.len + 1
+          if currentValueParser.isNil and tokenLen < 5:
+            for p in self.valueParsers:
+              if p.prefixLength == tokenLen and p.tokenStart(self.token, ch):
+                currentValueParser = p
+                break
+          # If still no valueParser active we do regular token handling
+          if currentValueParser.isNil:
+            case ch
+            # Comments are collected and added to next node
+            of '#':
+              self.addNode()
+              self.ws.add('#')
+              while (pos < str.len) and (str[pos] != '\l'):
+                self.ws.add(str[pos])
+                inc pos
+              #if (pos < str.len):
+              #  self.ws.add('\l')
+            # Paren
+            of '(':
+              let n = newParen()
+              self.addNode()
+              self.push(n)
+            # Block
+            of '[':
+              let n = newBlok()
+              self.addNode()
+              self.push(n)
+           # Curly
+            of '{':
+              let n = newCurly()
+              self.addNode()
+              self.push(n)
+            of ')':
+              self.addNode()
+              discard self.pop
+            # Block
+            of ']':
+              self.addNode()
+              discard self.pop
+            # Curly
+            of '}':
+              self.addNode()
+              discard self.pop
+            # Ok, otherwise we just collect the char
+            else:
+              if ch in SpecialChars:
+                # We found a special, so quit the previous word
+                self.addNode()
+                # And start collecting for a special word
+                self.specialCharDetected = true
+                self.token.add(ch)
+              else:
+                # Just regular word collection
+                self.token.add(ch)
+          else:
+            # Just collect for current value parser
+            self.token.add(ch)
+
   self.addNode()
   if self.currentKeyword().notNil:
     self.closeKeyword()
@@ -857,34 +864,36 @@ type
     parser*: Parser
     currentActivation*: Activation  # Execution spaghetti stack
     rootActivation*: RootActivation # The first one
+    lastSelf*: Node                 # Used to implement cascades
     root*: Map               # Root bindings
     modules*: Blok           # Modules for unqualified lookup
     trueVal*: Node
     falseVal*: Node
     undefVal*: Node
     nilVal*: Node
-    emptyBlok*: Blok
+    emptyBlok*: Blok         # Used as optimization for nodes without tags
     objectTag*: Node         # Tag for Objects
     moduleTag*: Node         # Tag for Modules
 
-  # Node type to hold Nim primitive procs
-  ProcType* = proc(spry: Interpreter): Node
-  NimProc* = ref object of Node
-    prok*: ProcType
-    infix*: bool
-    arity*: int
+  # Node type to hold Nim primitive funcs and methods
+  Primitive* = proc(spry: Interpreter): Node
+  PrimFunc* = ref object of Node
+    primitive*: Primitive
+  PrimMeth* = ref object of PrimFunc
 
-  # An executable Ni function
+  # An executable Spry function
   Funk* = ref object of Blok
-    infix*: bool
     parent*: Activation
+    source*: StringVal # compressed
+  # An executable Spry method
+  Meth* = ref object of Funk
 
   # The activation record used by the Interpreter.
   # This is a so called Spaghetti Stack with only a parent pointer so that they
   # can get garbage collected if not referenced by any other record anymore.
   Activation* = ref object of Node  # It's a Node since we can reflect on it!
     last*: Node                     # Remember for infix
-    infixArg*: Node                 # Used to hold the infix arg, if pulled
+    self*: Node                     # Used to hold the infix arg for methods
     returned*: bool                 # Mark return
     parent*: Activation
     pos*: int          # Which node we are at
@@ -900,28 +909,24 @@ type
 
 
 # Forward declarations to make Nim happy
-proc funk*(spry: Interpreter, body: Blok, infix: bool): Node
+proc funk*(spry: Interpreter, body: Blok): Node
+proc meth*(spry: Interpreter, body: Blok): Node
 proc evalRoot*(spry: Interpreter, code: string): Node
 method eval*(self: Node, spry: Interpreter): Node {.base.}
 method evalDo*(self: Node, spry: Interpreter): Node {.base.}
 
 # String representations
-method `$`*(self: NimProc): string =
-  if self.infix:
-    result = "nimi"
-  else:
-    result = "nim"
-  return result & "(" & $self.arity & ")"
+method `$`*(self: PrimFunc): string =
+  "primitive-func"
+
+method `$`*(self: PrimMeth): string =
+  "primitive-method"
 
 method `$`*(self: Funk): string =
-  when true:
-    if self.infix:
-      result = "funci "
-    else:
-      result = "func "
-    return result & "[" & $self.nodes & "]"
-  else:
-    return "[" & $self.nodes & "]"
+  return "func [" & $self.nodes & "]"
+
+method `$`*(self: Meth): string =
+  return "method [" & $self.nodes & "]"
 
 method `$`*(self: Activation): string =
   return "activation [" & $self.body & " " & $self.pos & "]"
@@ -962,11 +967,17 @@ proc len*(self: Activation): int =
   self.body.nodes.len
 
 # Constructor procs
-proc newNimProc*(prok: ProcType, infix: bool, arity: int): NimProc =
-  NimProc(prok: prok, infix: infix, arity: arity)
+proc newPrimFunc*(primitive: Primitive): PrimFunc =
+  PrimFunc(primitive: primitive)
 
-proc newFunk*(body: Blok, infix: bool, parent: Activation): Funk =
-  Funk(nodes: body.nodes, infix: infix, parent: parent)
+proc newPrimMeth*(primitive: Primitive): PrimMeth =
+  PrimMeth(primitive: primitive)
+
+proc newFunk*(body: Blok, parent: Activation): Funk =
+  Funk(nodes: body.nodes, parent: parent)
+
+proc newMeth*(body: Blok, parent: Activation): Meth =
+  Meth(nodes: body.nodes, parent: parent)
 
 proc newRootActivation(root: Map): RootActivation =
   RootActivation(body: newBlok(), locals: root)
@@ -992,36 +1003,33 @@ iterator stack*(spry: Interpreter): Activation =
     yield activation
     activation = activation.parent
 
-proc getLocals(self: BlokActivation): Map =
+template getLocals*(self: BlokActivation): Map =
   ## Forces creation of the Map, only use if that is what you need
   if self.locals.isNil:
     self.locals = newMap()
   self.locals
 
-proc reset(self: Activation) =
+proc reset*(self: Activation) =
   self.returned = false
   self.pos = 0
 
-method hasLocals(self: Activation): bool {.base.} =
-  true
+template hasLocals(self: Activation): bool =
+  not (self of ParenActivation)
 
-method hasLocals(self: ParenActivation): bool =
-  false
-
-method outer(self: Activation): Activation {.base.} =
-  # Just go caller parent, which works for Paren and Blok since they are
-  # not lexical closures.
-  self.parent
-
-method outer(self: FunkActivation): Activation =
-  # Instead of looking at my parent, which would be the caller
-  # we go to the activation where I was created, thus a Funk is a lexical
-  # closure.
-  Funk(self.body).parent
+template outer(self: Activation): Activation =
+  if self of FunkActivation:
+    # Instead of looking at my parent, which would be the caller
+    # we go to the activation where I was created, thus a Funk is a lexical
+    # closure.
+    Funk(self.body).parent
+  else:
+    # Just go caller parent, which works for Paren and Blok since they are
+    # not lexical closures.
+    self.parent
 
 # Walk maps for lookups and binds. Skips parens since they do not have
 # locals and uses outer() that will let Funks go to their "lexical parent"
-iterator mapWalk(first: Activation): Activation =
+iterator mapWalk*(first: Activation): Activation =
   var activation = first
   while activation.notNil:
     while not activation.hasLocals():
@@ -1031,7 +1039,7 @@ iterator mapWalk(first: Activation): Activation =
 
 # Walk activations for pulling arguments, here we strictly use
 # parent to walk only up through the caller chain. Skipping paren activations.
-iterator callerWalk(first: Activation): Activation =
+iterator callerWalk*(first: Activation): Activation =
   var activation = first
   # First skip over immediate paren activations
   while not activation.hasLocals():
@@ -1047,116 +1055,136 @@ iterator callerWalk(first: Activation): Activation =
       activation = activation.parent
 
 # Methods supporting the Nim math primitives with coercions
-method `+`(a: Node, b: Node): Node {.inline,base.} =
+method `+`*(a: Node, b: Node): Node {.inline,base.} =
   raiseRuntimeException("Can not evaluate " & $a & " + " & $b)
-method `+`(a: IntVal, b: IntVal): Node {.inline.} =
+method `+`*(a: IntVal, b: IntVal): Node {.inline.} =
   newValue(a.value + b.value)
-method `+`(a: IntVal, b: FloatVal): Node {.inline.} =
+method `+`*(a: IntVal, b: FloatVal): Node {.inline.} =
   newValue(a.value.float + b.value)
-method `+`(a: FloatVal, b: IntVal): Node {.inline.} =
+method `+`*(a: FloatVal, b: IntVal): Node {.inline.} =
   newValue(a.value + b.value.float)
-method `+`(a: FloatVal, b: FloatVal): Node {.inline.} =
+method `+`*(a: FloatVal, b: FloatVal): Node {.inline.} =
   newValue(a.value + b.value)
 
-method `-`(a: Node, b: Node): Node {.inline,base.} =
+method `-`*(a: Node, b: Node): Node {.inline,base.} =
   raiseRuntimeException("Can not evaluate " & $a & " - " & $b)
-method `-`(a: IntVal, b: IntVal): Node {.inline.} =
+method `-`*(a: IntVal, b: IntVal): Node {.inline.} =
   newValue(a.value - b.value)
-method `-`(a: IntVal, b: FloatVal): Node {.inline.} =
+method `-`*(a: IntVal, b: FloatVal): Node {.inline.} =
   newValue(a.value.float - b.value)
-method `-`(a: FloatVal, b: IntVal): Node {.inline.} =
+method `-`*(a: FloatVal, b: IntVal): Node {.inline.} =
   newValue(a.value - b.value.float)
-method `-`(a: FloatVal, b: FloatVal): Node {.inline.} =
+method `-`*(a: FloatVal, b: FloatVal): Node {.inline.} =
   newValue(a.value - b.value)
 
-method `*`(a: Node, b: Node): Node {.inline,base.} =
+method `*`*(a: Node, b: Node): Node {.inline,base.} =
   raiseRuntimeException("Can not evaluate " & $a & " * " & $b)
-method `*`(a: IntVal, b: IntVal): Node {.inline.} =
+method `*`*(a: IntVal, b: IntVal): Node {.inline.} =
   newValue(a.value * b.value)
-method `*`(a: IntVal, b: FloatVal): Node {.inline.} =
+method `*`*(a: IntVal, b: FloatVal): Node {.inline.} =
   newValue(a.value.float * b.value)
-method `*`(a: FloatVal, b: IntVal): Node {.inline.} =
+method `*`*(a: FloatVal, b: IntVal): Node {.inline.} =
   newValue(a.value * b.value.float)
-method `*`(a: FloatVal, b: FloatVal): Node {.inline.} =
+method `*`*(a: FloatVal, b: FloatVal): Node {.inline.} =
   newValue(a.value * b.value)
 
-method `/`(a: Node, b: Node): Node {.inline,base.} =
+method `/`*(a: Node, b: Node): Node {.inline,base.} =
   raiseRuntimeException("Can not evaluate " & $a & " / " & $b)
-method `/`(a: IntVal, b: IntVal): Node {.inline.} =
+method `/`*(a: IntVal, b: IntVal): Node {.inline.} =
   newValue(a.value / b.value)
-method `/`(a: IntVal, b: FloatVal): Node {.inline.} =
+method `/`*(a: IntVal, b: FloatVal): Node {.inline.} =
   newValue(a.value.float / b.value)
-method `/`(a: FloatVal, b: IntVal): Node {.inline.} =
+method `/`*(a: FloatVal, b: IntVal): Node {.inline.} =
   newValue(a.value / b.value.float)
-method `/`(a,b: FloatVal): Node {.inline.} =
+method `/`*(a,b: FloatVal): Node {.inline.} =
   newValue(a.value / b.value)
 
-method `<`(a: Node, b: Node): Node {.inline,base.} =
+method `<`*(a: Node, b: Node): Node {.inline,base.} =
   raiseRuntimeException("Can not evaluate " & $a & " < " & $b)
-method `<`(a: IntVal, b: IntVal): Node {.inline.} =
+method `<`*(a: IntVal, b: IntVal): Node {.inline.} =
   newValue(a.value < b.value)
-method `<`(a: IntVal, b: FloatVal): Node {.inline.} =
+method `<`*(a: IntVal, b: FloatVal): Node {.inline.} =
   newValue(a.value.float < b.value)
-method `<`(a: FloatVal, b: IntVal): Node {.inline.} =
+method `<`*(a: FloatVal, b: IntVal): Node {.inline.} =
   newValue(a.value < b.value.float)
-method `<`(a,b: FloatVal): Node {.inline.} =
+method `<`*(a,b: FloatVal): Node {.inline.} =
   newValue(a.value < b.value)
-method `<`(a,b: StringVal): Node {.inline.} =
+method `<`*(a,b: StringVal): Node {.inline.} =
   newValue(a.value < b.value)
 
-method `<=`(a: Node, b: Node): Node {.inline,base.} =
+method `<=`*(a: Node, b: Node): Node {.inline,base.} =
   raiseRuntimeException("Can not evaluate " & $a & " <= " & $b)
-method `<=`(a: IntVal, b: IntVal): Node {.inline.} =
+method `<=`*(a: IntVal, b: IntVal): Node {.inline.} =
   newValue(a.value <= b.value)
-method `<=`(a: IntVal, b: FloatVal): Node {.inline.} =
+method `<=`*(a: IntVal, b: FloatVal): Node {.inline.} =
   newValue(a.value.float <= b.value)
-method `<=`(a: FloatVal, b: IntVal): Node {.inline.} =
+method `<=`*(a: FloatVal, b: IntVal): Node {.inline.} =
   newValue(a.value <= b.value.float)
-method `<=`(a,b: FloatVal): Node {.inline.} =
+method `<=`*(a,b: FloatVal): Node {.inline.} =
   newValue(a.value <= b.value)
-method `<=`(a,b: StringVal): Node {.inline.} =
+method `<=`*(a,b: StringVal): Node {.inline.} =
   newValue(a.value <= b.value)
 
-method `eq`(a: Node, b: Node): Node {.base.} =
+method `eq`*(a: Node, b: Node): Node {.base.} =
   raiseRuntimeException("Can not evaluate " & $a & " == " & $b)
-method `eq`(a: IntVal, b: IntVal): Node {.inline.} =
+method `eq`*(a: IntVal, b: IntVal): Node {.inline.} =
   newValue(a.value == b.value)
-method `eq`(a: IntVal, b: FloatVal): Node {.inline.} =
+method `eq`*(a: IntVal, b: FloatVal): Node {.inline.} =
   newValue(a.value.float == b.value)
-method `eq`(a: FloatVal, b: IntVal): Node {.inline.} =
+method `eq`*(a: FloatVal, b: IntVal): Node {.inline.} =
   newValue(a.value == b.value.float)
-method `eq`(a, b: FloatVal): Node {.inline.} =
+method `eq`*(a, b: FloatVal): Node {.inline.} =
   newValue(a.value == b.value)
-method `eq`(a, b: StringVal): Node {.inline.} =
+method `eq`*(a, b: StringVal): Node {.inline.} =
   newValue(a.value == b.value)
-method `eq`(a, b: BoolVal): Node {.inline.} =
+method `eq`*(a, b: BoolVal): Node {.inline.} =
   newValue(a.value == b.value)
+method `eq`*(a: Blok, b: Node): Node {.inline.} =
+  newValue(b of Blok and (a == b))
+method `eq`*(a: Word, b: Node): Node {.inline.} =
+  newValue(b of Word and (a.word == Word(b).word))
 
-method `&`(a: Node, b: Node): Node {.inline,base.} =
+
+method `&`*(a: Node, b: Node): Node {.inline,base.} =
   raiseRuntimeException("Can not evaluate " & $a & " & " & $b)
-method `&`(a, b: StringVal): Node {.inline.} =
+method `&`*(a, b: StringVal): Node {.inline.} =
   newValue(a.value & b.value)
-method `&`(a, b: SeqComposite): Node {.inline.} =
+method `&`*(a, b: SeqComposite): Node {.inline.} =
   a.add(b.nodes)
   return a
 
 # Support procs for eval()
 template pushActivation*(spry: Interpreter, activation: Activation) =
   activation.parent = spry.currentActivation
+  if activation.self.isNil and activation.parent.notNil:
+    activation.self = activation.parent.self
   spry.currentActivation = activation
 
 template popActivation*(spry: Interpreter) =
+  spry.lastSelf = spry.currentActivation.self
   spry.currentActivation = spry.currentActivation.parent
 
-proc atEnd*(self: Activation): bool {.inline.} =
+proc atEnd*(self: Activation): bool =
   self.pos == self.len
 
-proc next*(self: Activation): Node {.inline.} =
+proc next*(self: Activation): Node =
   if self.atEnd:
     raiseRuntimeException("End of current block, too few arguments?")
   else:
     result = self[self.pos]
     inc(self.pos)
+
+proc peek*(self: Activation): Node =
+  if self.atEnd:
+    return nil
+  else:
+    return self[self.pos]
+
+proc back*(self: Activation): Node =
+  if self.pos == 0:
+    return nil
+  else:
+    return self[self.pos - 1]
 
 method doReturn*(self: Activation, spry: Interpreter) {.base.} =
   spry.currentActivation = self.parent
@@ -1164,23 +1192,24 @@ method doReturn*(self: Activation, spry: Interpreter) {.base.} =
     spry.currentActivation.returned = true
 
 method doReturn*(self: FunkActivation, spry: Interpreter) =
-  spry.currentActivation = Funk(self.body).parent
+  # We don't set returned = true - this will stop the return search
+  spry.currentActivation = self.parent
 
-method isObject(self: Activation, spry: Interpreter): bool {.base.} =
+method isObject(self: Node, spry: Interpreter): bool {.base.} =
   false
 
-method isObject(self: BlokActivation, spry: Interpreter): bool =
-  self.locals.notNil and self.locals.tags.notNil and self.locals.tags.contains(spry.objectTag)
+method isObject(self: Map, spry: Interpreter): bool =
+  self.tags.notNil and self.tags.contains(spry.objectTag)
 
-method lookup(self: Activation, key: Node): Binding {.base.} =
+method lookup*(self: Activation, key: Node): Binding {.base.} =
   # Base implementation needed for dynamic dispatch to work
   nil
 
-method lookup(self: BlokActivation, key: Node): Binding =
+method lookup*(self: BlokActivation, key: Node): Binding =
   if self.locals.notNil:
     return self.locals.lookup(key)
 
-proc lookup(spry: Interpreter, key: Node): Binding =
+proc lookup*(spry: Interpreter, key: Node): Binding =
   ## Not sure why, but three methods didn't want to fly
   if (key of EvalModuleWord):
     let binding = spry.lookup(EvalModuleWord(key).module)
@@ -1206,76 +1235,102 @@ proc lookup(spry: Interpreter, key: Node): Binding =
       if hit.notNil:
         return hit
 
-proc self(spry: Interpreter): Map =
-  # Find first object, ending in the rootActivation
-  for activation in mapWalk(spry.currentActivation):
-    if activation.isObject(spry):
-      return BlokActivation(activation).getLocals()
+proc argParent*(spry: Interpreter): Activation =
+  # Return first activation up the parent chain that was a caller
+  for activation in callerWalk(spry.currentActivation):
+    return activation
 
 proc lookupSelf(spry: Interpreter, key: Node): Binding =
-  # Find first object, ending in the rootActivation
-  for activation in mapWalk(spry.currentActivation):
-    if activation.isObject(spry):
-      return activation.lookup(key)
-
-proc lookupLocal(spry: Interpreter, key: Node): Binding =
-  return spry.currentActivation.lookup(key)
+  let self = spry.currentActivation.self
+  if self of Map:
+    return Map(self).lookup(key)
 
 proc lookupParent(spry: Interpreter, key: Node): Binding =
   # Silly way of skipping to get to parent
   var inParent = false
   for activation in mapWalk(spry.currentActivation):
     if inParent:
-      return activation.lookup(key)
+      let hit = activation.lookup(key)
+      if hit.notNil:
+        return hit
     else:
       inParent = true
 
-method makeBinding(self: Activation, key: Node, val: Node): Binding {.base.} =
-  nil
 
-method makeBinding(self: BlokActivation, key: Node, val: Node): Binding =
+method makeBinding(self: Activation, key, val: Node): Binding {.base.} =
+  raiseRuntimeException("This activation should not be called with makeBinding")
+
+method makeBinding(self: BlokActivation, key, val: Node): Binding =
   self.getLocals().makeBinding(key, val)
 
-proc makeBinding(spry: Interpreter, key: Node, val: Node): Binding =
+
+method makeBindingInMap(spry: Interpreter, key, val: Node): Binding {.base.} =
   # Bind in first activation with locals
+  for activation in mapWalk(spry.currentActivation):
+    return BlokActivation(activation).getLocals().makeBinding(key, val)
+
+method makeBindingInMap(spry: Interpreter, key: EvalOuterWord, val: Node): Binding =
+  # Bind in first activation with locals outside this one
+  # or where we find an existing binding.
+  var inParent = false
+  var fallback: Activation
+  for activation in mapWalk(spry.currentActivation):
+    if inParent:
+      fallback = activation
+      if activation.lookup(key).notNil:
+        return BlokActivation(activation).locals.makeBinding(newEvalWord(key.word), val)
+    else:
+      inParent = true
+  return BlokActivation(fallback).getLocals().makeBinding(newEvalWord(key.word), val)
+
+method makeBindingInMap(spry: Interpreter, key: EvalWord, val: Node): Binding =
+  # Bind in first activation with locals
+  for activation in mapWalk(spry.currentActivation):
+    return BlokActivation(activation).getLocals().makeBinding(key, val)
+
+method makeBindingInMap(spry: Interpreter, key: EvalModuleWord, val: Node): Binding =
+  # Bind in module
+  let binding = spry.lookup(key.module)
+  if binding.notNil:
+    let module = binding.val
+    if module.notNil:
+      return Map(module).makeBinding(newEvalWord(key.word), val)
+
+
+proc makeLocalBinding(spry: Interpreter, key: Node, val: Node): Binding =
+  # Bind in first activation with locals. The root activation has root as its locals
   for activation in mapWalk(spry.currentActivation):
     return activation.makeBinding(key, val)
 
-proc setBinding*(spry: Interpreter, key: Node, value: Node): Binding =
-  result = spry.lookup(key)
-  if result.notNil:
-    result.val = value
-  else:
-    result = spry.makeBinding(key, value)
-
-method infix(self: Node): bool {.base.} =
-  false
-
-method infix(self: Funk): bool =
-  self.infix
-
-method infix(self: NimProc): bool =
-  self.infix
-
-method infix(self: Binding): bool =
-  return self.val.infix
-
-proc argParent(spry: Interpreter): Activation =
-  # Return first activation up the parent chain that was a caller
-  for activation in callerWalk(spry.currentActivation):
-    return activation
+proc assign*(spry: Interpreter, word: Node, val: Node) =
+  discard spry.makeBindingInMap(word, val)
 
 proc argInfix*(spry: Interpreter): Node =
-  ## Pull the infix arg
-  spry.currentActivation.last
+  ## Pull self
+  result = spry.currentActivation.last
+  spry.lastSelf = result
 
 proc arg*(spry: Interpreter): Node =
   ## Pull next argument from activation
   spry.currentActivation.next()
 
-template evalArgInfix*(spry: Interpreter): Node =
-  ## Pull the infix arg and eval
-  spry.currentActivation.last.eval(spry)
+proc evalArgInfix*(spry: Interpreter): Node =
+  ## Pull self and eval
+  result = spry.currentActivation.last.eval(spry)
+  spry.lastSelf = result
+
+proc self*(spry: Interpreter): Node =
+  if spry.currentActivation.self.isNil:
+    spry.currentActivation.self = spry.undefVal
+  spry.currentActivation.self
+
+proc setSelf*(spry: Interpreter): Node =
+  result = evalArgInfix(spry)
+  if result.isNil:
+    spry.currentActivation.self = spry.nilVal
+    result = spry.nilVal
+  else:
+    spry.currentActivation.self = result
 
 proc evalArg*(spry: Interpreter): Node =
   ## Pull next argument from activation and eval
@@ -1284,27 +1339,49 @@ proc evalArg*(spry: Interpreter): Node =
 proc makeWord*(self: Interpreter, word: string, value: Node) =
   discard self.root.makeBinding(newEvalWord(word), value)
 
-proc boolVal(val: bool, spry: Interpreter): Node =
+proc boolVal*(val: bool, spry: Interpreter): Node =
   if val:
     result = spry.trueVal
   else:
     result = spry.falseVal
 
-proc reify(word: LitWord): Node =
+proc reify*(word: LitWord): Node =
   newWord(word.word)
 
-# A template reducing boilerplate for registering nim primitives
-template nimPrim*(name: string, infix: bool, arity: int, body: stmt): stmt {.immediate, dirty.} =
-  spry.makeWord(name, newNimProc(
-    proc (spry: Interpreter): Node = body, infix, arity))
+# Two templates reducing boilerplate for registering nim primitives
+template nimFunc*(name: string, body: untyped): untyped {.dirty.} =
+  spry.makeWord(name, newPrimFunc(
+    proc (spry: Interpreter): Node = body))
+
+template nimMeth*(name: string, body: untyped): untyped {.dirty.} =
+  spry.makeWord(name, newPrimMeth(
+    proc (spry: Interpreter): Node = body))
 
 
-proc atEnd*(spry: Interpreter): bool {.inline.} =
-  return spry.currentActivation.atEnd
+proc funk*(spry: Interpreter, body: Blok): Node =
+  newFunk(body, spry.currentActivation)
 
+proc meth*(spry: Interpreter, body: Blok): Node =
+  newMeth(body, spry.currentActivation)
 
-proc funk*(spry: Interpreter, body: Blok, infix: bool): Node =
-  result = newFunk(body, infix, spry.currentActivation)
+method isMethod*(self: Node, spry: Interpreter):bool {.base.} =
+  false
+
+method isMethod*(self: PrimMeth, spry: Interpreter):bool =
+  true
+
+method isMethod*(self: Meth, spry: Interpreter):bool =
+  true
+
+method isMethod*(self: Binding, spry: Interpreter):bool =
+  return self.val.isMethod(spry)
+
+method isMethod*(self: EvalWord, spry: Interpreter):bool =
+  let binding = spry.lookup(self)
+  if binding.isNil:
+    return false
+  else:
+    return binding.val.isMethod(spry)
 
 method canEval*(self: Node, spry: Interpreter):bool {.base.} =
   false
@@ -1322,7 +1399,7 @@ method canEval*(self: Binding, spry: Interpreter):bool =
 method canEval*(self: Funk, spry: Interpreter):bool =
   true
 
-method canEval*(self: NimProc, spry: Interpreter):bool =
+method canEval*(self: PrimFunc, spry: Interpreter):bool =
   true
 
 method canEval*(self: EvalArgWord, spry: Interpreter):bool =
@@ -1340,109 +1417,134 @@ method canEval*(self: Curly, spry: Interpreter):bool =
   true
 
 # The heart of the interpreter - eval
-method eval(self: Node, spry: Interpreter): Node =
-  raiseRuntimeException("Should not happen")
+method eval*(self: Node, spry: Interpreter): Node =
+  raiseRuntimeException("Should not happen " & $self)
 
-method eval(self: Word, spry: Interpreter): Node =
+method eval*(self: Word, spry: Interpreter): Node =
   ## Look up
   let binding = spry.lookup(self)
   if binding.isNil:
     raiseRuntimeException("Word not found: " & $self)
   return binding.val.eval(spry)
 
-method eval(self: GetWord, spry: Interpreter): Node =
+method eval*(self: GetModuleWord, spry: Interpreter): Node =
   ## Look up only
   let hit = spry.lookup(self)
   if hit.isNil: spry.undefVal else: hit.val
 
-method eval(self: GetSelfWord, spry: Interpreter): Node =
+method eval*(self: GetWord, spry: Interpreter): Node =
+  ## Look up only
+  let hit = spry.lookup(self)
+  if hit.isNil: spry.undefVal else: hit.val
+
+method eval*(self: GetSelfWord, spry: Interpreter): Node =
   ## Look up only
   let hit = spry.lookupSelf(self)
   if hit.isNil: spry.undefVal else: hit.val
 
-method eval(self: GetOuterWord, spry: Interpreter): Node =
+method eval*(self: GetOuterWord, spry: Interpreter): Node =
   ## Look up only
   let hit = spry.lookupParent(self)
   if hit.isNil: spry.undefVal else: hit.val
 
-method eval(self: EvalWord, spry: Interpreter): Node =
-  ## Look up only
+method eval*(self: EvalModuleWord, spry: Interpreter): Node =
+  ## Look up and eval
   let hit = spry.lookup(self)
   if hit.isNil: spry.undefVal else: hit.val.eval(spry)
 
-method eval(self: EvalSelfWord, spry: Interpreter): Node =
-  ## Look up only
+method eval*(self: EvalWord, spry: Interpreter): Node =
+  ## Look up and eval
+  let hit = spry.lookup(self)
+  if hit.isNil:
+    spry.undefVal
+  else:
+    hit.val.eval(spry)
+
+method eval*(self: EvalSelfWord, spry: Interpreter): Node =
+  ## Look up and eval
   let hit = spry.lookupSelf(self)
   if hit.isNil: spry.undefVal else: hit.val.eval(spry)
 
-method eval(self: EvalOuterWord, spry: Interpreter): Node =
-  ## Look up only
+method eval*(self: EvalOuterWord, spry: Interpreter): Node =
+  ## Look up and eval
   let hit = spry.lookupParent(self)
   if hit.isNil: spry.undefVal else: hit.val.eval(spry)
 
-method eval(self: LitWord, spry: Interpreter): Node =
-  ## Evaluating a LitWord means creating a new word by stripping off \'
-  #newWord(self.word)
+method eval*(self: LitWord, spry: Interpreter): Node =
   self
 
-method eval(self: EvalArgWord, spry: Interpreter): Node =
-  var arg: Node
+method eval*(self: EvalArgWord, spry: Interpreter): Node =
   let previousActivation = spry.argParent()
-  if spry.currentActivation.body.infix and spry.currentActivation.infixArg.isNil:
-    arg = previousActivation.last
-    spry.currentActivation.infixArg = arg
-  else:
-    arg = previousActivation.next()
+  let arg = previousActivation.next()
   # This evaluation needs to be done in parent activation!
   let here = spry.currentActivation
   spry.currentActivation = previousActivation
-  let ev = arg.eval(spry)
+  result = arg.eval(spry)
   spry.currentActivation = here
-  discard spry.setBinding(self, ev)
-  return ev
+  discard spry.makeLocalBinding(self, result)
 
-method eval(self: GetArgWord, spry: Interpreter): Node =
-  var arg: Node
-  let previousActivation = spry.argParent()
-  if spry.currentActivation.body.infix and spry.currentActivation.infixArg.isNil:
-    arg = previousActivation.last
-    spry.currentActivation.infixArg = arg
-  else:
-    arg = previousActivation.next()
-  discard spry.setBinding(self, arg)
-  return arg
+method eval*(self: GetArgWord, spry: Interpreter): Node =
+  result = spry.argParent().next()
+  discard spry.makeLocalBinding(self, result)
 
-method eval(self: NimProc, spry: Interpreter): Node =
-  return self.prok(spry)
+method eval*(self: PrimFunc, spry: Interpreter): Node =
+  self.primitive(spry)
 
-proc eval(current: Activation, spry: Interpreter): Node =
+proc eval*(current: Activation, spry: Interpreter): Node =
   ## This is the inner chamber of the heart :)
   spry.pushActivation(current)
-  while not current.atEnd:
-    let next = current.next()
-    # Then we eval the node if it canEval
-    if next.canEval(spry):
+  while current.pos < current.len:
+    var next = current.next()
+    if current.pos == current.len:
+      # This was last node, no need to peek
       current.last = next.eval(spry)
       if current.returned:
         spry.currentActivation.doReturn(spry)
         return current.last
     else:
-      current.last = next
+      # We need to peek one ahead and if that is a method, we eval it instead
+      let peek = current.peek()
+      if peek.isMethod(spry):
+        current.last = next
+        next = current.next()
+      current.last = next.eval(spry)
+      if current.returned:
+        spry.currentActivation.doReturn(spry)
+        return current.last
   if current.last of Binding:
     current.last = Binding(current.last).val
   spry.popActivation()
   return current.last
 
-method eval(self: Funk, spry: Interpreter): Node =
+method eval*(self: Funk, spry: Interpreter): Node =
   newActivation(self).eval(spry)
 
-method eval(self: Paren, spry: Interpreter): Node =
+method eval*(self: Meth, spry: Interpreter): Node =
+  let act = newActivation(self)
+  discard setSelf(spry)
+  act.eval(spry)
+
+method eval*(self: Paren, spry: Interpreter): Node =
   newActivation(self).eval(spry)
 
-method eval(self: Curly, spry: Interpreter): Node =
+method eval*(self: Curly, spry: Interpreter): Node =
   let activation = newActivation(self)
   discard activation.eval(spry)
+  activation.returned = true
   return activation.locals
+
+method eval*(self: Blok, spry: Interpreter): Node =
+  self
+
+method eval*(self: Value, spry: Interpreter): Node =
+  self
+
+method eval*(self: Map, spry: Interpreter): Node =
+  self
+
+method eval*(self: Binding, spry: Interpreter): Node =
+  self.val.eval(spry)
+
 
 method evalDo(self: Node, spry: Interpreter): Node =
   raiseRuntimeException("Do only works for sequences")
@@ -1457,39 +1559,31 @@ method evalDo(self: Curly, spry: Interpreter): Node =
   # Calling do on a curly doesn't do the locals trick
   newActivation(self).eval(spry)
 
-method eval(self: Blok, spry: Interpreter): Node =
-  self
-
-method eval(self: Value, spry: Interpreter): Node =
-  self
-
-method eval(self: Map, spry: Interpreter): Node =
-  self
-
-method eval(self: Binding, spry: Interpreter): Node =
-  self.val
 
 proc eval*(spry: Interpreter, code: string): Node =
   ## Evaluate code in a new activation
   SeqComposite(spry.parser.parse(code)).evalDo(spry)
 
 proc evalRootDo*(self: Blok, spry: Interpreter): Node =
-  # Evaluate a node in the root activation
-  # Ugly... First pop the root activation
+  # Evaluate a node in the root activation when the root activation
+  # is the current activation. Ugly... First pop the root activation
   spry.popActivation()
-  # This will push it back and... pop it too
   spry.rootActivation.body = self
   spry.rootActivation.pos = 0
+  # This will push it back and... pop it too afterwards
   result = spry.rootActivation.eval(spry)
-  # ...so we need to put it back
+  # ...so we need to put it back again
   spry.pushActivation(spry.rootActivation)
 
 proc evalRoot*(spry: Interpreter, code: string): Node =
   ## Evaluate code in the root activation, presume it is a block
   Blok(spry.parser.parse(code)).evalRootDo(spry)
 
-template newLitWord(self: Interpreter, s:string): Node =
+template newLitWord*(self: Interpreter, s:string): Node =
   self.parser.newOrGetLitWord(s)
+
+proc litify*(spry: Interpreter, word: Node): Node =
+  spry.newLitWord($word)
 
 proc newInterpreter*(): Interpreter =
   let spry = Interpreter(root: newMap(), parser: newParser())
@@ -1503,463 +1597,18 @@ proc newInterpreter*(): Interpreter =
   spry.emptyBlok = newBlok()
   spry.objectTag = spry.newLitWord("object")
   spry.moduleTag = spry.newLitWord("module")
+  spry.modules = newBlok()
+
   spry.makeWord("false", spry.falseVal)
   spry.makeWord("true", spry.trueVal)
   spry.makeWord("undef", spry.undefVal)
   spry.makeWord("nil", spry.nilVal)
-  spry.makeWord("objectTag", spry.objectTag)
-  spry.makeWord("moduleTag", spry.moduleTag)
-
-  # Reflection words
-  # Access to current Activation
-  nimPrim("activation", false, 0):
-    spry.currentActivation
-
-  # Access to closest scope
-  nimPrim("locals", false, 0):
-    for activation in mapWalk(spry.currentActivation):
-      return BlokActivation(activation).getLocals()
-
-  # Access to closest object
-  nimPrim("self", false, 0):
-    result = self(spry)
-    if result.isNil:
-      result = spry.nilVal
-
-  # Access to root Map
-  nimPrim("root", false, 0):
-    spry.root
-
-  # Access to modules Block
-  spry.modules = newBlok()
   spry.makeWord("modules", spry.modules)
-
-  # Tags
-  nimPrim("tag:", true, 2):
-    result = evalArgInfix(spry)
-    let tag = evalArg(spry)
-    if result.tags.isNil:
-      result.tags = newBlok()
-    if tag of LitWord:
-      result.tags.add(reify(LitWord(tag)))
-    else:
-      result.tags.add(tag)
-  nimPrim("tag?", true, 2):
-    let node = evalArgInfix(spry)
-    let tag = evalArg(spry)
-    if node.tags.isNil:
-      return spry.falseVal
-    return boolVal(node.tags.contains(tag), spry)
-  nimPrim("tags", true, 1):
-    let node = evalArgInfix(spry)
-    if node.tags.isNil:
-      return spry.emptyBlok
-    return node.tags
-  nimPrim("tags:", true, 2):
-    result = evalArgInfix(spry)
-    result.tags = Blok(evalArg(spry))
-
-  # Lookups
-  nimPrim("?", true, 1):
-    let val = evalArgInfix(spry)
-    newValue(not (val of UndefVal))
-
-  # Assignments
-  nimPrim("=", true, 2):
-    result = evalArg(spry) # Perhaps we could make it eager here? Pulling in more?
-    discard spry.setBinding(argInfix(spry), result)
-
-  # Basic math
-  nimPrim("+", true, 2):  evalArgInfix(spry) + evalArg(spry)
-  nimPrim("-", true, 2):  evalArgInfix(spry) - evalArg(spry)
-  nimPrim("*", true, 2):  evalArgInfix(spry) * evalArg(spry)
-  nimPrim("/", true, 2):  evalArgInfix(spry) / evalArg(spry)
-
-  # Comparisons
-  nimPrim("<", true, 2):  evalArgInfix(spry) < evalArg(spry)
-  nimPrim(">", true, 2):  evalArgInfix(spry) > evalArg(spry)
-  nimPrim("<=", true, 2):  evalArgInfix(spry) <= evalArg(spry)
-  nimPrim(">=", true, 2):  evalArgInfix(spry) >= evalArg(spry)
-  nimPrim("==", true, 2):  eq(evalArgInfix(spry), evalArg(spry))
-  nimPrim("===", true, 2):  newValue(system.`==`(evalArgInfix(spry), evalArg(spry)))
-  nimPrim("!=", true, 2):  newValue(not BoolVal(eq(evalArgInfix(spry), evalArg(spry))).value)
-
-  # Booleans
-  nimPrim("not", false, 1): newValue(not BoolVal(evalArg(spry)).value)
-  nimPrim("and", true, 2):
-    let arg1 = BoolVal(evalArgInfix(spry)).value
-    let arg2 = arg(spry) # We need to make sure we consume this one, since "and" is shortcutting
-    newValue(arg1 and BoolVal(arg2.eval(spry)).value)
-  nimPrim("or", true, 2):
-    let arg1 = BoolVal(evalArgInfix(spry)).value
-    let arg2 = arg(spry) # We need to make sure we consume this one, since "or" is shortcutting
-    newValue(arg1 or BoolVal(arg2.eval(spry)).value)
-
-  # Concatenation
-  nimPrim(",", true, 2):
-    let val = evalArgInfix(spry)
-    if val of StringVal:
-      return val & evalArg(spry)
-    elif val of Blok:
-      return Blok(val).concat(SeqComposite(evalArg(spry)).nodes)
-    elif val of Paren:
-      return Paren(val).concat(SeqComposite(evalArg(spry)).nodes)
-    elif val of Curly:
-      return Curly(val).concat(SeqComposite(evalArg(spry)).nodes)
-
-  # Conversions
-  nimPrim("form", true, 1):
-    newValue(form(evalArgInfix(spry)))
-  nimPrim("commented", true, 1):
-    newValue(commented(evalArgInfix(spry)))
-  nimPrim("asFloat", true, 1):
-    let val = evalArgInfix(spry)
-    if val of FloatVal:
-      return val
-    elif val of IntVal:
-      return newValue(toFloat(IntVal(val).value))
-    else:
-      raiseRuntimeException("Can not convert to float")
-  nimPrim("asInt", true, 1):
-    let val = evalArgInfix(spry)
-    if val of IntVal:
-      return val
-    elif val of FloatVal:
-      return newValue(toInt(FloatVal(val).value))
-    else:
-      raiseRuntimeException("Can not convert to int")
-
-  # Basic blocks
-  # Rebol head/tail collides too much with Lisp IMHO so not sure what to do with
-  # those.
-  # at: and at:put: in Smalltalk seems to be pick/poke in Rebol.
-  # change/at is similar in Rebol but work at current pos.
-  # Spry uses at/put instead of pick/poke and read/write instead of change/at
-
-  # Left to think about is peek/poke (Rebol has no peek) and perhaps pick/drop
-  # The old C64 Basic had peek/poke for memory at:/at:put: ... :) Otherwise I
-  # generally associate peek with lookahead.
-  # Idea here: Use xxx? for infix funcs, arity 1, returning booleans
-  # ..and xxx! for infix funcs arity 0.
-  nimPrim("size", true, 1):
-    let comp = evalArgInfix(spry)
-    if comp of SeqComposite:
-      return newValue(SeqComposite(evalArgInfix(spry)).nodes.len)
-    elif comp of Map:
-      return newValue(Map(evalArgInfix(spry)).bindings.len)
-  nimPrim("at:", true, 2):
-    ## Ugly, but I can't get [] to work as methods...
-    let comp = evalArgInfix(spry)
-    if comp of SeqComposite:
-      return SeqComposite(comp)[evalArg(spry)]
-    elif comp of Map:
-      let key = evalArg(spry)
-      if key of LitWord:
-        return Map(comp)[reify(LitWord(key))]
-      else:
-        return Map(comp)[key]
-  nimPrim("at:put:", true, 3):
-    let comp = evalArgInfix(spry)
-    let key = evalArg(spry)
-    let val = evalArg(spry)
-    if comp of SeqComposite:
-      SeqComposite(comp)[key] = val
-    elif comp of Map:
-      if key of LitWord:
-        Map(comp)[reify(LitWord(key))] = val
-      else:
-        Map(comp)[key] = val
-    return comp
-  nimPrim("contains:", true, 2):
-    let comp = evalArgInfix(spry)
-    let key = evalArg(spry)
-    var k: Node
-    if key of LitWord:
-      k = reify(LitWord(key))
-    else:
-      k = key
-    if comp of SeqComposite:
-      return newValue(SeqComposite(comp).contains(k))
-    elif comp of Map:
-      return newValue(Map(comp).contains(k))
-    return comp
-  nimPrim("read", true, 1):
-    let comp = SeqComposite(evalArgInfix(spry))
-    comp[comp.pos]
-  nimPrim("write:", true, 2):
-    result = evalArgInfix(spry)
-    let comp = SeqComposite(result)
-    comp[comp.pos] = evalArg(spry)
-  nimPrim("add:", true, 2):
-    result = evalArgInfix(spry)
-    let comp = SeqComposite(result)
-    comp.add(evalArg(spry))
-  nimPrim("removeLast", true, 1):
-    result = evalArgInfix(spry)
-    let comp = SeqComposite(result)
-    comp.removeLast()
-
-  # Positioning
-  nimPrim("reset", true, 1):  SeqComposite(evalArgInfix(spry)).pos = 0 # Called change in Rebol
-  nimPrim("pos", true, 1):    newValue(SeqComposite(evalArgInfix(spry)).pos) # ? in Rebol
-  nimPrim("pos:", true, 2):    # ? in Rebol
-    result = evalArgInfix(spry)
-    let comp = SeqComposite(result)
-    comp.pos = IntVal(evalArg(spry)).value
-
-  # Streaming
-  nimPrim("next", true, 1):
-    let comp = SeqComposite(evalArgInfix(spry))
-    if comp.pos == comp.nodes.len:
-      return spry.undefVal
-    result = comp[comp.pos]
-    inc(comp.pos)
-  nimPrim("prev", true, 1):
-    let comp = SeqComposite(evalArgInfix(spry))
-    if comp.pos == 0:
-      return spry.undefVal
-    dec(comp.pos)
-    result = comp[comp.pos]
-  nimPrim("end?", true, 1):
-    let comp = SeqComposite(evalArgInfix(spry))
-    newValue(comp.pos == comp.nodes.len)
-
-  # These are like in Rebol/Smalltalk but we use infix like in Smalltalk
-  nimPrim("first", true, 1):  SeqComposite(evalArgInfix(spry))[0]
-  nimPrim("second", true, 1): SeqComposite(evalArgInfix(spry))[1]
-  nimPrim("third", true, 1):  SeqComposite(evalArgInfix(spry))[2]
-  nimPrim("fourth", true, 1): SeqComposite(evalArgInfix(spry))[3]
-  nimPrim("fifth", true, 1):  SeqComposite(evalArgInfix(spry))[4]
-  nimPrim("last", true, 1):
-    SeqComposite(evalArgInfix(spry)).nodes[^1]
-
-  # Collection primitives
-  nimPrim("do:", true, 2):
-    let blk1 = SeqComposite(evalArgInfix(spry))
-    let blk2 = Blok(evalArg(spry))
-    let current = spry.currentActivation
-    # Ugly hack for now, we trick the activation into holding
-    # each in pos 0
-    let orig = current.body.nodes[0]
-    let oldpos = current.pos
-    current.pos = 0
-    # We create and reuse a single activation
-    let activation = newActivation(blk2)
-    for each in blk1.nodes:
-      current.body.nodes[0] = each
-      # evalDo will increase pos, but we set it back below
-      discard activation.eval(spry)
-      activation.reset()
-      current.pos = 0
-      # Or else non local returns don't work :)
-      if current.returned:
-        # Reset our trick
-        current.body.nodes[0] = orig
-        current.pos = oldpos
-        return current.last
-    # Reset our trick
-    current.body.nodes[0] = orig
-    current.pos = oldpos
-    return blk1
-
-  # Collection primitives
-  nimPrim("sum", true, 1):
-    let blk = SeqComposite(evalArgInfix(spry))
-    var sum:int = 0
-    var sum2:float = 0
-    var foundFloat = false
-    for each in blk.nodes:
-      if each of IntVal:
-        sum = sum + IntVal(each).value
-      elif each of FloatVal:
-        foundFloat = true
-        sum2 = sum2 + FloatVal(each).value
-      else:
-        raiseRuntimeException("Block contained something other than an int or float, can not sum.")
-    if foundFloat:
-      return newValue(sum2 + sum.float)
-    else:
-      return newValue(sum)
-
-  #discard root.makeBinding("bind", newNimProc(primBind, false, 1))
-  nimPrim("func", false, 1):    spry.funk(Blok(evalArg(spry)), false)
-  nimPrim("funci", false, 1):   spry.funk(Blok(evalArg(spry)), true)
-  nimPrim("do", false, 1):      evalArg(spry).evalDo(spry)
-  nimPrim("^", false, 1):       arg(spry)
-  nimPrim("eva", false, 1):     evalArg(spry)
-  nimPrim("eval", false, 1):    evalArg(spry).eval(spry)
-  nimPrim("parse", false, 1):   spry.parser.parse(StringVal(evalArg(spry)).value)
-
-  # Word conversions
-  nimPrim("reify", false, 1):
-    reify(LitWord(evalArg(spry)))
-  nimPrim("sym", false, 1):
-    spry.newLitWord($evalArg(spry))
-  nimPrim("litword", false, 1):
-    spry.newLitWord(StringVal(evalArg(spry)).value)
-  nimPrim("word", false, 1):
-    newWord(StringVal(evalArg(spry)).value)
-
-  # Cloning
-  nimPrim("clone", true, 1):    evalArgInfix(spry).clone()
-
-  # Serialize & deserialize
-  nimPrim("serialize", false, 1):
-    newValue($evalArg(spry))
-  nimPrim("deserialize", false, 1):
-    spry.parser.parse(StringVal(evalArg(spry)).value)
-
-  # Control structures
-  nimPrim("return", false, 1):
-    spry.currentActivation.returned = true
-    evalArg(spry)
-  nimPrim("if", false, 2):
-    if BoolVal(evalArg(spry)).value:
-      return SeqComposite(evalArg(spry)).evalDo(spry)
-    else:
-      discard arg(spry) # Consume the block
-      return spry.nilVal
-  nimPrim("if:", true, 2):
-    if BoolVal(evalArgInfix(spry)).value:
-      return SeqComposite(evalArg(spry)).evalDo(spry)
-    else:
-      discard arg(spry) # Consume the block
-      return spry.nilVal
-  nimPrim("ifNot:", true, 2):
-    if BoolVal(evalArgInfix(spry)).value:
-      discard arg(spry) # Consume the block
-      return spry.nilVal
-    else:
-      return SeqComposite(evalArg(spry)).evalDo(spry)
-  nimPrim("ifelse", false, 3):
-    if BoolVal(evalArg(spry)).value:
-      let res = SeqComposite(evalArg(spry)).evalDo(spry)
-      discard arg(spry) # Consume second block
-      return res
-    else:
-      discard arg(spry) # Consume first block
-      return SeqComposite(evalArg(spry)).evalDo(spry)
-  nimPrim("if:else:", true, 3):
-    if BoolVal(evalArgInfix(spry)).value:
-      let res = SeqComposite(evalArg(spry)).evalDo(spry)
-      discard arg(spry) # Consume second block
-      return res
-    else:
-      discard arg(spry) # Consume first block
-      return SeqComposite(evalArg(spry)).evalDo(spry)
-  nimPrim("ifNot:else:", true, 3):
-    if BoolVal(evalArgInfix(spry)).value:
-      discard arg(spry) # Consume first block
-      return SeqComposite(evalArg(spry)).evalDo(spry)
-    else:
-      let res = SeqComposite(evalArg(spry)).evalDo(spry)
-      discard arg(spry) # Consume second block
-      return res
-  nimPrim("timesRepeat:", true, 2):
-    let times = IntVal(evalArgInfix(spry)).value
-    let fn = SeqComposite(evalArg(spry))
-    for i in 1 .. times:
-      result = fn.evalDo(spry)
-      # Or else non local returns don't work :)
-      if spry.currentActivation.returned:
-        return
-  nimPrim("to:do:", true, 3):
-    let self = IntVal(evalArgInfix(spry))
-    let frm = self.value
-    let to = IntVal(evalArg(spry)).value
-    let fn = Blok(evalArg(spry))
-    let current = spry.currentActivation
-    # Ugly hack for now, we trick the activation into holding
-    # each in pos 0
-    let orig = current.body.nodes[0]
-    let oldpos = current.pos
-    current.pos = 0
-    # We create and reuse a single activation
-    let activation = newActivation(fn)
-    for i in frm .. to:
-      current.body.nodes[0] = newValue(i)
-      # evalDo will increase pos, but we set it back below
-      discard activation.eval(spry)
-      activation.reset()
-      current.pos = 0
-      # Or else non local returns don't work :)
-      if spry.currentActivation.returned:
-        # Reset our trick
-        current.body.nodes[0] = orig
-        current.pos = oldpos
-        return
-    # Reset our trick
-    current.body.nodes[0] = orig
-    current.pos = oldpos
-    return self
-
-  nimPrim("whileTrue:", true, 2):
-    let blk1 = SeqComposite(evalArgInfix(spry))
-    let blk2 = SeqComposite(evalArg(spry))
-    while BoolVal(blk1.evalDo(spry)).value:
-      result = blk2.evalDo(spry)
-      # Or else non local returns don't work :)
-      if spry.currentActivation.returned:
-        return
-  nimPrim("whileFalse:", true, 2):
-    let blk1 = SeqComposite(evalArgInfix(spry))
-    let blk2 = SeqComposite(evalArg(spry))
-    while not BoolVal(blk1.evalDo(spry)).value:
-      result = blk2.evalDo(spry)
-      # Or else non local returns don't work :)
-      if spry.currentActivation.returned:
-        return
-
-
-  # Parallel
-  #nimPrim("parallel", true, 1):
-  #  let comp = SeqComposite(evalArgInfix(spry))
-  #  parallel:
-  #    for node in comp.nodes:
-  #      let blk = Blok(node)
-  #      discard spawn blk.evalDo(spry)
-
-  # Some scripting prims
-  nimPrim("quit", false, 1):    quit(IntVal(evalArg(spry)).value)
 
   # Create and push root activation
   spry.rootActivation = newRootActivation(spry.root)
   spry.pushActivation(spry.rootActivation)
 
-  # Library code
-  discard spry.evalRoot """[
-    # Trivial error function
-    error = func [echo :msg quit 1]
-
-    # Trivial assert
-    assert = func [:x ifNot: [error "Oops, assertion failed"] return x]
-
-    # Objects
-    object = func [ :map tag: objectTag return map ]
-    module = func [ object :map tag: moduleTag return map ]
-
-    # Collections
-    sprydo: = funci [:blk :fun
-      blk reset
-      [blk end?] whileFalse: [do fun (blk next)]
-    ]
-
-    detect: = funci [:blk :pred
-      blk reset
-      [blk end?] whileFalse: [
-        n = (blk next)
-        if do pred n [return n]]
-      return nil
-    ]
-
-    select: = funci [:blk :pred
-      result = ([] clone)
-      blk reset
-      [blk end?] whileFalse: [
-        n = (blk next)
-        if do pred n [result add: n]]
-      return result]
-  ]"""
 
 when isMainModule and not defined(js):
   # Just run a given file as argument, the hash-bang trick works also
@@ -1967,7 +1616,3 @@ when isMainModule and not defined(js):
   let fn = commandLineParams()[0]
   let code = readFile(fn)
   discard newInterpreter().eval("[" & code & "]")
-
-
-
-

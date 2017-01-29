@@ -1,10 +1,10 @@
-import lz4
+import snappy
 import spryvm
 
 # Spry compression
 proc addCompress*(spry: Interpreter) =
   # Compression of string
-  nimPrim("compress", false, 1):
-    newValue(compress(StringVal(evalArg(spry)).value, level=1))
-  nimPrim("uncompress", false, 1):
+  nimFunc("compress"):
+    newValue(compress(StringVal(evalArg(spry)).value))
+  nimFunc("uncompress"):
     newValue(uncompress(StringVal(evalArg(spry)).value))

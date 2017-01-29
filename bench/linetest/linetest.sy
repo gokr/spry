@@ -1,0 +1,8 @@
+#!/usr/bin/env spry
+
+lines = []
+file = openMemfile "lotslines"
+file linesDo: [lines add: :l]
+file closeMemfile
+
+echo ("Lines:" , (lines size print))

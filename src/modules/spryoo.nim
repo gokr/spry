@@ -3,49 +3,45 @@ import spryvm, sequtils
 # An executable Spry polymorphic function
 type
   # nodes hold Funk instances
-  PolyFunk* = ref object of Funk
+  PolyMeth* = ref object of Meth
 
-proc newPolyFunk*(funks: Blok, infix: bool, parent: Activation): Funk =
-  PolyFunk(nodes: funks.nodes, infix: infix, parent: parent)
+proc newPolyMeth*(methods: Blok, parent: Activation): Funk =
+  PolyMeth(nodes: methods.nodes, parent: parent)
 
-proc polyfunk*(funks: Blok, infix: bool, spry: Interpreter): Node =
-  newPolyFunk(funks, infix, spry.currentActivation)
+proc polymeth*(methods: Blok, spry: Interpreter): Node =
+  newPolyMeth(methods, spry.currentActivation)
 
-method `$`*(self: PolyFunk): string =
-  if self.infix:
-    result = "polyfunci "
-  else:
-    result = "polyfunc "
-  return result & "[" & $self.nodes & "]"
+method `$`*(self: PolyMeth): string =
+  return "polymethod [" & $self.nodes & "]"
 
-method eval(self: PolyFunk, spry: Interpreter): Node =
+method eval*(self: PolyMeth, spry: Interpreter): Node =
   let receiver = evalArgInfix(spry)
   if receiver.isNil:
     return spry.nilVal
   let tags = receiver.tags
   if tags.isNil:
     return spry.nilVal
-  let tagNodes = tags.nodes
-  if tagNodes.isNil:
+  let nodeTags = tags.nodes
+  if nodeTags.isNil:
     return spry.nilVal
   for n in self.nodes:
-    let fun = Funk(n)
-    if any(tagNodes, proc (x: Node): bool = return fun.tags.nodes.contains(x)):
-      return fun.eval(spry)
+    let funTags = Funk(n).tags.nodes
+    for nt in nodeTags:
+      if funTags.contains(nt):
+        return Funk(n).eval(spry)
+    #if any(nodeTags, proc (x: Node): bool = return fun.tags.nodes.contains(x)):
+    #  return fun.eval(spry)
   return spry.nilVal
 
 # Spry OO module
 proc addOO*(spry: Interpreter) =
-  # Create a polyfunc with a block of tagged funcs/funcis as argument
-  nimPrim("polyfunc", false, 1):
-    polyfunk(Blok(evalArg(spry)), false, spry)
+  # Create a polymeth with a block of tagged methods as argument
+  nimFunc("polymethod"):
+    polymeth(Blok(evalArg(spry)), spry)
 
-  nimPrim("polyfunci", false, 1):
-    polyfunk(Blok(evalArg(spry)), true, spry)
-
-  # Shorthand for making a tagged funci
-  nimPrim("->", true, 2):
+  # Shorthand for making a tagged method
+  nimMeth("->"):
     let tags = evalArgInfix(spry)
-    let result = spry.funk(Blok(evalArg(spry)), true)
+    result = spry.meth(Blok(evalArg(spry)))
     result.tags = Blok(tags)
-    return result
+

@@ -34,21 +34,13 @@ for the moment **I only use Linux for Spry development**. The shell scripts can 
 in nimscript and thus everything can be fully cross platform.
 
 ### Vagrant
-Included is a VagrantFile for Ubuntu 12.04. Just do `vagrant up` and `vagrant ssh` into it to find spry installed. Test with `ispry`.
+Included is a VagrantFile for Ubuntu 16.04. Just do `vagrant up` and `vagrant ssh` into it to find spry installed. Test with `ispry`.
 
 ### Linux
-
 1. Get [Nim](http://www.nim-lang.org)! I recommend following the [instructions at the bottom](http://nim-lang.org/download.html).
 2. Install Nimble, [the Nim package manager](https://github.com/nim-lang/nimble). Yeah, its very nice and simple to use. Its not really needed but makes some things easier.
-3. Clone this repo. Then `cd spry/src && ./test.sh`. If it ends with "ALL GOOD"... **its all good :)**
-
-
-The tests in `sprytest.nim` is simply a range of asserts verifying that small Spry
-programs execute and produce the expected output.
-
-At this point you can use nimble to build & install Spry:
-
-	nimble install
+3. Clone this repo. Then run `nimble install` in it.
+4. Finally run all tests using `cd tests && ./run.sh` (runjs.sh is for running them in nodejs, but not fully green right now)
 
 For the other platforms the steps are basically the same.
 
@@ -76,17 +68,22 @@ Rebol3, 20x slower than Python and 100x slower than Pharo Smalltalk. :) You can 
 to see yourself. With a bit of work removing unneeded silly stuff in the interpreter it should
 be reasonable to reach Rebol3 in performance.
 
-4. Ok, so at this point **you want to learn a bit more how Spry works**. Not much material around
-yet since its evolving but you can:
+4. Ok, so at this point **you want to learn a bit more how Spry works**. Not much material around yet since its evolving but you can:
 
-* Look at `src/sprytest.nim` which is a series of low level Spry code snippets and expected output.
+* On Linux or OSX you should be able to build a trivial "IDE", see below.
+* Look at `tests/*.nim` which is a series of low level Spry code snippets and expected output.
 * Look at the various `samples`
 * Try running `tutorial1.sy` in tutorials, which is just showing we can do interactive tutorials with the repl
 * Try out the interactive REPL by running `ispry`
 * And of course, read the source code `spryvm.nim`. Its hopefully not that messy.
 
-## History
+## IDE
+There is also a beginning of a Spry VM module (src/modules/spryui.nim) for making GUI stuff using the excellent [libui](http://github.com/andlabs/libui) project. A small trivial little IDE written in Spry itself exists and you can build it on Linux or OSX.
 
+* **OSX:** Just run `./makeideosx.sh` in `src` and if you are lucky that produces a binary file called `ideosx`. Try running it with `./ideosx`.
+* **Linux:** Just run `./makeideo.sh` in `src` and if you are lucky that produces a binary file called `ide`. Try running it with `./ide`.
+
+## History
 Spry started out as a Rebol inspired interpreter - since I felt the homoiconicity
 of Rebol was interesting to experiment with. Lispish, but not insanely filled
 with parenthesis :)

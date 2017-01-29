@@ -4,20 +4,23 @@ import os
 
 # Spry IO module
 proc addIO*(spry: Interpreter) =
-  # IO
-  nimPrim("echo", false, 1):
-    echo(form(evalArg(spry)))
-  nimPrim("probe", false, 1):
-    result = arg(spry)
-    echo(form(result))
-  nimPrim("existsFile", false, 1):
+  # stdin/stdout
+  nimFunc("echo"):
+    result = spry.nilVal
+    echo(print(evalArg(spry)))
+  nimFunc("probe"):
+    result = evalArg(spry)
+    echo($result)
+  
+  # Files
+  nimFunc("existsFile"):
     let fn = StringVal(evalArg(spry)).value
     newValue(existsFile(fn))
-  nimPrim("readFile", false, 1):
+  nimFunc("readFile"):
     let fn = StringVal(evalArg(spry)).value
     let contents = readFile(fn).string
     newValue(contents)
-  nimPrim("writeFile", false, 2):
+  nimFunc("writeFile"):
     let fn = StringVal(evalArg(spry)).value
     result = evalArg(spry)
     writeFile(fn, StringVal(result).value)

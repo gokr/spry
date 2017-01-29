@@ -17,7 +17,9 @@ when defined(readLine):
 import spryvm
 
 # Spry extra modules, as much as possible!
-import spryextend, sprymath, spryos, spryio, sprythread, spryoo, sprydebug, sprycompress, sprystring, sprymodules
+import sprycore, spryextend, sprymath, spryos, spryio, sprythread, spryoo, sprydebug,
+  sprycompress, sprystring, sprymodules, spryreflect, sprymemfile, spryblock,
+  sprynet, spryjson, sprysmtp
 
 # Not included by default
 # import sprypython
@@ -45,6 +47,7 @@ proc getLine(prompt: string): string =
 proc main() =
   # Let's create a Spry interpreter. It also holds all state.
   let spry = newInterpreter()
+  spry.addCore()
   spry.addExtend()
   spry.addMath()
   spry.addOS()
@@ -56,7 +59,14 @@ proc main() =
   spry.addCompress()
   spry.addString()
   spry.addModules()
-
+  spry.addReflect()
+  spry.addMemfile()
+#  spry.addUI()
+  spry.addBlock()
+  spry.addNet()
+  spry.addJSON()
+  spry.addSMTP()
+#  spry.addSophia()
   var
     lines, stashed, fileLines = newSeq[string]()
     suspended: bool = true
@@ -110,11 +120,10 @@ proc main() =
       lines = newSeq[string]()
       try:
         # Let the interpreter eval the code. We need to eval whatever we
-        # get (ispry acting as a func) - but we also need to use parens or
-        # it may get weird. The surrounding block is just because we only
+        # get (ispry acting as a func). The surrounding block is just because we only
         # want to pass one Node.
         var result = spry.evalRoot("[" & code & "]")
-        discard spry.setBinding(newEvalWord("@"), result)
+        #discard spry.setBinding(newEvalWord("@"), result)
         var output = $result
         # Print any result
         if output.isNil:

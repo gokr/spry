@@ -1,0 +1,14 @@
+#!/usr/bin/env spry
+
+# Do it over and over :)
+files = []
+5000 repeat: [
+  # Load a file into a string
+  str = readFile "onemb" 
+  echo ("Str: ", (str size print))
+  # Stuff it in a block
+  files add: str
+  # Report size so far
+  echo ("Files: ", (files size print))
+]
+

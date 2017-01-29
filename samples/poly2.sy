@@ -1,0 +1,28 @@
+#!/usr/bin/env spry
+
+# Create an Apple object
+apple = object [apple] {color = "green" price = 12}
+
+# Create a Red Apple object
+red = object [red] (apple clone)
+
+# Change it to be red
+red::color = "red"
+
+# Create a polyfunc price that is polymorphic
+price = polymethod reduce [
+  [apple] -> [ "Apple costs ", (@price print)]         # Base for Apples
+  [red] -> [ "Red apple costs " , (@price * 3 print)]  # For Red Apples
+]
+
+echo apple
+echo (apple tags)
+echo apple::color
+
+echo red
+echo (red tags)
+echo red::color
+
+echo (apple price)
+echo (red price)
+

@@ -1,0 +1,13 @@
+b = []
+200000 repeat: [b add: (10 random)]
+
+echo ([b select: [:x > 8]] timeToRun)
+echo ([b spryselect: [:x > 8]] timeToRun)
+echo ([b spryselectdo: [:x > 8]] timeToRun)
+
+a = (b select: [:x > 8])
+c = (b spryselect: [:x > 8])
+d = (b spryselectdo: [:x > 8])
+
+assert (a == c)
+assert (a == d)

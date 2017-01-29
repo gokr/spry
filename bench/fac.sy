@@ -1,6 +1,4 @@
 #!/usr/bin/env spry
 
 # Do it over and over :)
-100000 timesRepeat: [12 fac]
-
-echo "hey"
+100000 repeat: [12 fac]

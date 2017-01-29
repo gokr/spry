@@ -3,4 +3,7 @@ ispry
 sprytest
 sprymicro
 spryvm
+ide.nim
+ide
+ideosx
 .ispry-history

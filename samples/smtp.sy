@@ -1,0 +1,16 @@
+#!/usr/bin/env spry
+
+# Just send an email using this many arg single func :)
+# You need to edit this stuff before running!!!!!!
+
+sendMailSubject: "Some cheezy subject"
+body: "Hey!\x0AThere you are.\x0Abye" # \x0A creates LFs
+to: ["someone@foo.com", "someone@foo.com"]
+cc: ["someone2@foo.com", "someone2@foo.com"]
+from: "you@foo.com"
+recipients: ["someone@"] # These are the ones actually sent to
+server: "my.smtp.server"
+user: "your-smtp-server-username"
+password: "your-password-to-the-smtp-server"
+port: 465                # For SSL typically
+ssl: true                # 

@@ -1,4 +1,4 @@
-./bench.sh
+./factorial.sh
 echo
 echo "Rebol3:"
 /usr/bin/time -v ./r3 factorial.r

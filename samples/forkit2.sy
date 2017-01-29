@@ -1,0 +1,10 @@
+#!/usr/bin/env spry
+# Simpler variant of forkit.sy where we utilize the fact that
+# spawn deep copies the current interpreter so we can actually
+# define factorial func in this interpreter and use it in the
+# spawned code block.
+factorial = func [:n > 0 then: [n * factorial (n - 1)] else: [1]]
+10 repeat: [spawn [echo (factorial (20 random))]]
+echo "Spawned off 10 threads"
+sleep 1000
+echo "Done sleeping, bye"
