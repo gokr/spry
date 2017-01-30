@@ -165,7 +165,11 @@ method `$`*(self: StringVal): string =
   escape(self.value)
 
 method `$`*(self: PointerVal): string =
-  repr(self.value)
+  # Fallback if missing
+  when defined(js):
+    echo "repr not available in js"
+  else:
+    repr(self)
 
 method `$`*(self: TrueVal): string =
   "true"
