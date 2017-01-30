@@ -77,6 +77,7 @@ for kind, key, val in getopt():
       writeVersion()
       quit()
     of "eval", "e": eval = true
+    else: discard
   of cmdEnd: assert(false) # cannot happen
 
 if eval:
