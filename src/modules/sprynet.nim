@@ -10,4 +10,5 @@ proc addNet*(spry: Interpreter) =
     newValue(fn)
   nimFunc("getUrl"):
     let url = StringVal(evalArg(spry)).value
-    newValue(getContent(url))
+    let client = newHttpClient()
+    newValue(client.getContent(url))
