@@ -246,7 +246,7 @@ method `$`*(self: KeyWord): string =
 method hash*(self: Node): Hash {.base.} =
   raiseRuntimeException("Nodes need to implement hash")
 
-method `==`*(self: Node, other: Node): bool {.base.} =
+method `==`*(self: Node, other: Node): bool {.base,noSideEffect.} =
   # Fallback to identity check
   #system.`==`(self, other)
   raiseRuntimeException("Nodes need to implement ==")
