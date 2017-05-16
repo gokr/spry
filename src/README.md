@@ -3,13 +3,11 @@ Files and what they are.
 # Core Spry
 
 * spryvm.nim    - The Spry interpreter and parser.
-* sprytest.nim  - Accompanying tests for the Spry interpreter
 
 # IDE experiment
 
 * makeide.sh    - Compiles and creates ide.nim (from ide.sy) on Linux a single binary IDE
 * ide.sy        - Source code for the IDE
-* libui.a       - Static library of libui, bundled just for now
 
 # Spry executables
 
