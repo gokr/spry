@@ -26,6 +26,7 @@ proc addSMTP*(spry: Interpreter) =
 
     # Send it
     var msg = createMessage(subject, body, to, cc)
-    var smtpConn = connect(server, Port port, ssl, false)
+    let smtpConn = newSmtp(useSsl = ssl) 
+    smtpConn.connect(server, Port port)
     smtpConn.auth(user, password)
     smtpConn.sendmail(frm, recipients, $msg)
