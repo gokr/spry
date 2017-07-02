@@ -1,6 +1,6 @@
 import spryvm
 
-import ui
+import ui/rawui
 
 type
   ControlNode = ref object of Value
@@ -60,22 +60,22 @@ proc onShouldQuit*(data: pointer): cint {.cdecl.} =
   discard node.onShouldQuit.evalDo(node.spry)
 
 # Spry UI module
-proc addUI*(spry: Interpreter) =
+proc addRawUI*(spry: Interpreter) =
   # libui
   nimFunc("uiInit"):
-    var o: ui.InitOptions
+    var o: rawui.InitOptions
     var err: cstring
-    err = ui.init(addr(o))
+    err = rawui.init(addr(o))
     if err != nil:
       echo "error initializing ui: ", err
       freeInitError(err)
       return
   nimFunc("uiMain"):
-    ui.main()
+    rawui.main()
   nimFunc("uiQuit"):
-    ui.quit()
+    rawui.quit()
   nimFunc("uiUninit"):
-    ui.uninit()
+    rawui.uninit()
 
   # File dialogs
   nimMeth("openFile"):

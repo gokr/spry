@@ -5,7 +5,7 @@ cat << EOF > ./ide.nim
 
 import spryvm, sprycore, sprylib, spryextend, sprymath, spryos, spryio, sprythread,
  spryoo, sprydebug, sprycompress, sprystring, sprymodules, spryreflect,
- spryblock, sprynet, spryui
+ spryblock, sprynet, spryrawui
 
 var spry = newInterpreter()
 
@@ -25,7 +25,7 @@ spry.addReflect()
 spry.addBlock()
 spry.addNet()
 spry.addLib()
-spry.addUI()
+spry.addRawUI()
 
 discard spry.eval("""[
 EOF

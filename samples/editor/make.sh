@@ -10,7 +10,7 @@ cat << EOF > ./editor.nim
 
 import spryvm, sprycore, sprylib, spryextend, spryos, spryio,
  spryoo, sprydebug, sprystring, sprymodules, spryreflect,
- spryblock, spryui
+ spryblock, spryrawui
 
 var spry = newInterpreter()
 
@@ -26,7 +26,7 @@ spry.addModules()
 spry.addReflect()
 spry.addBlock()
 spry.addLib()
-spry.addUI()
+spry.addRawUI()
 
 discard spry.eval("""[
 EOF
@@ -40,7 +40,14 @@ nim --verbosity:2  --dynlibOverride:ui  --passL:"-rdynamic ../../lib/libui.a -lg
 #nim --verbosity:2 -d:release --dynlibOverride:ui  --passL:"-rdynamic ../../lib/libui.a -lgtk-3 -lgdk-3 -lpangocairo-1.0 -lpango-1.0 -latk-1.0 -lcairo-gobject -lcairo -lgdk_pixbuf-2.0 -lgio-2.0 -lgobject-2.0 -lglib-2.0" c editor
 
 # Strip
-#strip -s editor
+strip -s editor
 
-# Pack
-#upx --best editor
+# Use upx if we have it
+command -v upxx >/dev/null 2>&1 && {
+  upx --best editor
+}
+
+# Done
+echo "Produced: ./editor"
+file editor
+

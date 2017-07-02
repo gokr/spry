@@ -15,8 +15,6 @@ This is the [Spry language](http://sprylang.org), inspired by Rebol/Smalltalk/Se
 * Homoiconic which means code and data has the same form
 * Meant to be 100% live and support interactive development
 
-For the moment Spry is procedural, but an object model facilitating polymorphic dispatch is planned.
-
 Here are [my articles about Spry](http://goran.krampe.se/category/spry)
 
 ## Why would I play with this?
@@ -78,7 +76,7 @@ be reasonable to reach Rebol3 in performance.
 * And of course, read the source code `spryvm.nim`. Its hopefully not that messy.
 
 ## IDE
-There is also a beginning of a Spry VM module (src/modules/spryui.nim) for making GUI stuff using the excellent [libui](http://github.com/andlabs/libui) project. A small trivial little IDE written in Spry itself exists and you can build it on Linux or OSX.
+There is also a beginning of a Spry VM module (src/modules/spryrawui.nim) for making GUI stuff using the excellent [libui](http://github.com/andlabs/libui) project. A small trivial little IDE written in Spry itself exists and you can build it on Linux or OSX.
 
 * **OSX:** Just run `./makeideosx.sh` in `src` and if you are lucky that produces a binary file called `ideosx`. Try running it with `./ideosx`.
 * **Linux:** Just run `./makeideo.sh` in `src` and if you are lucky that produces a binary file called `ide`. Try running it with `./ide`.
