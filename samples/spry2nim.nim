@@ -2,18 +2,20 @@
 # calls into a Nim library. This can also be hooked into newInterpreter()
 # like its done in extend.nim, but I wanted to be more direct in this
 # sample.
-import spryvm
+import spryvm, sprycore, sprylib
 
-# Create a Spry interpreter
+# Create an interpreter and add core and lib
 let spry = newInterpreter()
+spry.addCore()
+spry.addLib()
 
 # Create a Nim side data structure we want to use from Spry
 var s:seq[string] = @["a", "b"]
 
-# Bind a NimProc to the word "nimpush" that will simply take an argument
+# Bind a PrimFunc to the word "nimpush" that will simply take an argument
 # which is a string and add it to the seq.
-spry.makeWord("nimpush", newNimProc(
-  # Every NimProc returns a Node, note that arguments will be
+spry.makeWord("nimpush", newPrimFunc(
+  # Every PrimFunc returns a Node, note that arguments will be
   # pulled from inside the Nim code by calling the Interpreter
   proc (spry: Interpreter): Node =
     # Call Interpreter to evaluate and return next arg which is a Node
@@ -26,7 +28,7 @@ spry.makeWord("nimpush", newNimProc(
     # Let's just return nil to Spry
     # It's a singleton Node that the Interpreter has
     return spry.nilVal
-, false))
+))
 
 echo "Before running Spry script we have: " & $s
 # Call Interpreter with a script
