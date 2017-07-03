@@ -79,7 +79,7 @@ be reasonable to reach Rebol3 in performance.
 There is also a beginning of a Spry VM module (src/modules/spryrawui.nim) for making GUI stuff using the excellent [libui](http://github.com/andlabs/libui) project. A small trivial little IDE written in Spry itself exists and you can build it on Linux or OSX.
 
 * **OSX:** Just run `./makeideosx.sh` in `src` and if you are lucky that produces a binary file called `ideosx`. Try running it with `./ideosx`.
-* **Linux:** Just run `./makeideo.sh` in `src` and if you are lucky that produces a binary file called `ide`. Try running it with `./ide`.
+* **Linux:** Just run `./makeide.sh` in `src` and if you are lucky that produces a binary file called `ide`. Try running it with `./ide`.
 
 ## History
 Spry started out as a Rebol inspired interpreter - since I felt the homoiconicity

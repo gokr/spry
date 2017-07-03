@@ -1,3 +1,5 @@
+# Stop the script if a command fails 
+set -e 
 # Make executable from ide.sy
 rm -f ide.nim
 cat << EOF > ./ide.nim
