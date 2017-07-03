@@ -61,7 +61,7 @@ proc main() =
   spry.addModules()
   spry.addReflect()
   spry.addMemfile()
-#  spry.addUI()
+#  spry.addRawUI()
   spry.addBlock()
   spry.addNet()
   spry.addJSON()

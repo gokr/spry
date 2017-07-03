@@ -20,7 +20,7 @@ spry.addDebug()
 spry.addString()
 spry.addModules()
 spry.addReflect()
-#spry.addUI()
+#spry.addRawUI()
 spry.addBlock()
 spry.addBrowser()
 
