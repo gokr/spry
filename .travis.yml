@@ -69,6 +69,7 @@ before_script:
     - nimble refresh
 script:
     # Let nimble get dependencies
+    - nimble install -d
     - nimble c tests/all
     # Test
     - cd tests && ./run.sh
