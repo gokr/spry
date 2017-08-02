@@ -939,8 +939,11 @@ method `$`*(self: Activation): string =
 
 # Indexing Composites
 proc `[]`*(self: Map, key: Node): Node =
-  if self.bindings.hasKey(key):
-    return self.bindings[key].val
+  let val = self.bindings.getOrDefault(key)
+  if val.notNil:
+    return val.val
+  #if self.bindings.hasKey(key):
+  #  return self.bindings[key].val
 
 proc `[]`*(self: SeqComposite, key: Node): Node =
   self.nodes[IntVal(key).value]
