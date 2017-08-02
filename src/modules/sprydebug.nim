@@ -1,4 +1,6 @@
 import spryvm
+when defined(profiler):
+  import nimprof
 
 # Textual dump for debugging
 method dump(self: Activation) {.base.} =
@@ -44,5 +46,12 @@ proc dump(spry: Interpreter) =
 # Spry debug module
 proc addDebug*(spry: Interpreter) =
   nimFunc("dump"):    dump(spry)
+
+  when defined(profiler):
+    nimFunc("disableProfiling"):
+      disableProfiling()
+    nimFunc("enableProfiling"):
+      enableProfiling()
+    
   when not defined(js): # There is no repr support in js backend
     nimFunc("repr"):  newValue(repr(evalArg(spry)))
