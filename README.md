@@ -19,42 +19,36 @@ Here are [my articles about Spry](http://goran.krampe.se/category/spry)
 
 ## Why would I play with this?
 
-* You love Rebol/Ren/Red but think it could perhaps be simplified, smaller and different :)
-* You love Smalltalk but can imagine a simplified Smalltalkish language 
-* You love Smalltalk but want to play with multicore or small platforms and more easily use the C/C++ eco system
+* You find ideas in Rebol/Ren/Red interesting but would like something different :)
+* You love Smalltalk but can imagine a simplified similar language 
+* You love Smalltalk but want to play with multicore or small platforms and more easily use the C/C++/Nim eco system
 * You love Nim but want to have a dynamic language running inside Nim
 * ...or you just love freaky programming language ideas!
 
 ## Installation
 
-Spry should only depend on Nim, so it should work fine on Windows, OSX, Linux etc, but
-for the moment **I only use Linux for Spry development**. The shell scripts can probably be rewritten
-in nimscript and thus everything can be fully cross platform.
+Spry only depends on Nim, so it should work fine on Windows, OSX, Linux etc, but
+for the moment **I only use Linux for Spry development**. The shell scripts will probably be rewritten in nimscript and thus everything can be fully cross platform - feel free to help me with that!
 
 ### Vagrant
-Included is a VagrantFile for Ubuntu 16.04. Just do `vagrant up` and `vagrant ssh` into it to find spry installed. Test with `ispry`.
+Included is a VagrantFile for Ubuntu 16.04. Just do `vagrant up` and `vagrant ssh` into it to find spry installed. Test with `ispry` - the "interactive spry" REPL.
 
 ### Linux
 1. Get [Nim](http://www.nim-lang.org)! I recommend following the [instructions at the bottom](http://nim-lang.org/download.html).
-2. Install Nimble, [the Nim package manager](https://github.com/nim-lang/nimble). Yeah, its very nice and simple to use. Its not really needed but makes some things easier.
-3. Clone this repo. Then run `nimble install` in it.
-4. Finally run all tests using `cd tests && ./run.sh` (runjs.sh is for running them in nodejs, but not fully green right now)
-
-For the other platforms the steps are basically the same.
+2. Clone this repo. Then run `nimble install` in it.
+3. Finally run all tests using `cd tests && ./run.sh` (runjs.sh is for running them in nodejs, but not fully green right now)
 
 So now that you have installed Spry, you can proceed to play with the samples in the `samples` directory.
 See README in there for details.
 
 ### Other platforms
-
 ...same procedure modulo platform differences :)
 
 
 ## Playing with it
 
 1. If you want to build the interpreter manually, go into `src` and run
-`nim c -d:release spry` to build the Spry interpreter, or `nim c -d:release ispry` for the REPL. It should produce a single binary.
-That's the standard invocation to build a nim program in release mode.
+`nim c -d:release spry` to build the Spry interpreter, or `nim c -d:release ispry` for the REPL. It should produce a single binary each. That's the standard invocation to build a nim program in release mode.
 
 2. Then go into samples and look at `hello.sy` as the next mandatory step :).
 Its simply Spry source being run by the `spry` executable interpreter using the "shebang" trick.
