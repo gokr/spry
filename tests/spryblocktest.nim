@@ -48,6 +48,11 @@ suite "spry block":
     [1 2 3 4] detect: [:each > 2]
     """) == "3"
 
+  test "map":
+    check run("""
+    [1 2 3 4] map: [:each + 1]
+    """) == "[2 3 4 5]"
+
   test "select":
     check run("""
     [1 2 3 4] select: [:each > 2]
