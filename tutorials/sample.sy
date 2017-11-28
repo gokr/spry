@@ -8,18 +8,18 @@
 # a block.
 #
 # This is a word followed by a value. It should print "Hello".
-echo "Hello"
+"Hello"
 # pause
 
 # Here is a block with all core Spry value types; int, float, bool, nil, string.
 # It should print "[3 4.0 true false "hey"]"
-echo [3 4.0 true false "hey"]
+[3 4.0 true false "hey"]
 # pause
 
 # Just as in Smalltalk we have nil, but also undef which means never
 # assigned. All four of true, false, nil and undef are words bound to
 # known singleton nodes owned by the interpreter.
-echo [nil undef]
+[nil undef]
 # pause
 
 # A word is just a string until it gets resolved. "echo" above
@@ -41,13 +41,13 @@ myblock = [3 + 4]
 # blocks just return themselves when called
 # upon to evaluate. We need to do more to actually "run" them.
 # It should print "[3 + 4]" 
-echo myblock
+myblock
 # pause
 
 # The "do" word will resolve the block and then run it as code.
 # It's at this point that "+" gets resolved to a primitive infix function.
 # This should print "7".
-echo do myblock
+do myblock
 # pause
 
 # But we can also turn a block into a function using the "func" function.
@@ -60,7 +60,7 @@ foo = func myblock
 
 # Now we can run it just with "foo" because a function will run
 # when we evaluate it. It should print "7".
-echo foo
+foo
 # pause
 
 # The Spry Parser is exposed through the "parse" primitive.
@@ -69,7 +69,7 @@ bar = func parse "[3 + 4]"
 # pause
 
 # So this should also print "7"
-echo bar
+bar
 # pause
 
 # The fact that Spry code is just blocks means we can compose and manipulate
@@ -78,20 +78,20 @@ combo = func [foo + bar]
 # pause
 
 # It should print "14"
-echo combo
+combo
 # pause
 
 # Now let's manipulate the combo func.
 # To get the func itself and not what it evaluates
-# to we can use a "lookup word", which is the word with a "^" prefix.
+# to we can use a "lookup word", which is the word with a "$" prefix.
 # This should thus print the combo func itself: "[foo + bar]"
-echo ^combo
+$combo
 # pause
 
 # So... blocks are collections
-echo (myblock size) 	# Prints 3
-echo (myblock first) 	# Prints 3
-echo (myblock at: 1)	# Prints +
+echo (myblock size)     # Prints 3
+echo (myblock first)    # Prints 3
+(myblock at: 1)	        # Prints +
 # pause
 
 # ..and also positionable streams
@@ -101,21 +101,23 @@ echo (myblock next)	# Gets the element at pos, increment pos, prints 3
 echo (myblock next)	# Gets the element at pos, increment pos, prints +
 echo (myblock write: 6)	# Writes 6 at current pos, which is 2, prints myblock itself
 echo (do myblock)	# Prints 9
-echo foo                # Prints 7 still, since.. foo copied from myblock
+foo                     # Prints 7 still, since.. foo copied from myblock
 # pause
 
 # Fetch func, pick out body, put in "20" at position 2 so that
 # it now reads [foo + 20]
-^combo at: 2 put: 20
-echo ^combo
+$combo at: 2 put: 20
+$combo
 # pause
 
 # Fetch foo func, put in "6" at position 2
-^foo at: 2 put: 6
-echo ^foo
+$foo at: 2 put: 6
+$foo
 # pause
 
 # Should print 27....nah, 29!
-echo combo
+combo
 # pause
+
+"Bye bye!"
 
