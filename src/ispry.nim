@@ -14,15 +14,16 @@ when defined(readLine):
     import linenoise
 
 # Basic Spry
-import spryvm
+import spryvm/spryvm
 
 # Spry extra modules, as much as possible!
-import sprycore, spryextend, sprymath, spryos, spryio, sprythread, spryoo, sprydebug,
-  sprycompress, sprystring, sprymodules, spryreflect, sprymemfile, spryblock,
-  sprynet, spryjson, sprysmtp
+import spryvm/sprycore, spryvm/spryextend, spryvm/sprymath, spryvm/spryos, spryvm/spryio,
+  spryvm/sprythread, spryvm/spryoo, spryvm/sprydebug,
+  spryvm/sprycompress, spryvm/sprystring, spryvm/sprymodules, spryvm/spryreflect, spryvm/sprymemfile,
+  spryvm/spryblock, spryvm/sprynet, spryvm/spryjson, spryvm/sprysmtp
 
 # Not included by default
-# import sprypython
+# import spryvm/sprypython
 
 const Prompt = ">>> "
 

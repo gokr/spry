@@ -8,11 +8,13 @@ when defined(profiler):
 
 import os, parseopt2
 
-import spryvm
+import spryvm/spryvm
 
-import sprycore, sprylib, spryextend, sprymath, spryos, spryio, sprythread,
- spryoo, sprydebug, sprycompress, sprystring, sprymodules, spryreflect,
- spryblock, sprynet, sprysmtp, spryjson
+import spryvm/sprycore, spryvm/sprylib, spryvm/spryextend, spryvm/sprymath,
+  spryvm/spryos, spryvm/spryio, spryvm/sprythread,
+  spryvm/spryoo, spryvm/sprydebug, spryvm/sprycompress, spryvm/sprystring,
+  spryvm/sprymodules, spryvm/spryreflect, spryvm/spryblock, spryvm/sprynet,
+  spryvm/sprysmtp, spryvm/spryjson
 
 # import sprypython
 

@@ -1,9 +1,0 @@
-Nim
-    filter remove_matches ^\s*#
-    filter remove_inline #.*$
-    extension nim
-    end_of_line_continuation \\$
-Spry
-    filter remove_matches ^\s*#
-    filter remove_inline #.*$
-    extension sy
