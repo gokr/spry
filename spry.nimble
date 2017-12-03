@@ -1,5 +1,5 @@
 # Package
-version       = "0.7.0"
+version       = "0.7.1"
 author        = "Göran Krampe"
 description   = "Homoiconic dynamic language in Nim"
 license       = "MIT"
@@ -11,6 +11,3 @@ skipExt       = @["nim"]
 # Deps
 requires "spryvm"
 
-task test, "Run the tests":
-  withDir "tests":
-    exec "nim c -r all"
