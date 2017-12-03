@@ -1,4 +1,4 @@
-import spryvm, sprycore, sprylib, sprypython
+import spryvm/spryvm, spryvm/sprycore, spryvm/sprylib, spryvm/sprypython
 
 # Create a Spry interpreter
 var spry = newInterpreter()

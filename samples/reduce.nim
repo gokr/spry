@@ -2,14 +2,14 @@
 # two extension modules to it
 
 # Base interpreter, core and lib
-import spryvm, sprycore, sprylib
+import spryvm/spryvm, spryvm/sprycore, spryvm/sprylib
 
 # A sample interpreter extension that adds a reduce primitive
 # and support for triple single quote multiline string literals
-import spryextend
+import spryvm/spryextend
 
 # We also import IO to get echo support
-import spryio
+import spryvm/spryio
 
 # Try out reduce which evaluates and collects all expressions in a block
 var sp = newInterpreter()

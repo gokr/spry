@@ -2,7 +2,7 @@
 # calls into a Nim library. This can also be hooked into newInterpreter()
 # like its done in extend.nim, but I wanted to be more direct in this
 # sample.
-import spryvm, sprycore, sprylib
+import spryvm/spryvm, spryvm/sprycore, spryvm/sprylib
 
 # Create an interpreter and add core and lib
 let spry = newInterpreter()
