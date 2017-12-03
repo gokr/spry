@@ -1,9 +1,10 @@
 # Spry interpreter doing eval in a browser.
 
-import spryvm
+import spryvm/spryvm
 
-import sprycore, spryextend, sprymath, spryoo, sprydebug, sprystring, sprymodules,
- spryreflect, spryblock, sprybrowser
+import spryvm/sprycore, spryvm/spryextend, spryvm/sprymath, spryvm/spryoo,
+ spryvm/sprydebug, spryvm/sprystring, spryvm/sprymodules,
+ spryvm/spryreflect, spryvm/spryblock, spryvm/sprybrowser
 
 var spry = newInterpreter()
 

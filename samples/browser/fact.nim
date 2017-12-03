@@ -2,7 +2,7 @@
 # running eval in a Spry interpreter.
 
 # Just import Spry and core
-import spryvm, sprycore
+import spryvm/spryvm, spryvm/sprycore
 
 # Create an interpreter and have it evaluate a string of code
 proc factorial*(n: int): int {.exportc.} =
