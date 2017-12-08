@@ -68,12 +68,10 @@ before_script:
     - pwd && ls
     - nimble refresh
 script:
-    # Let nimble get dependencies
-    #- nimble install
+    # Install spry
+    - nimble install
     # Test
-    #- cd tests && ./run.sh
-    # Optional: build docs.
-    # nim doc --docSeeSrcUrl:https://github.com/AUTHOR/MYPROJECT/blob/master --project MYFILE.nim
+    - spry -e '(3 + 3) == 7 then: [quit 0] else: [quit 1]'
 cache:
   directories:
     - nim-master
