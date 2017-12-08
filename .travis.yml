@@ -67,6 +67,7 @@ before_script:
     - cd $TRAVIS_BUILD_DIR
     - pwd && ls
     - nimble refresh
+    - export PATH=$HOME/.nimble/bin:$PATH
 script:
     # Install spry
     - "nimble install"
