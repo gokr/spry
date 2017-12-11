@@ -72,7 +72,7 @@ script:
     # Install spry
     - "nimble install"
     # Test
-    - "spry -e '(3 + 3) == 7 then: [quit 0] else: [quit 1]'"
+    - "spry -e '(3 + 4) == 7 then: [quit 0] else: [quit 1]'"
 cache:
   directories:
     - nim-master
