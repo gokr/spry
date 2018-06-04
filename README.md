@@ -7,7 +7,7 @@
 [![Join the chat at https://gitter.im/gokr/spry](https://badges.gitter.im/gokr/spry.svg)](https://gitter.im/gokr/spry?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge)
 
 
-This is the [Spry language](http://sprylang.org), inspired by Rebol/Smalltalk/Self/Forth and Nim. Characteristics:
+This is the [Spry language](http://sprylang.se), inspired by Rebol/Smalltalk/Self/Forth and Nim. Characteristics:
 
 * A dynamically typed minimalistic language with a free form syntax similar to Rebol/Forth
 * Parser produces an AST which in turn is interpreted by the interpreter
@@ -20,8 +20,7 @@ Here are [my articles about Spry](http://goran.krampe.se/category/spry)
 ## Why would I play with this?
 
 * You find ideas in Rebol/Ren/Red interesting but would like something different :)
-* You love Smalltalk but can imagine a simplified similar language 
-* You love Smalltalk but want to play with multicore or small platforms and more easily use the C/C++/Nim eco system
+* You love Smalltalk but can imagine a simplified similar language and want to play with multicore or small platforms and more easily use the C/C++/Nim eco system
 * You love Nim but want to have a dynamic language running inside Nim
 * ...or you just love freaky programming language ideas!
 
@@ -32,6 +31,12 @@ for the moment **I only use Linux for Spry development**. The shell scripts will
 
 ### Vagrant
 Included is a VagrantFile for Ubuntu 16.04. Just do `vagrant up` and `vagrant ssh` into it to find spry installed. Test with `ispry` - the "interactive spry" REPL.
+
+### Docker
+Thales Macedo Garitezi also made a Docker image for testing out Spry:
+
+* Github: https://github.com/thalesmg/docker-spry
+* Docker Hub: https://hub.docker.com/r/thalesmg/spry/
 
 ### Linux
 The following should work on a Ubuntu/Debian, adapt accordingly for other distros.
