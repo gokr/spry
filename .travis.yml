@@ -1,82 +1,59 @@
-# Copied from https://github.com/nim-lang/Nim/wiki/TravisCI
-#sudo: required
-#dist: trusty
 language: c
-env:
-  # Build and test against the master and devel branches of Nim
-  - BRANCH=master
-  - BRANCH=devel
-compiler:
-  - gcc
+
+cache: ccache
+cache:
+  directories:
+  - .cache
+
 matrix:
+  include:
+    # Build and test against the master (stable) and devel branches of Nim
+    - os: linux
+      env: CHANNEL=stable
+      compiler: gcc
+
+    - os: linux
+      env: CHANNEL=devel
+      compiler: gcc
+
+    # On OSX we only test against clang (gcc is mapped to clang by default)
+    - os: osx
+      env: CHANNEL=stable
+      compiler: clang
+
   allow_failures:
     # Ignore failures when building against the devel Nim branch
-    - env: BRANCH=devel
+    # Also ignore OSX, due to very long build queue
+    - env: CHANNEL=devel
+    - os: osx
   fast_finish: true
+
+## BEGIN: Assuming you rely on external dependencies
+addons: # This will only be executed on Linux
+  apt:
+    packages:
+      - libsnappy-dev
+
 before_install:
-  - sudo apt-get update -qq
-  - sudo apt-get install -qq 
+  # If you want to install an OSX Homebrew dependency
+  - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then brew update          ; fi
+  - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then brew install libyourdependency; fi
+## END: Assuming you rely on external dependencies
+
 install:
-  - |
-    # Too old, even in Trusty, we need r131: sudo apt-get install liblz4-dev
+  - export CHOOSENIM_NO_ANALYTICS=1
+  - curl https://nim-lang.org/choosenim/init.sh -sSf > init.sh
+  - sh init.sh -y
+  - export PATH=~/.nimble/bin:$PATH
+  - echo "export PATH=~/.nimble/bin:$PATH" >> ~/.profile
+  - choosenim $CHANNEL
 
-    # We want a new GCC 4.8 instead of 4.6.x
-    # install gcc-4.8 with c++11 support: https://github.com/travis-ci-tester/travis-test-gcc-cxx-11
-    sudo add-apt-repository ppa:ubuntu-toolchain-r/test -y
-    sudo apt-get update
-    sudo apt-get install g++-4.8
-    sudo update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-4.8 90
-    sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-4.8 90    # Install Nim
-
-    # Not using clang for the moment
-    # Let's grab default clang
-    #sudo apt-get install clang-3.5
-    #sudo update-alternatives --install /usr/bin/cc cc /usr/bin/clang-3.5 100
-    #sudo update-alternatives --install /usr/bin/c++ c++ /usr/bin/clang++-3.5 100
-    
-    # Not using LZ4, switched to snappy since it is more available
-    # on various platforms. LZ4 is faster though, we can switch back later.
-    # Install LZ4 r131
-    #wget https://github.com/Cyan4973/lz4/archive/r131.tar.gz
-    #tar xzf r131.tar.gz
-    #cd lz4-r131
-    #sudo make install
-    #sudo ldconfig
-    #cd ..
-    #rm -rf lz4-r131
-
-    # Install snappy
-    sudo apt-get install libsnappy-dev
-
-    # Bootstrap Nim and install Nimble
-    git clone -b $BRANCH --depth 1 git://github.com/nim-lang/nim nim-$BRANCH/
-    cd nim-$BRANCH
-    git clone --depth 1 git://github.com/nim-lang/csources csources/
-    cd csources
-    sh build.sh
-    cd ..
-    rm -rf csources
-    bin/nim c koch
-    ./koch boot -d:release
-    export PATH=$PWD/bin:$PATH
-    ./koch nimble # nim e install_nimble.nims
-    cd ..
-  
-before_script:
-    - export PATH=$HOME/nim-$BRANCH/bin:$PATH
-    - cd $TRAVIS_BUILD_DIR
-    - pwd && ls
-    - nimble refresh
-    - export PATH=$HOME/.nimble/bin:$PATH
 script:
     # Install spry
     - "nimble install"
     # Test
     - "spry -e '(3 + 4) == 7 then: [quit 0] else: [quit 1]'"
-cache:
-  directories:
-    - nim-master
-    - nim-devel
+
 branches:
   except:
     - gh-pages
