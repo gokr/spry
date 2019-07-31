@@ -4,10 +4,13 @@ set -e
 rm -f ide.nim
 cat << EOF > ./ide.nim
 # Spry IDE :)
+import spryvm/spryvm
 
-import spryvm, sprycore, sprylib, spryextend, sprymath, spryos, spryio, sprythread,
- spryoo, sprydebug, sprycompress, sprystring, sprymodules, spryreflect,
- spryblock, sprynet, spryrawui
+import spryvm/sprycore, spryvm/sprylib, spryvm/spryextend, spryvm/sprymath,
+  spryvm/spryos, spryvm/spryio, spryvm/sprythread,
+  spryvm/spryoo, spryvm/sprydebug, spryvm/sprycompress, spryvm/sprystring,
+  spryvm/sprymodules, spryvm/spryreflect, spryvm/spryblock, spryvm/sprynet,
+  spryvm/spryrawui, spryvm/spryjson
 
 var spry = newInterpreter()
 
@@ -28,6 +31,7 @@ spry.addBlock()
 spry.addNet()
 spry.addLib()
 spry.addRawUI()
+spry.addJSON()
 
 discard spry.eval("""[
 EOF
