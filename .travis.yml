@@ -47,6 +47,7 @@ install:
   - export PATH=~/.nimble/bin:$PATH
   - echo "export PATH=~/.nimble/bin:$PATH" >> ~/.profile
   - choosenim $CHANNEL
+  - nimble refresh
 
 script:
     # Install spry
