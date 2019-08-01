@@ -1,0 +1,27 @@
+#!/usr/bin/env spry
+
+# First a simple func that uses a bottle number, n
+# The ugly bits here are "..b" to make sure b is in the
+# scope of the func, and the parens needed in two places.
+bottle = func [
+  :n == 0 then: [..b = "No more bottles"] else: [
+    n == 1 then: [..b = "1 bottle"] else: [
+      ..b = (n print, " bottles")]]
+  ^(b, " of beer")
+]
+
+# Spry has no to:do:by (I need to fix that) so we use
+# a simple whileTrue: instead of a 99 to: 1 by: -1 do:
+bn = 99
+[bn > 0] whileTrue: [
+  cur = bottle bn
+  echo (cur, " on the wall, ", cur, ".")
+  echo ("Take one down and pass it around, ", (bottle (bn - 1)), " on the wall.\x0A")
+  # echo always adds a linefeed, and we can't use "\n" etc in strings. But "\x=0A" works.
+  # I should add support for some of those characters, and add string interpolation.
+  # Another way to get an empty line would be:  echo ""
+  ..bn = (bn - 1)
+]
+
+echo "No more bottles of beer on the wall, no more bottles of beer."
+echo "Go to the store and buy some more, 99 bottles of beer on the wall."
