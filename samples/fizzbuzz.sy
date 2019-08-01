@@ -1,0 +1,8 @@
+#!/usr/bin/env spry
+
+1 to: 100 do: [
+  (:i mod 15) == 0 then: [ echo "FizzBuzz" ] else: [
+    (i mod 3) == 0 then: [ echo "Fizz" ] else: [
+      (i mod 5) == 0 then: [ echo "Buzz" ] else: [
+        echo i ]]]]
+
