@@ -1,0 +1,15 @@
+#!/usr/bin/env spry
+
+# newBlock: creates a block with a specific size, and fill: can fill it with a value
+a = (newBlock: 101) fill: false
+
+1 to: 100 do: [
+  # Note how :pass pulls in the loop argument into pass
+  :pass to: 100 by: pass do: [
+    # Unfortunately we need ..a instead of a, to reach an outer variable
+    # Also need paren around the not-expression due to Spry's strict left to right
+    ..a at: :door put: ((..a at: door) not)]]
+# Adding support for string interpolation would be nice!
+1 to: 100 do: [
+  echo ("door ", (:i print), " is ", ((..a at: i) then: ["open"] else: ["closed"]))]
+
