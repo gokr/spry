@@ -1,0 +1,22 @@
+#!/usr/bin/env spry
+
+# Make sure it's not there
+removeFile "cars.db"
+
+# Create a database and get a connection to it
+conn = openDatabase "cars.db"
+
+# Create a table
+conn query: "CREATE TABLE car (id INTEGER, name VARCHAR(50))"
+
+# Insert a row, arguments need to be strings only
+conn query: "INSERT INTO car (id, name) VALUES (?, ?)" params: ["0" "Saab"]
+conn query: "INSERT INTO car (id, name) VALUES (?, ?)" params: ["1" "Volvo"]
+
+# Query, resulting rows are blocks of strings
+(conn getRows: "SELECT * from car") do: [
+  echo ("Id: ", (:row first))
+  echo ("Name: ", (row second))
+]
+
+conn close
