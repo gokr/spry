@@ -14,7 +14,7 @@ import spryvm/sprycore, spryvm/sprylib, spryvm/spryextend, spryvm/sprymath,
   spryvm/spryos, spryvm/spryio, spryvm/sprythread,
   spryvm/spryoo, spryvm/sprydebug, spryvm/sprycompress, spryvm/sprystring,
   spryvm/sprymodules, spryvm/spryreflect, spryvm/spryblock, spryvm/sprynet,
-  spryvm/sprysmtp, spryvm/spryjson
+  spryvm/sprysmtp, spryvm/spryjson, spryvm/sprysqlite
 
 # import sprypython
 
@@ -40,6 +40,7 @@ spry.addNet()
 spry.addSMTP()
 spry.addJSON()
 #spry.addSophia()
+spry.addSqlite()
 spry.addLib()
 
 
@@ -55,7 +56,7 @@ Options:
 """
 
 proc writeVersion() =
-  echo "Spry 0.7.1"
+  echo "Spry 0.8.0"
 
 proc writeHelp() =
   writeVersion()

@@ -10,7 +10,7 @@ import spryvm/sprycore, spryvm/sprylib, spryvm/spryextend, spryvm/sprymath,
   spryvm/spryos, spryvm/spryio, spryvm/sprythread,
   spryvm/spryoo, spryvm/sprydebug, spryvm/sprycompress, spryvm/sprystring,
   spryvm/sprymodules, spryvm/spryreflect, spryvm/spryblock, spryvm/sprynet,
-  spryvm/spryrawui, spryvm/spryjson
+  spryvm/spryrawui, spryvm/spryjson, spryvm/sprysqlite
 
 var spry = newInterpreter()
 
@@ -32,6 +32,7 @@ spry.addNet()
 spry.addLib()
 spry.addRawUI()
 spry.addJSON()
+spry.addSqlite()
 
 discard spry.eval("""[
 EOF

@@ -20,7 +20,7 @@ import spryvm/spryvm
 import spryvm/sprycore, spryvm/spryextend, spryvm/sprymath, spryvm/spryos, spryvm/spryio,
   spryvm/sprythread, spryvm/spryoo, spryvm/sprydebug,
   spryvm/sprycompress, spryvm/sprystring, spryvm/sprymodules, spryvm/spryreflect, spryvm/sprymemfile,
-  spryvm/spryblock, spryvm/sprynet, spryvm/spryjson, spryvm/sprysmtp
+  spryvm/spryblock, spryvm/sprynet, spryvm/spryjson, spryvm/sprysmtp, spryvm/sprysqlite
 
 # Not included by default
 # import spryvm/sprypython
@@ -68,6 +68,7 @@ proc main() =
   spry.addJSON()
   spry.addSMTP()
 #  spry.addSophia()
+  spry.addSqlite()
   var
     lines, stashed, fileLines = newSeq[string]()
     suspended: bool = true
