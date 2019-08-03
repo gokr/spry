@@ -13,7 +13,11 @@ conn query: "CREATE TABLE car (id INTEGER, name VARCHAR(50))"
 conn query: "INSERT INTO car (id, name) VALUES (?, ?)" params: ["0" "Saab"]
 conn query: "INSERT INTO car (id, name) VALUES (?, ?)" params: ["1" "Volvo"]
 
-# Query, resulting rows are blocks of strings
+# Query, resulting rows are blocks of strings. This prints:
+#   Id: 0
+#   Name: Saab
+#   Id: 1
+#   Name: Volvo
 (conn getRows: "SELECT * from car") do: [
   echo ("Id: ", (:row first))
   echo ("Name: ", (row second))
