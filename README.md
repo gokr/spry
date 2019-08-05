@@ -29,7 +29,37 @@ Here are [my articles about Spry](http://goran.krampe.se/category/spry)
 Spry only depends on Nim, so it should work fine on Windows, OSX, Linux etc, but for the moment **I only use Linux for Spry development**. The shell scripts will probably be rewritten in nimscript and thus everything can be fully cross platform - feel free to help me with that!
 
 ### Vagrant
-Included is a VagrantFile for Ubuntu 16.04. Just do `vagrant up` and `vagrant ssh` into it to find spry installed. Test with `ispry` - the "interactive spry" REPL.
+Included is a VagrantFile for Ubuntu 18.04. If you have vagrant just do `vagrant up` and `vagrant ssh` into it to find spry installed. Test with `ispry` - the "interactive spry" REPL, or `spry --version`.
+
+### LXC
+The following commands can get you running inside LXC, tested on Ubuntu 18.04:
+
+Start a Ubuntu 18.04 LXC machine and login to it:
+
+    lxc launch ubuntu:18.04 spry
+    lxc exec spry -- su --login ubuntu
+
+Install gcc + Nim/nimble + Spry:
+
+    sudo apt install gcc
+    curl https://nim-lang.org/choosenim/init.sh -sSf | sh
+    export PATH=/home/ubuntu/.nimble/bin:$PATH
+    echo "export PATH=/home/ubuntu/.nimble/bin:$PATH" >> .profile
+    nimble refresh
+    nimble install spry
+
+Then make sure Spry works:
+
+    ubuntu@spry:~$ spry --version
+    Spry 0.8.0
+    ubuntu@spry:~$ spry -e "echo (3 + 4)"
+    7
+    ubuntu@spry:~$ ispry
+    Welcome to interactive Spry!
+    An empty line will evaluate previous lines, so hit enter twice.
+    >>> 3 + 4
+    >>> 
+    7
 
 ### Docker
 Thales Macedo Garitezi also made a Docker image for testing out the Spry REPL (ispry):
@@ -46,18 +76,14 @@ You can run it like this (with or without sudo):
 ### Linux
 The following should work on a Ubuntu/Debian, adapt accordingly for other distros.
 
-1. Get [Nim](http://www.nim-lang.org)! I recommend using [choosenim](https://github.com/dom96/choosenim) or just following the official [instructions](http://nim-lang.org/download.html). Using choosenim it's as simple as:
+1. Get GCC and [Nim](http://www.nim-lang.org)! I recommend using [choosenim](https://github.com/dom96/choosenim) or just following the official [instructions](http://nim-lang.org/download.html). Using choosenim it's as simple as:
 
     ```
     sudo apt install gcc
     curl https://nim-lang.org/choosenim/init.sh -sSf | sh
     ```
 
-2. Install dependencies, currently this is libsnappy-dev (or libsnappy1v5):
-    ```
-    sudo apt install libsnappy-dev
-    ```
-3. Clone this repo. Then run `nimble install` in it. Or alternatively, just run `nimble install spry` but then you have no access to samples etc.
+1. Clone this repo. Then run `nimble install` in it. That should hopefully end up with `spry` and `ispry` built and in your path. You can also just run `nimble install spry` but then you have no access to samples etc in this git repository.
 
 So now that you have installed Spry, you can proceed to play with the samples in the `samples` directory, see README in there for details.
 
@@ -75,31 +101,24 @@ You can also use brew (although not sure how good it follows Nim releases):
     ```
     brew install nim
     ```
+3. Clone this repo. Then run `nimble install` in it. That should hopefully end up with `spry` and `ispry` built and in your path. You can also just run `nimble install spry` but then you have no access to samples etc in this git repository.
 
-3. Install dependencies, currently this is only snappy and we can get it using:
-    ```
-    brew install snappy
-    ```
-
-4. Clone this repo. Then run `nimble install` in it. That should hopefully end up with `spry` and `ispry` built and in your path. You can also just run `nimble install spry` but then you have no access to samples etc in this git repository.
-
-5. Try with say `spry --version` or `spry -e "echo (3 + 4)"`. And you can also try the REPL with `ispry`.
-
+4. Try with say `spry --version` or `spry -e "echo (3 + 4)"`. And you can also try the REPL with `ispry`.
 
 So now that you have installed Spry, you can proceed to play with the samples in the `samples` directory, see README in there for details.
 
 ### Windows
-**NOTE: These instructions are old and may be outdated.**
-First you want to have git installed, and most happily with the unix utilities included so that some of the basic unix commands work on the Windows Command prompt.
+0. First you want to have [git installed](https://git-scm.com/download/win), and ideally **with the unix utilities** included so that some of the basic unix commands work on the Windows Command prompt.
 
-1. Installing Nim on Windows using choosenim doesn't fly ([blocked by issue 35](https://github.com/dom96/choosenim/issues/35), well, ok, the older version worked but that created a 32 bit Nim compiler which may be less optimal. You will need to follow [official installation procedure](https://nim-lang.org/install_windows.html), which is quite easy, just download the zip, unpack it and run `finish.exe` from a command prompt and follow the interactive questions.
+1. Install Nim either [using binaries](https://nim-lang.org/install_windows.html) or even better using Choosenim. Download the [latest Windows version](https://github.com/dom96/choosenim/releases) from the releases page (use the zip version because self extracting failed for me), extract the zip archive and run the **runme.bat** script. Follow any on screen prompts.
 
-2. Install dependencies, currently this is the snappy dll which is used for fast compression. The most reasonable place I found a precompiled version of it was on [https://snappy.machinezoo.com/downloads/](https://snappy.machinezoo.com/downloads/). Download, unpack and take the `native/snappy64.dll` or `native/snappy32.dll` and copy the proper one (presumably 64 bits) to a place where it can be found, for example in `c:\Users\<youruser>\.nimble\bin` and rename it to `libsnappy.dll`. I will fix so that it's included somehow.
+2. Install dependencies. Currently this is only sqlite. I have collected these dlls into two zips, [32-bit](http://files.krampe.se/spry/sprydlls-32.zip) and [64-bit](http://files.krampe.se/spry/sprydlls-32.zip), choose the correct one for your Windows and unzip into a directory in your PATH, for example `c:\Users\<youruser>\.nimble\bin`.
 
-3. Clone this repo. Then run `nimble install` in it. That should hopefully end up with `spry` and `ispry` built and in your path.
+3. Clone this repo. Then run `nimble install` in it. That should hopefully end up with `spry` and `ispry` built and in your path. You can also just run `nimble install spry` but then you have no access to samples etc in this git repository.
 
 4. Try with say `spry --version` or `spry -e "echo (3 + 4)"`. And you can also try the REPL with `ispry`.
 
+So now that you have installed Spry, you can proceed to play with the samples in the `samples` directory, see README in there for details.
 
 ## Playing with it
 
