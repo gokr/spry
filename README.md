@@ -110,9 +110,9 @@ So now that you have installed Spry, you can proceed to play with the samples in
 ### Windows
 0. First you want to have [git installed](https://git-scm.com/download/win), and ideally **with the unix utilities** included so that some of the basic unix commands work on the Windows Command prompt.
 
-1. Install Nim either [using binaries](https://nim-lang.org/install_windows.html) or even better using Choosenim. Download the [latest Windows version](https://github.com/dom96/choosenim/releases) from the releases page (use the zip version because self extracting failed for me), extract the zip archive and run the **runme.bat** script. Follow any on screen prompts.
+1. Install Nim [using binaries](https://nim-lang.org/install_windows.html). Just follow the instructions and make sure to answer yes to include the directories in the PATH as **finish.exe** asks you if you want. NOTE: Currently using Choosenim on Windows will produce a 32 bit Nim and Spry, even on a 64 bit Windows, so I don't recommend Choosenim on Windows just yet.
 
-2. Install dependencies. Currently this is only sqlite. I have collected these dlls into two zips, [32-bit](http://files.krampe.se/spry/sprydlls-32.zip) and [64-bit](http://files.krampe.se/spry/sprydlls-32.zip), choose the correct one for your Windows and unzip into a directory in your PATH, for example `c:\Users\<youruser>\.nimble\bin`.
+2. There are no dependencies other than some dlls that are included in the Nim bin directory.
 
 3. Clone this repo. Then run `nimble install` in it. That should hopefully end up with `spry` and `ispry` built and in your path. You can also just run `nimble install spry` but then you have no access to samples etc in this git repository.
 
