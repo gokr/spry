@@ -63,7 +63,7 @@ proc main() =
   spry.addModules()
   spry.addReflect()
   #spry.addRawUI()
-  #spry.addUI()
+  #spry.addUI() I think it does not play nice with readline etc
   spry.addBlock()
   spry.addNet()
   spry.addSMTP()
