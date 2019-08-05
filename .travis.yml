@@ -31,7 +31,7 @@ matrix:
 addons: # This will only be executed on Linux
   apt:
     packages:
-      - libsnappy-dev
+      - libgtk-3-dev
 
 before_install:
   # If you want to install an OSX Homebrew dependency
