@@ -6,17 +6,15 @@
 when defined(profiler):
   import nimprof
 
-import os, parseopt2
+import os, parseopt
 
 import spryvm/spryvm
 
 import spryvm/sprycore, spryvm/sprylib, spryvm/spryextend, spryvm/sprymath,
-  spryvm/spryos, spryvm/spryio, spryvm/sprythread,
+  spryvm/spryos, spryvm/spryio, spryvm/sprymemfile, spryvm/sprythread,
   spryvm/spryoo, spryvm/sprydebug, spryvm/sprycompress, spryvm/sprystring,
   spryvm/sprymodules, spryvm/spryreflect, spryvm/spryblock, spryvm/sprynet,
-  spryvm/sprysmtp, spryvm/spryjson, spryvm/sprysqlite
-
-# import sprypython
+  spryvm/sprysmtp, spryvm/spryjson, spryvm/sprysqlite, spryvm/sprypython
 
 var spry = newInterpreter()
 
@@ -26,8 +24,9 @@ spry.addExtend()
 spry.addMath()
 spry.addOS()
 spry.addIO()
+spry.addMemfile()
 spry.addThread()
-#spry.addPython()
+spry.addPython()
 spry.addOO()
 spry.addDebug()
 spry.addCompress()
@@ -35,6 +34,7 @@ spry.addString()
 spry.addModules()
 spry.addReflect()
 #spry.addRawUI()
+#spry.addUI()
 spry.addBlock()
 spry.addNet()
 spry.addSMTP()
@@ -42,7 +42,6 @@ spry.addJSON()
 #spry.addSophia()
 spry.addSqlite()
 spry.addLib()
-
 
 let doc = """
 

@@ -17,13 +17,11 @@ when defined(readLine):
 import spryvm/spryvm
 
 # Spry extra modules, as much as possible!
-import spryvm/sprycore, spryvm/spryextend, spryvm/sprymath, spryvm/spryos, spryvm/spryio,
-  spryvm/sprythread, spryvm/spryoo, spryvm/sprydebug,
-  spryvm/sprycompress, spryvm/sprystring, spryvm/sprymodules, spryvm/spryreflect, spryvm/sprymemfile,
-  spryvm/spryblock, spryvm/sprynet, spryvm/spryjson, spryvm/sprysmtp, spryvm/sprysqlite
-
-# Not included by default
-# import spryvm/sprypython
+import spryvm/sprycore, spryvm/sprylib, spryvm/spryextend, spryvm/sprymath,
+  spryvm/spryos, spryvm/spryio, spryvm/sprymemfile, spryvm/sprythread,
+  spryvm/spryoo, spryvm/sprydebug, spryvm/sprycompress, spryvm/sprystring,
+  spryvm/sprymodules, spryvm/spryreflect, spryvm/spryblock, spryvm/sprynet,
+  spryvm/sprysmtp, spryvm/spryjson, spryvm/sprysqlite, spryvm/sprypython
 
 const Prompt = ">>> "
 
@@ -48,27 +46,32 @@ proc getLine(prompt: string): string =
 proc main() =
   # Let's create a Spry interpreter. It also holds all state.
   let spry = newInterpreter()
+
+  # Add extra modules
   spry.addCore()
   spry.addExtend()
   spry.addMath()
   spry.addOS()
   spry.addIO()
+  spry.addMemfile()
   spry.addThread()
-#  spry.addPython()
+  spry.addPython()
   spry.addOO()
   spry.addDebug()
   spry.addCompress()
   spry.addString()
   spry.addModules()
   spry.addReflect()
-  spry.addMemfile()
-#  spry.addRawUI()
+  #spry.addRawUI()
+  #spry.addUI()
   spry.addBlock()
   spry.addNet()
-  spry.addJSON()
   spry.addSMTP()
-#  spry.addSophia()
+  spry.addJSON()
+  #spry.addSophia()
   spry.addSqlite()
+  spry.addLib()
+
   var
     lines, stashed, fileLines = newSeq[string]()
     suspended: bool = true
