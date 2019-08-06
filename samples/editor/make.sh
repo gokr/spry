@@ -8,26 +8,19 @@
 rm -f editor.nim
 cat << EOF > ./editor.nim
 
-import spryvm/spryvm, spryvm/sprycore, spryvm/sprylib, spryvm/spryextend,
- spryvm/spryos, spryvm/spryio, spryvm/spryoo, spryvm/sprydebug,
- spryvm/sprystring, spryvm/sprymodules, spryvm/spryreflect,
- spryvm/spryblock, spryvm/spryrawui
+import spryvm/spryvm, spryvm/sprycore,
+ spryvm/spryos, spryvm/spryio, spryvm/sprystring,
+ spryvm/spryblock, spryvm/spryui
 
 var spry = newInterpreter()
 
 # Add extra modules
 spry.addCore()
-spry.addExtend()
 spry.addOS()
 spry.addIO()
-spry.addOO()
-spry.addDebug()
 spry.addString()
-spry.addModules()
-spry.addReflect()
 spry.addBlock()
-spry.addLib()
-spry.addRawUI()
+spry.addUI()
 
 discard spry.eval("""[
 EOF
@@ -36,9 +29,8 @@ cat << EOF >> ./editor.nim
 ]""")
 EOF
 
-# Through experiments this builds libui statically linked
-nim --verbosity:2  --dynlibOverride:ui  --passL:"-rdynamic ../../lib/libui.a -lgtk-3 -lgdk-3 -lpangocairo-1.0 -lpango-1.0 -latk-1.0 -lcairo-gobject -lcairo -lgdk_pixbuf-2.0 -lgio-2.0 -lgobject-2.0 -lglib-2.0" c editor
-#nim --verbosity:2 -d:release --dynlibOverride:ui  --passL:"-rdynamic ../../lib/libui.a -lgtk-3 -lgdk-3 -lpangocairo-1.0 -lpango-1.0 -latk-1.0 -lcairo-gobject -lcairo -lgdk_pixbuf-2.0 -lgio-2.0 -lgobject-2.0 -lglib-2.0" c editor
+# Build it
+nim c editor.nim
 
 # Strip
 strip -s editor
