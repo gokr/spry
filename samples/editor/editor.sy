@@ -5,65 +5,56 @@
 # First we need to initialize libui
 uiInit
 
-# Variable holding file contents
-content = ""
-
 # Variable holding last known filepath
 path = nil
 
 # Two funcs for opening and saving a file
 openContent = func [
-  # this is a language wart I am fixing, we should not need ".."
+  # this is a language wart, we should not need ".."
   ..path = (win openFile)
   path nil? else: [
-    content = readFile path
-    contentEntry text: content
+    contentEntry text: readFile path
   ]
 ]
 saveContent = func [:path
-  content = (contentEntry text)
-  writeFile path content
+  writeFile path (contentEntry text)
 ]
+
+byeBye = func [win message: "Bye bye" title: "Braindead editor"]
 
 # A handler for closing
 closeHandler = [
-  win message: "Bye bye" title: "Braindead editor"
-  controlDestroy win
+  byeBye
+  win destroy
   uiQuit
 ]
 
 # Build the app menu
 menu = newMenu "File"
-menu onShouldQuit: closeHandler
 
-item = (menu menuAppendItem: "Open ...")
-item onMenuItemClicked: [openContent]
-
-item = (menu menuAppendItem: "Save as ...")
-item onMenuItemClicked: [
+menu addItem: "Open ..." onClicked: [openContent]
+menu addItem: "Save as ..." onClicked: [
   ..path = (win saveFile)
   path nil? else: [
     saveContent path
   ]
 ]
 
-item = (menu menuAppendQuitItem)
+menu addQuitItemShouldClose: [do closeHandler ^true]
 
 helpMenu = newMenu "Help"
-item = (helpMenu menuAppendItem: "Help")
-item onMenuItemClicked: [
+helpMenu addItem: "Help" onClicked: [
   win message: "Sorry..." title: "No help to get"
 ]
 
 # Silly About
-item = (helpMenu menuAppendAboutItem)
-item onMenuItemClicked: [
+helpMenu addAboutItemOnClicked: [
   win message: "This is a truly trivial file editor." title: "About Braindead editor"
 ]
 
 # Create a new app Window
-win = newWindow "Braindead editor" 640 400 true
-win windowMargin: 1
+win = newWindow: "Braindead editor" width: 640 height: 400 hasBar: true
+win windowMargined: true
 
 # Create a multiline text entry field for content
 contentEntry = newMultilineEntryText
@@ -73,8 +64,7 @@ layout = newVerticalBox
 buttons = newHorizontalBox
 
 # Some buttons and their handlers
-saveit = newButton "Save"
-saveit onClicked: [
+saveit = newButton: "Save" onClicked: [
   path nil? then: [
     ..path = (win saveFile)
   ]
@@ -82,27 +72,25 @@ saveit onClicked: [
     saveContent path
   ]
 ]
-clearit = newButton "Clear"
-clearit onClicked: [contentEntry text: ""]
-quitit = newButton "Quit"
-quitit onClicked: closeHandler
+clearit = newButton: "Clear" onClicked: [contentEntry text: ""]
+quitit = newButton: "Quit" onClicked: closeHandler
 
 # Put things in the boxes
-layout padding: 1
-layout append: contentEntry stretch: 1
-layout append: buttons stretch: 0
-buttons append: saveit stretch: 0
-buttons append: clearit stretch: 0
-buttons append: quitit stretch: 0
+layout padded: true
+layout add: contentEntry stretch: true
+layout add: buttons stretch: false
+buttons add: saveit stretch: false
+buttons add: clearit stretch: false
+buttons add: quitit stretch: false
 
 # Add box to window
-win windowSetChild: layout
+win setChild: layout
 
 # Set initial text in text component
-contentEntry text: content
+contentEntry text: ""
 
-# Set a handler on closing window
-win onClosing: closeHandler
+# Set a handler on closing window, this one should not do uiQuit etc
+win onClosingShouldClose: [byeBye true]
 
 # Show the window
 win show
