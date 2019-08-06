@@ -83,7 +83,9 @@ The following should work on a Ubuntu/Debian, adapt accordingly for other distro
     curl https://nim-lang.org/choosenim/init.sh -sSf | sh
     ```
 
-1. Clone this repo. Then run `nimble install` in it. That should hopefully end up with `spry` and `ispry` built and in your path. You can also just run `nimble install spry` but then you have no access to samples etc in this git repository.
+2. Clone this repo. Then run `nimble install` in it. That should hopefully end up with `spry` and `ispry` built and in your path. You can also just run `nimble install spry` but then you have no access to samples etc in this git repository.
+
+3. Try with say `spry --version` or `spry -e "echo (3 + 4)"`. And you can also try the REPL with `ispry`.
 
 So now that you have installed Spry, you can proceed to play with the samples in the `samples` directory, see README in there for details.
 
@@ -101,6 +103,7 @@ You can also use brew (although not sure how good it follows Nim releases):
     ```
     brew install nim
     ```
+
 3. Clone this repo. Then run `nimble install` in it. That should hopefully end up with `spry` and `ispry` built and in your path. You can also just run `nimble install spry` but then you have no access to samples etc in this git repository.
 
 4. Try with say `spry --version` or `spry -e "echo (3 + 4)"`. And you can also try the REPL with `ispry`.
@@ -108,15 +111,16 @@ You can also use brew (although not sure how good it follows Nim releases):
 So now that you have installed Spry, you can proceed to play with the samples in the `samples` directory, see README in there for details.
 
 ### Windows
-0. First you want to have [git installed](https://git-scm.com/download/win), and ideally **with the unix utilities** included so that some of the basic unix commands work on the Windows Command prompt.
+You can "cheat" and try out Spry using a [zip with binaries]().
+1. First you want to have [git installed](https://git-scm.com/download/win), and ideally **with the unix utilities** included so that some of the basic unix commands work on the Windows Command prompt.
 
-1. Install Nim [using binaries](https://nim-lang.org/install_windows.html). Just follow the instructions and make sure to answer yes to include the directories in the PATH as **finish.exe** asks you if you want. NOTE: Currently using Choosenim on Windows will produce a 32 bit Nim and Spry, even on a 64 bit Windows, so I don't recommend Choosenim on Windows just yet.
+2. Install Nim [using binaries](https://nim-lang.org/install_windows.html). Just follow the instructions and make sure to answer yes to include the directories in the PATH as **finish.exe** asks you if you want. NOTE: Currently using Choosenim on Windows will produce a 32 bit Nim and Spry, even on a 64 bit Windows, so I don't recommend Choosenim on Windows just yet.
 
-2. There are no dependencies other than some dlls that are included in the Nim bin directory.
+3. There are no dependencies other than some dlls that are included in the Nim bin directory.
 
-3. Clone this repo. Then run `nimble install` in it. That should hopefully end up with `spry` and `ispry` built and in your path. You can also just run `nimble install spry` but then you have no access to samples etc in this git repository.
+4. Clone this repo. Then run `nimble install` in it. That should hopefully end up with `spry` and `ispry` built and in your path. You can also just run `nimble install spry` but then you have no access to samples etc in this git repository.
 
-4. Try with say `spry --version` or `spry -e "echo (3 + 4)"`. And you can also try the REPL with `ispry`.
+5. Try with say `spry --version` or `spry -e "echo (3 + 4)"`. And you can also try the REPL with `ispry`.
 
 So now that you have installed Spry, you can proceed to play with the samples in the `samples` directory, see README in there for details.
 
