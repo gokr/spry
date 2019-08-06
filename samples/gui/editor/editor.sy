@@ -54,7 +54,7 @@ helpMenu addAboutItemOnClicked: [
 
 # Create a new app Window
 win = newWindow: "Braindead editor" width: 640 height: 400 hasBar: true
-win windowMargined: true
+win margined: true
 
 # Create a multiline text entry field for content
 contentEntry = newMultilineEntryText

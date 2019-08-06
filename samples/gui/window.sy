@@ -1,0 +1,27 @@
+# Initialize libui
+uiInit
+
+# Build menu, needs to be done before newWindow below
+menu = newMenu "File"
+menu addItem: "Hey" onClicked: [win message: "Wazzup?" title: "Hey"]
+
+# A Quit item, the block needs to destroy win, then call uiQuit and
+# return true indicating the window can close
+menu addQuitItemShouldClose: [
+  win destroy
+  uiQuit
+  ^true
+]
+
+# Create a new Window
+win = newWindow: "Spry!" width: 640 height: 400 hasBar: true
+
+# Attach handler for the close icon (upper corner) of Window.
+# This one should not do win destroy and uiQuit (so it is)
+win onClosingShouldClose: [^true]
+
+# Show the window
+win show
+
+# Enter libui's event loop
+uiMain

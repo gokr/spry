@@ -1,0 +1,43 @@
+# We need contains
+contains: = method [(self findString: :sub startingAt: 0) > 0]
+rest = method [self copyFrom: 1 to: (self size - 1)]
+empty? = method [self size == 0]
+notEmpty? = method [self size > 0]
+
+
+makeWordUsing: = method [
+  (self size > abcs size) then: [^false]
+  l = (self first)
+  ldash = (self rest)
+  matches = abcs select: [:b contains: l]
+  # We need empty?, notEmpty?
+  matches empty? then: [^false]
+  matches do: [
+    rest = (abcs clone)
+    # We need remove:
+    rest remove: m
+    (ldash makeWordUsing: rest) then: [^true]
+  ]
+  ^false
+]
+
+words = ["A" "BARK" "BOOK" "TREAT" "COMMON" "SQUAD" "CONFUSE"]
+abcs = ["BO" "XK" "DQ" "CP" "NA" "GT" "RE" "TG" "QD" "FS" "JW" "HU" "VI" "AN" "OB" "ER" "FS" "LY" "PC" "ZM"]
+
+words do: [
+ echo (each, ": ", (each makeWordUsing: abcs) print)
+]
+ 
+ 
+#ABCPuzzle>>solveFor: letters with: blocks
+#	| l ldash matches |
+#	letters isEmpty ifTrue: [ ^ true ].
+#	l := letters first.
+#	ldash := letters allButFirst.
+#	matches := blocks select: [  :b | b includes: l ].
+#	matches isEmpty ifTrue: [ ^ false ].
+#	matches do: [  :m | | bdash |
+#		bdash := blocks copy. 
+#		bdash remove: m.
+#		(self solveFor: ldash with: bdash) ifTrue: [ ^ true ] ].
+#	^ false

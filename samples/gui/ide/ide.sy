@@ -1,0 +1,90 @@
+#!/usr/bin/env spry
+
+# Initialize libui
+uiInit
+
+# Build menu
+#menu = newMenu "File"
+#menu addItem: "Open" onClicked: [echo (win openFile)]
+#menu onShouldQuit: [do closeHandler]
+#item = (menu menuAppendItem: "Save")
+#item onMenuItemClicked: [echo (win saveFile)]
+#item = (menu menuAppendQuitItem)
+#editMenu = newMenu "Edit"
+#item = (editMenu menuAppendCheckItem: "Checkable Item")
+#editMenu menuAppendSeparator
+#item = (editMenu menuAppendItem: "Disabled Item")
+#item menuItemDisable
+#editMenu menuAppendPreferencesItem
+#helpMenu = newMenu "Help"
+#item = (helpMenu menuAppendItem: "Help")
+#helpMenu menuAppendAboutItem
+
+# Create a new Window
+win = newWindow: "Spry Workspace" width: 640 height: 400 hasBar: false
+win margined: true
+
+# Create a multiline text entry field for code
+code = newMultilineEntryText
+
+# And one for output
+out = newMultilineEntryText
+
+# And a vertical box to put stuff in
+layout = newVerticalBox
+buttons = newHorizontalBox
+
+# Function to parse and evaluate code
+run = func [do parse ("[", (code text), "]")]
+
+# Some buttons and their handlers
+doit = newButton: "Do it" onClicked: [run]
+printit = newButton: "Print it" onClicked: [
+  # Add result to out text field
+  out addText: ("\x0A", (run print))
+]
+clearit = newButton: "Clear" onClicked: [out text: ""]
+quitit = newButton: "Quit" onClicked: [
+  do closeHandler
+]
+
+# Group
+group = newGroup "Workspace"
+group margined: false
+group setChild: layout
+
+# Put things in the boxes
+layout padded: true
+layout add: code stretch: true
+layout add: out stretch: true
+layout add: buttons stretch: false
+buttons add: doit stretch: false
+buttons add: printit stretch: false
+buttons add: clearit stretch: false
+buttons add: quitit stretch: false
+
+# Add box to window
+win setChild: group
+
+# Set initial text
+code text: "3 + 4"
+
+# Close handler
+closeHandler = [
+  win message: "Thanks for trying it out!" title: "Spry cross platform GUI!"
+  win destroy
+  uiQuit
+  true
+]
+
+# Set a handler on closing window
+win onClosingShouldClose: [
+  win message: "That way of closing works too" title: "Spry cross platform GUI!"
+  true
+]
+
+# Show the window
+win show
+
+# Enter libui's event loop
+uiMain
