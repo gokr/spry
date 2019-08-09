@@ -1,0 +1,43 @@
+#!/usr/bin/env spry
+
+# Create a database and get a connection to it
+db = openRocksDB "cars.db"
+
+cars = {}
+saveCars = func [db rockAt: "cars" put: cars]
+loadCars = func [..cars = (db rockAt: "cars")]
+
+# Create two cars and stuff in map
+car1 = {id = 1 name = "Saab"}
+car2 = {id = 2 name = "Volvo"}
+
+cars at: car1::id put: car1
+cars at: car2::id put: car2
+
+# Store them
+saveCars
+
+# Clear
+cars = nil
+
+# Read and show
+loadCars
+echo ("Loaded cars: ", (cars print))
+
+# Modify and save all back
+car1 = (cars at: 1)
+car1::name = "Toyota"
+
+newCar = {id = 3 name = "Skoda" color = "Blue"}
+cars at: newCar::id put: newCar
+saveCars
+
+# Clear
+cars = nil
+
+# Load again
+loadCars
+echo ("Loaded cars: ", (cars print))
+
+# Close db
+db closeRocksDB
