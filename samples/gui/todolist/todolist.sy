@@ -1,0 +1,172 @@
+#!/usr/bin/env spry
+
+# A sample Spry application that is a trivial todolist app
+# using a RocksDB as storage.
+
+# First we need to initialize libui
+uiInit
+
+# Variable holding our rocksdb
+db = nil
+
+# The current todolist
+todos = []
+
+# Find max of something in a block
+max: = method [:funk
+  max = 0
+  self do: [
+    n = do funk :each
+    n > max then: [..max = n]
+  ]
+  ^max
+]
+
+# Find index of first element matching func
+findIndex: = method [:funk
+  self reset
+  [self end?] whileFalse: [
+    n = (self next)
+    funk n then: [^(self pos - 1)]
+  ]
+  ^nil
+]
+
+#echo ([1 2 3] max: [:each])
+#echo ([1 20 3] max: [:each])
+#echo ([{x = 100} {x = 50} {x = 120}] max: [:each each::x])
+#echo ([1 20 3] findIndex: func [:each == 20])
+
+
+# Open database and load todos
+openDB = func [
+  # When assigning a variable in an outer scope, we need ..
+  ..db = openRocksDB :path
+  ..todos = (db rockAt: "todos")
+  # Initialize as empty list or load existing list
+  todos undef? then: [
+    ..todos = []
+    saveTodos
+  ] else: [
+    loadTodos
+  ]
+]
+
+# Store in database
+saveTodos = func [
+  db nil? else: [
+    db rockAt: "todos" put: todos
+  ]
+]
+
+# Populate UI from the todolist
+loadTodos = func [
+  todos do: [addToList :each]
+]
+
+# Close RocksDB and say bye befor exiting
+byeBye = func [
+  db nil? else: [db closeRocksDB]
+  win message: "Bye bye" title: "Todolist"
+]
+
+# Given a todo of the form {id = 7 text = "blabla"} we create
+# a row with a label of the text and a delete button.
+newTodoRow = func [:todo
+  row = newHorizontalBox
+  label = newLabel: todo::text
+  # The delete button is tricky. First we need to pass
+  # a func (closure) instead of a pure block, otherwise
+  # we do not close over the todo parameter.
+  # Secondly, we need to find the index of the row to delete
+  # which we do by searching for the index of the todo with this
+  # unique id. The id is generated in the addButton by using a
+  # max + 1 trick to make sure it's not a duplicate id.
+  deleteButton = newButton: "Delete" onClicked: func [
+    id = todo::id
+    idx = (todos findIndex: func [:each each::id == id])
+    todoRows delete: idx
+    todos removeAt: idx
+    saveTodos
+  ]
+  row add: label stretch: true
+  row add: deleteButton stretch: false
+  ^row
+]
+
+addToList = func [
+  # Why is paren needed?
+  todoRows add: (newTodoRow :todo) stretch: false
+]
+
+# Build Window
+menu = newMenu "File"
+
+# Open an existing RocksDB
+menu addItem: "Open ..." onClicked: [
+  path = (win openFile)
+  path nil? else: [
+    openDB path
+  ]
+]
+
+# Making a new RocksDB
+menu addItem: "New ..." onClicked: [
+  path = (win saveFile)
+  path nil? else: [
+    openDB path
+  ]
+]
+
+# Add a Quit item in menu
+menu addQuitItemShouldClose: [
+  byeBye
+  win destroy
+  uiQuit
+  ^true
+]
+
+# Construct the application window
+win = newWindow: "Todolist" width: 240 height: 400 hasBar: true
+win margined: true
+
+layout = newVerticalBox
+todoRows = newVerticalBox
+addTodo = newHorizontalBox
+
+# Pick out text from the text entry field, create
+# a todo (a Map), add it to the todos, and add a row in the UI.
+# Finally saveTodos.
+addButton = newButton: "Add" onClicked: func [
+  text = (addText text)
+  todo = {
+    text = text
+    id = ((todos max: [:todo todo::id]) + 1)
+  }
+  todos add: todo
+  addToList todo
+  saveTodos
+]
+
+addText = newEntryText: "Some stuff" onChanged: []
+
+layout padded: true
+group = newGroup "Todolist"
+group
+  margined: true;
+  setChild: layout
+
+# Wohoo, we can actually do cascades in Spry!
+layout
+  add: todoRows stretch: true;
+  add: addTodo stretch: false
+
+addTodo
+  add: addText stretch: true;
+  add: addButton stretch: false
+
+win
+  setChild: group;
+  onClosingShouldClose: [byeBye true];
+  show;
+  uiMain
