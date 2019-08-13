@@ -3,45 +3,39 @@
 # A sample Spry application that is a trivial todolist app
 # using a RocksDB as storage.
 
-# First we need to initialize libui
+# First we need to initialize libui. Since spry and ispry
+# has the spryui VM module built in, we have access
+# to a set of words for libui. One is a func called uiInit
+# that needs to be called to initialize libui.
+# Calling a func (Spry function) is done simply by writing
+# it's name, no need for () at the end since Spry does not
+# use parentheses for parameter passing.
 uiInit
 
-# Variable holding our rocksdb
+# Variable holding our rocksdb. We do not declare variables
+# in Spry, we simply create them by assignment. Assignment is
+# done using the "=" word. In Spry we have both nil and undef,
+# in this case we set it to nil, which in fact is not needed
+# in this application, but it's nice to show our top level
+# variables!
 db = nil
 
-# The current todolist
+# The current todolist. We initalize it to an empty "block".
+# A block in Spry is a List/Array/OrderedCollection in other
+# languages, that can grow dynamically. It's worth noting
+# that blocks are created at parse time, so executing this
+# line of code multiple times will not create multiple blocks!
 todos = []
 
-# Find max of something in a block
-max: = method [:funk
-  max = 0
-  self do: [
-    n = do funk :each
-    n > max then: [..max = n]
-  ]
-  ^max
-]
-
-# Find index of first element matching func
-findIndex: = method [:funk
-  self reset
-  [self end?] whileFalse: [
-    n = (self next)
-    funk n then: [^(self pos - 1)]
-  ]
-  ^nil
-]
-
-#echo ([1 2 3] max: [:each])
-#echo ([1 20 3] max: [:each])
-#echo ([{x = 100} {x = 50} {x = 120}] max: [:each each::x])
-#echo ([1 20 3] findIndex: func [:each == 20])
-
-
-# Open database and load todos
+# Open database and load todos. We create functions using
+# func [...].
 openDB = func [
   # When assigning a variable in an outer scope, we need ..
+  # The ":path" means "pull in first parameter to this function
+  # and call it path.
   ..db = openRocksDB :path
+  # The way precedence works in Spry we currently need
+  # parentheses sometimes, unfortunately.
   ..todos = (db rockAt: "todos")
   # Initialize as empty list or load existing list
   todos undef? then: [
@@ -141,7 +135,7 @@ addButton = newButton: "Add" onClicked: func [
   text = (addText text)
   todo = {
     text = text
-    id = ((todos max: [:todo todo::id]) + 1)
+    id = ((todos max: [:todo todo::id] default: 0) + 1)
   }
   todos add: todo
   addToList todo
