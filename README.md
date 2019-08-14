@@ -83,11 +83,11 @@ The following should work on a Ubuntu/Debian, adapt accordingly for other distro
     curl https://nim-lang.org/choosenim/init.sh -sSf | sh
     ```
 
-2. Clone this repo. Then run `nimble install` in it. That should hopefully end up with `spry` and `ispry` built and in your path. You can also just run `nimble install spry` but then you have no access to samples etc in this git repository.
+2. Clone this repo. Then run `nimble install` in it. That should hopefully end up with `spry` and `ispry` built and in your path. You can also just run `nimble install spry` but then you have no access to examples etc in this git repository.
 
 3. Try with say `spry --version` or `spry -e "echo (3 + 4)"`. And you can also try the REPL with `ispry`.
 
-So now that you have installed Spry, you can proceed to play with the samples in the `samples` directory, see README in there for details.
+So now that you have installed Spry, you can proceed to play with the examples in the `examples` directory, see README in there for details.
 
 ### OSX
 The following should work on OSX.
@@ -104,11 +104,11 @@ You can also use brew (although not sure how good it follows Nim releases):
     brew install nim
     ```
 
-3. Clone this repo. Then run `nimble install` in it. That should hopefully end up with `spry` and `ispry` built and in your path. You can also just run `nimble install spry` but then you have no access to samples etc in this git repository.
+3. Clone this repo. Then run `nimble install` in it. That should hopefully end up with `spry` and `ispry` built and in your path. You can also just run `nimble install spry` but then you have no access to examples etc in this git repository.
 
 4. Try with say `spry --version` or `spry -e "echo (3 + 4)"`. And you can also try the REPL with `ispry`.
 
-So now that you have installed Spry, you can proceed to play with the samples in the `samples` directory, see README in there for details.
+So now that you have installed Spry, you can proceed to play with the examples in the `examples` directory, see README in there for details.
 
 ### Windows
 You can "cheat" and try out Spry using a [zip with binaries]().
@@ -118,18 +118,18 @@ You can "cheat" and try out Spry using a [zip with binaries]().
 
 3. There are no dependencies other than some dlls that are included in the Nim bin directory.
 
-4. Clone this repo. Then run `nimble install` in it. That should hopefully end up with `spry` and `ispry` built and in your path. You can also just run `nimble install spry` but then you have no access to samples etc in this git repository.
+4. Clone this repo. Then run `nimble install` in it. That should hopefully end up with `spry` and `ispry` built and in your path. You can also just run `nimble install spry` but then you have no access to examples etc in this git repository.
 
 5. Try with say `spry --version` or `spry -e "echo (3 + 4)"`. And you can also try the REPL with `ispry`.
 
-So now that you have installed Spry, you can proceed to play with the samples in the `samples` directory, see README in there for details.
+So now that you have installed Spry, you can proceed to play with the examples in the `examples` directory, see README in there for details.
 
 ## Playing with it
 
 1. If you want to build the interpreter manually, go into `src` and run
 `nim c -d:release spry` to build the Spry interpreter, or `nim c -d:release ispry` for the REPL. It should produce a single binary each. That's the standard invocation to build a nim program in release mode.
 
-2. Then go into samples and look at `hello.sy` as the next mandatory step :).
+2. Then go into examples and look at `hello.sy` as the next mandatory step :).
 Its simply Spry source being run by the `spry` executable interpreter using the "shebang" trick.
 
 4. Then you can cd into bench and run `bench.sh` which starts by building the standalone Spry interpreter
@@ -143,7 +143,7 @@ be reasonable to reach Rebol3 in performance.
 
 * On Linux or OSX you should be able to build a trivial "IDE", see below.
 * Look at `tests/*.nim` which is a series of low level Spry code snippets and expected output.
-* Look at the various `samples`
+* Look at the various `examples`
 * Try running `tutorial1.sy` in tutorials, which is just showing we can do interactive tutorials with the repl
 * Try out the interactive REPL by running `ispry`
 * And of course, read the source code `spryvm.nim`. Its hopefully not that messy.
