@@ -50,29 +50,31 @@ proc main() =
 
   # Add extra modules
   spry.addCore()
+  spry.addString()
+  spry.addBlock()
+  spry.addLib()
+
   spry.addExtend()
   spry.addMath()
   spry.addOS()
   spry.addIO()
+  spry.addModules()
+  spry.addOO()
+
   spry.addMemfile()
   spry.addThread()
   spry.addPython()
-  spry.addOO()
   spry.addDebug()
   spry.addCompress()
-  spry.addString()
-  spry.addModules()
   spry.addReflect()
   #spry.addRawUI()
   #spry.addUI() I think it does not play nice with readline etc
-  spry.addBlock()
   spry.addNet()
   spry.addSMTP()
   spry.addJSON()
   #spry.addSophia()
   spry.addSqlite()
   spry.addRocksDB()
-  spry.addLib()
 
   var
     lines, stashed, fileLines = newSeq[string]()
@@ -125,20 +127,20 @@ proc main() =
     if line.strip().len() == 0:
       let code = lines.join("\n")
       lines = newSeq[string]()
-      try:
-        # Let the interpreter eval the code. We need to eval whatever we
-        # get (ispry acting as a func). The surrounding block is just because we only
-        # want to pass one Node.
-        var result = spry.evalRoot("[" & code & "]")
-        #discard spry.setBinding(newEvalWord("@"), result)
-        var output = $result
-        # Print any result
-        if output.isNil:
-          output = if suspended: "nil" else: ""
-        stdout.write(output & "\n")
-      except:
-        echo "Oops, sorry about that: " & getCurrentExceptionMsg() & "\n"
-        echo getStackTrace()
+      #try:
+      # Let the interpreter eval the code. We need to eval whatever we
+      # get (ispry acting as a func). The surrounding block is just because we only
+      # want to pass one Node.
+      var result = spry.evalRoot("[" & code & "]")
+      #discard spry.setBinding(newEvalWord("@"), result)
+      var output = $result
+      # Print any result
+      if output.isNil:
+        output = if suspended: "nil" else: ""
+      stdout.write(output & "\n")
+#      except:
+ #       echo "Oops, sorry about that: " & getCurrentExceptionMsg() & "\n"
+  #      echo getStackTrace()
     else:
       lines.add(line)
 

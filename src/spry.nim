@@ -21,29 +21,31 @@ var spry = newInterpreter()
 
 # Add extra modules
 spry.addCore()
+spry.addString()
+spry.addBlock()
+spry.addLib()
+
 spry.addExtend()
 spry.addMath()
 spry.addOS()
 spry.addIO()
+spry.addModules()
+spry.addOO()
+
 spry.addMemfile()
 spry.addThread()
 spry.addPython()
-spry.addOO()
 spry.addDebug()
 spry.addCompress()
-spry.addString()
-spry.addModules()
 spry.addReflect()
 #spry.addRawUI()
-spry.addUI()
-spry.addBlock()
+#spry.addUI() I think it does not play nice with readline etc
 spry.addNet()
 spry.addSMTP()
 spry.addJSON()
 #spry.addSophia()
 spry.addSqlite()
 spry.addRocksDB()
-spry.addLib()
 
 let doc = """
 
