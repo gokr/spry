@@ -1,7 +1,7 @@
 # Trivial example of creating a Spry interpreter and have it run some code.
 
 # Just import Spry
-import spryvm, sprycore, sprylib
+import spryvm/spryvm, spryvm/sprycore, spryvm/sprylib
 
 # Create an interpreter and add core and lib
 let spry = newInterpreter()
