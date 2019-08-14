@@ -1,0 +1,26 @@
+#!/usr/bin/env spry
+
+# Convenience to see names of loaded modules in order
+loadedModules = func [
+  echo ("Modules loaded: ", ((modules map: [(:m at: '_meta) at: 'name]) print))
+]
+
+loadedModules
+assert (bar undef?) "bar is still undef"
+assert (baz undef?) "baz is still undef"
+assert (("foo.bar" baseName) == "foo") "baseName works from spry.sy"
+
+echo "Loading mod1.sy" loadFile: "mod1.sy"
+loadedModules
+assert (bar undef?) "bar is still undef"
+assert (baz == "Foo Baz") "baz is now from mod1.sy"
+assert ($ti:di: undef? not) "ti:di now defined"
+
+echo "Loading mod1.sy" loadFile: "mod2.sy"
+loadedModules
+assert (bar == "Bar") "bar is now defined"
+assert (baz == "Foo Baz") "baz is still from mod1.sy"
+assert (Bar::baz == "Bar Baz") "but we can call Bar::baz from mod2.sy"
+assert ($ti:di: undef? not) "ti:di still defined"
+
+quit 0

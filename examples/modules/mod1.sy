@@ -1,0 +1,20 @@
+{
+  # Load this module into Spry using `loadFile: "mod1.sy"`.
+  # This member describes the module that will be loaded under the name "Foo".
+  _meta = {
+    name = 'Foo
+    version = "1.0"
+    description = "Testing module closure"
+  }
+
+  # Here is a method, note that we do not need to use 'ti:di:
+  ti:di: = method [:to :block
+    n = self
+    [n <= to] whileTrue: [
+      do block n
+      ..n = (n + 1)
+    ]
+  ]
+
+  baz = func ["Foo Baz"]
+}

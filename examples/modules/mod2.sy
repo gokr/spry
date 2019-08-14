@@ -1,0 +1,12 @@
+{
+  _meta = {
+    name = 'Bar
+    version = "1.0"
+    description = "Testing module closure"
+  }
+
+  # A func
+  bar = func ["Bar"]
+
+  baz = func ["Bar Baz"]
+}

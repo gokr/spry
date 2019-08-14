@@ -1,0 +1,12 @@
+{
+  # Here is the meta info
+  _meta = {
+    name = 'ispry
+    version = "1.0"
+    description = "Default module loaded by ispry"
+  }
+
+  # Just a simple infix func
+  baseName = method [self split: "." first]
+}
+
