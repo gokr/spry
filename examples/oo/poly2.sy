@@ -4,7 +4,7 @@
 apple = object [apple] {color = "green" price = 12}
 
 # Create a Red Apple object
-red = object [red] (apple clone)
+red = object [red] clone apple
 
 # Change it to be red
 red::color = "red"
