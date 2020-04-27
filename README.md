@@ -4,7 +4,7 @@
 
 [![Build Status](https://travis-ci.org/gokr/spry.svg?branch=master)](https://travis-ci.org/gokr/spry)
 
-[![Join the chat at https://gitter.im/gokr/spry](https://badges.gitter.im/gokr/spry.svg)](https://gitter.im/gokr/spry?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge)
+[![Chat on Discord](https://img.shields.io/discord/605489766028541972?label=chat%20about%20Spry)](https://discord.gg/mK8HZNd)
 
 
 This is the [Spry language](http://sprylang.se), inspired by Rebol/Smalltalk/Self/Forth and Nim. Characteristics:
@@ -22,6 +22,7 @@ Here are [my articles about Spry](http://goran.krampe.se/category/spry)
 * You find ideas in Rebol/Ren/Red interesting but would like something different :)
 * You love Smalltalk but can imagine a simplified similar language and want to play with multicore or small platforms and more easily use the C/C++/Nim eco system
 * You love Nim but want to have a dynamic language running inside Nim
+* You find Spry cool and would like to port it to another host language
 * ...or you just love freaky programming language ideas!
 
 ## Installation
@@ -32,16 +33,17 @@ Spry only depends on Nim, so it should work fine on Windows, OSX, Linux etc, but
 Included is a VagrantFile for Ubuntu 18.04. If you have vagrant just do `vagrant up` and `vagrant ssh` into it to find spry installed. Test with `ispry` - the "interactive spry" REPL, or `spry --version`.
 
 ### LXC
-The following commands can get you running inside LXC, tested on Ubuntu 18.04:
+The following commands can get you running inside LXC very quickly, tested on Ubuntu 19.04:
 
-Start a Ubuntu 18.04 LXC machine and login to it:
+Start a Ubuntu 20.04 (Focal Fossa, LTS) LXC machine and login to it:
 
-    lxc launch ubuntu:18.04 spry
+    lxc launch ubuntu:20.04 spry
     lxc exec spry -- su --login ubuntu
 
-Install gcc + Nim/nimble + Spry:
+Install dependencies, Nim and eventually Spry itself. Note that this is not a minimal Spry but one that includes RocksDB, GUI, Python wrapper etc:
 
-    sudo apt install gcc
+    sudp apt update
+    sudo apt install gcc pkg-config libgtk-3-dev librocksdb-dev libpython2.7
     curl https://nim-lang.org/choosenim/init.sh -sSf | sh
     export PATH=/home/ubuntu/.nimble/bin:$PATH
     echo "export PATH=/home/ubuntu/.nimble/bin:$PATH" >> .profile
@@ -79,7 +81,7 @@ The following should work on a Ubuntu/Debian, adapt accordingly for other distro
 1. Get GCC and [Nim](http://www.nim-lang.org)! I recommend using [choosenim](https://github.com/dom96/choosenim) or just following the official [instructions](http://nim-lang.org/download.html). Using choosenim it's as simple as:
 
     ```
-    sudo apt install gcc
+    sudo apt install gcc pkg-config libgtk-3-dev librocksdb-dev libpython2.7
     curl https://nim-lang.org/choosenim/init.sh -sSf | sh
     ```
 
