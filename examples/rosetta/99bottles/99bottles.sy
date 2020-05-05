@@ -1,12 +1,11 @@
 #!/usr/bin/env spry
 
 # First a simple func that uses a bottle number, n
-# The ugly bits here are "..b" to make sure b is in the
-# scope of the func, and the parens needed in two places.
 bottle = func [
-  :n == 0 then: [..b = "No more bottles"] else: [
-    n == 1 then: [..b = "1 bottle"] else: [
-      ..b = (n print, " bottles")]]
+  b = nil
+  :n == 0 then: [b := "No more bottles"] else: [
+    n == 1 then: [b := "1 bottle"] else: [
+      b := (n print, " bottles")]]
   ^(b, " of beer")
 ]
 
@@ -20,7 +19,7 @@ bn = 99
   # echo always adds a linefeed, and we can't use "\n" etc in strings. But "\x=0A" works.
   # I should add support for some of those characters, and add string interpolation.
   # Another way to get an empty line would be:  echo ""
-  ..bn = (bn - 1)
+  bn := (bn - 1)
 ]
 
 echo "No more bottles of beer on the wall, no more bottles of beer."

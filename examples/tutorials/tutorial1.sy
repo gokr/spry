@@ -38,8 +38,8 @@ echo "Hello"
 # Since no words are built into the language, they are all defined in
 # modules and they can all be redefined.
 #
-# There are four singleton values bound to four words: true, false, nil, undef
-# Just as in Smalltalk we only need one of each of these four values.
+# There are three singleton values bound to three words: true, false, nil
+# Just as in Smalltalk we only need one of each of these values.
 # That's why we have them created once and bound to these words for reuse. 
 # pause
 
@@ -62,7 +62,7 @@ echo "Hello"
 echo 3.14
 
 # Here is a block with all core Spry value types.
-echo [3 4.0 true false nil "hey" undef]
+echo [3 4.0 true false nil "hey"]
 # pause
 
 # Running quit without any argument will fail because it needs one argument.

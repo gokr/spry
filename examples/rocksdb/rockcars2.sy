@@ -5,7 +5,7 @@ db = openRocksDB "cars.db"
 
 cars = {}
 saveCars = func [db rockAt: "cars" put: cars]
-loadCars = func [..cars = (db rockAt: "cars")]
+loadCars = func [cars := (db rockAt: "cars")]
 
 # Create two cars and stuff in map
 car1 = {id = 1 name = "Saab"}

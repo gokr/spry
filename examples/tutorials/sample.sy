@@ -16,16 +16,15 @@
 [3 4.0 true false "hey"]
 # pause
 
-# Just as in Smalltalk we have nil, but also undef which means never
-# assigned. All four of true, false, nil and undef are words bound to
-# known singleton nodes owned by the interpreter.
-[nil undef]
+# Just as in Smalltalk we have nil. All of true, false and nil
+# are words bound to known singleton nodes owned by the interpreter.
+[nil]
 # pause
 
 # A word is just a string until it gets resolved. "echo" above
 # got resolved to a primitive function taking 1 argument, when
 # this script was called upon to run. It resolved only one
-# level deep though, so the words "true", "false", "nil" and "undef"
+# level deep though, so the words "true", "false" and "nil"
 # are still just words in the block above. When they are resolved
 # they would refer to the singletons for those three values.
 #

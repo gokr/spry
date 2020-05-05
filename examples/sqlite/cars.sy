@@ -20,7 +20,7 @@ conn query: "INSERT INTO car (id, name) VALUES (?, ?)" params: ["1" "Volvo"]
 #   Name: Volvo
 (conn getRows: "SELECT * from car") do: [
   echo ("Id: ", (:row first))
-  echo ("Name: ", (row second))
+  echo ("Name: ", (row at: 1))
 ]
 
 conn close

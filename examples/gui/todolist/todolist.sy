@@ -14,7 +14,7 @@ uiInit
 
 # Variable holding our rocksdb. We do not declare variables
 # in Spry, we simply create them by assignment. Assignment is
-# done using the "=" word. In Spry we have both nil and undef,
+# done using the "=" word. In Spry we have nil as default value,
 # in this case we set it to nil, which in fact is not needed
 # in this application, but it's nice to show our top level
 # variables!
@@ -33,13 +33,13 @@ openDB = func [
   # When assigning a variable in an outer scope, we need ..
   # The ":path" means "pull in first parameter to this function
   # and call it path.
-  ..db = openRocksDB :path
+  db := openRocksDB :path
   # The way precedence works in Spry we currently need
   # parentheses sometimes, unfortunately.
-  ..todos = (db rockAt: "todos")
+  todos := (db rockAt: "todos")
   # Initialize as empty list or load existing list
-  todos undef? then: [
-    ..todos = []
+  todos nil? then: [
+    todos := []
     saveTodos
   ] else: [
     loadTodos

@@ -12,7 +12,7 @@
     n = self
     [n <= to] whileTrue: [
       do block n
-      ..n = (n + 1)
+      n := (n + 1)
     ]
   ]
 
