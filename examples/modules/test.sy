@@ -6,21 +6,21 @@ loadedModules = func [
 ]
 
 loadedModules
-assert (bar undef?) "bar is still undef"
-assert (baz undef?) "baz is still undef"
+assert (bar nil?) "bar is still nil"
+assert (baz nil?) "baz is still nil"
 assert (("foo.bar" baseName) == "foo") "baseName works from spry.sy"
 
 echo "Loading mod1.sy" loadFile: "mod1.sy"
 loadedModules
-assert (bar undef?) "bar is still undef"
+assert (bar nil?) "bar is still nil"
 assert (baz == "Foo Baz") "baz is now from mod1.sy"
-assert ($ti:di: undef? not) "ti:di now defined"
+assert ($ti:di: nil? not) "ti:di now defined"
 
 echo "Loading mod1.sy" loadFile: "mod2.sy"
 loadedModules
 assert (bar == "Bar") "bar is now defined"
 assert (baz == "Foo Baz") "baz is still from mod1.sy"
 assert (Bar::baz == "Bar Baz") "but we can call Bar::baz from mod2.sy"
-assert ($ti:di: undef? not) "ti:di still defined"
+assert ($ti:di: nil? not) "ti:di still defined"
 
 quit 0
