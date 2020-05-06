@@ -14,10 +14,10 @@ car2 = {id = 1 name = "Volvo"}
 
 # Store them
 echo "Storing..."
-echo ("Saving car 1: ", (car1 print))
+echo ("Saving car 0: ", (car1 print))
 saveCar car1
 
-echo ("Saving car 2: ", (car2 print))
+echo ("Saving car 1: ", (car2 print))
 saveCar car2
 
 # Read and show
