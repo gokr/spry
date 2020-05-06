@@ -39,11 +39,11 @@ spry.addDebug()
 spry.addCompress()
 spry.addReflect()
 #spry.addRawUI()
-#spry.addUI() I think it does not play nice with readline etc
+# I think it does not play nice with readline etc
+spry.addUI()
 spry.addNet()
 spry.addSMTP()
 spry.addJSON()
-#spry.addSophia()
 spry.addSqlite()
 spry.addRocksDB()
 
