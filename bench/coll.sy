@@ -9,14 +9,14 @@ echo ("Block of size: " , (blk size print))
 
 sum1 = 0
 tim = ([
-blk do: [..sum1 = (sum1 + :each)]
+blk do: [sum1 := (sum1 + :$each)]
 ] timeToRun)
 
+echo ("Sum using loop: " , (tim print))
 echo ("Sum: " , (sum1 print))
-echo ("Time: " , (tim print))
 
 sum2 = 0
-tim2 = ([sum2 = (blk sum)] timeToRun)
+tim2 = ([sum2 := (blk sum)] timeToRun)
 
 echo ("Sum function: " , (sum2 print))
 echo ("Time: " , (tim2 print))

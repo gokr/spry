@@ -14,7 +14,7 @@ benchmark = method [
   sze = 8190
   count = 0
   1 to: self do: [
-    ..count = 0
+    count := 0
     flags = newBlock: (sze + 1) # Hack to keep indexing same as in Smalltalk
     flags fill: true
     1 to: sze do: [
@@ -23,9 +23,9 @@ benchmark = method [
         k = (i + prime)
         [k <= sze] whileTrue: [
           flags at: k put: false
-          ..k = (k + prime)
+          k := (k + prime)
         ]
-        ..count = (count + 1)]
+        count := (count + 1)]
       ]
     ]
   ^count
@@ -35,7 +35,7 @@ benchFib = method [
   # Handy send-heavy benchmark
   # (result // seconds to run) = approx calls per second
   self < 2
-      then: [^ 1]
+      then: [^1]
       else: [
         # Hmmm... bug here... self is broken somehow on recursion
         a = (self - 1)
@@ -45,16 +45,16 @@ benchFib = method [
 
 n1 = 1
 t1 = 0
-[..t1 = ([n1 benchmark] timeToRun)
+[t1 := ([n1 benchmark] timeToRun)
 t1 < 1000] whileTrue: [
-  ..n1 = (n1 * 2)] # Note: #benchmark's runtime is about O(n)
+  n1 := (n1 * 2)] # Note: #benchmark's runtime is about O(n)
 
 n2 = 28
 t2 = 0
 r = 0
-[..t2 = ([..r = (n2 benchFib)] timeToRun)
+[t2 := ([r := (n2 benchFib)] timeToRun)
 t2 < 1000] whileTrue: [
-  ..n2 = (n2 + 1)]
+  n2 := (n2 + 1)]
 	# Note: #benchFib's runtime is about O(k^n),
 	#	where k is the golden number = (1 + 5 sqrt) / 2 = 1.618....
 
