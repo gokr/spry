@@ -1,0 +1,26 @@
+# Experiment in getting ispry running on an RG350 MIPS Anbernic handheld
+
+# Disable this to use only primitive stdin
+-d:readLine
+# For SMTP
+#-d:ssl
+# As long as you use nithread/addThread() this is needed
+--threads:on
+--threadanalysis:off
+
+# For libui static linking
+#--dynlibOverride:ui
+#--passL:"-rdynamic ./libui.a -lgtk-3 -lgdk-3 -lpangocairo-1.0 -lpango-1.0 -latk-1.0 -lcairo-gobject -lcairo -lgdk_pixbuf-2.0 -lgio-2.0 -lgobject-2.0 -lglib-2.0"
+--nilseqs:on
+--multimethods:on
+-d:nimOldCaseObjects
+
+--os:linux
+--cpu:mipsel
+--cc:gcc
+--gcc.exe:"mipsel-gcw0-linux-uclibc-gcc"
+--gcc.linkerexe:"mipsel-gcw0-linux-uclibc-gcc"
+--listCmd
+--nimcache:nimcache
+-d:nimEmulateOverflowChecks
+
