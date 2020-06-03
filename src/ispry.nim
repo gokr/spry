@@ -72,7 +72,6 @@ proc main() =
   spry.addNet()
   spry.addSMTP()
   spry.addJSON()
-  #spry.addSophia()
   spry.addSqlite()
   spry.addRocksDB()
 
