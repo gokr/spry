@@ -105,10 +105,13 @@ You can also use brew (although not sure how good it follows Nim releases):
     ```
     brew install nim
     ```
+3. Install extra dependencies, at the moment Rocksdb is one:
+    ```
+    brew install rocksdb
+    ```
+4. Clone this repo. Then run `nimble install` in it. That should hopefully end up with `spry` and `ispry` built and in your path. You can also just run `nimble install spry` but then you have no access to examples etc in this git repository.
 
-3. Clone this repo. Then run `nimble install` in it. That should hopefully end up with `spry` and `ispry` built and in your path. You can also just run `nimble install spry` but then you have no access to examples etc in this git repository.
-
-4. Try with say `spry --version` or `spry -e "echo (3 + 4)"`. And you can also try the REPL with `ispry`.
+5. Try with say `spry --version` or `spry -e "echo (3 + 4)"`. And you can also try the REPL with `ispry`.
 
 So now that you have installed Spry, you can proceed to play with the examples in the `examples` directory, see README in there for details.
 
