@@ -1,0 +1,38 @@
+#!/usr/bin/env spry
+
+# Create an Apple object
+apple = object [apple] {color = "green" price = 12}
+
+# Register a top level func to catch errors
+catch: [echo ("Ooops, it was ", :error)]
+
+# Make some code that throws error deep down
+pick = method [
+  echo ("I picked a ", @color, " apple")
+]
+
+# Here we throw
+eat = method [
+  echo "Time to eat it..."
+  throw "rotten"
+]
+
+# This just calls pick and eat on the apple
+foo = func [
+  apple pick; eat
+]
+
+# This throws and catches globally
+foo
+
+# This time we should catch before global catcher
+banana = func [
+  try: [
+    foo
+    echo "We never get here"
+  ] catch: [
+    echo ("Got me a ", :error, " apple")
+    quit 1
+  ]
+]
+banana
