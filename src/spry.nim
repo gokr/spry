@@ -60,7 +60,7 @@ Options:
 """
 
 proc writeVersion() =
-  echo "Spry 0.8.0"
+  echo "Spry 0.9.4"
 
 proc writeHelp() =
   writeVersion()

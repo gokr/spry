@@ -51,7 +51,7 @@ Install dependencies, Nim and eventually Spry itself. Note that this is not a mi
 Then make sure Spry works:
 
     ubuntu@spry:~$ spry --version
-    Spry 0.8.0
+    Spry 0.9.4
     ubuntu@spry:~$ spry -e "echo (3 + 4)"
     7
     ubuntu@spry:~$ ispry
