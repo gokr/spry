@@ -18,5 +18,6 @@ sp.addLib()
 sp.addExtend()   # Needed for reduce
 sp.addIO()       # Needed for echo
 discard sp.eval """[
+  echo "If this works it should show 3 and 7:"
   echo reduce [1 + 2 3 + 4]
 ]"""
