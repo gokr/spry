@@ -1,7 +1,7 @@
 #!/usr/bin/env spry
 
 # A sample Spry application that is a trivial todolist app
-# using a RocksDB as storage.
+# using an LMDB as storage.
 
 # First we need to initialize libui. Since spry and ispry
 # has the spryui VM module built in, we have access
@@ -12,7 +12,7 @@
 # use parentheses for parameter passing.
 uiInit
 
-# Variable holding our rocksdb. We do not declare variables
+# Variable holding our Limdb (LMDB). We do not declare variables
 # in Spry, we simply create them by assignment. Assignment is
 # done using the "=" word. In Spry we have nil as default value,
 # in this case we set it to nil, which in fact is not needed
@@ -33,10 +33,10 @@ openDB = func [
   # When assigning a variable in an outer scope, we need ..
   # The ":path" means "pull in first parameter to this function
   # and call it path.
-  db := openRocksDB :path
+  db := openLimdb :path
   # The way precedence works in Spry we currently need
   # parentheses sometimes, unfortunately.
-  todos := (db rockAt: "todos")
+  todos := (db limdbAt: "todos")
   # Initialize as empty list or load existing list
   todos nil? then: [
     todos := []
@@ -49,7 +49,7 @@ openDB = func [
 # Store in database
 saveTodos = func [
   db nil? else: [
-    db rockAt: "todos" put: todos
+    db limdbAt: "todos" put: todos
   ]
 ]
 
@@ -58,9 +58,9 @@ loadTodos = func [
   todos do: [addToList :each]
 ]
 
-# Close RocksDB and say bye befor exiting
+# Close Limdb and say bye before exiting
 byeBye = func [
-  db nil? else: [db closeRocksDB]
+  db nil? else: [db closeLimdb]
   win message: "Bye bye" title: "Todolist"
 ]
 
@@ -96,7 +96,7 @@ addToList = func [
 # Build Window
 menu = newMenu "File"
 
-# Open an existing RocksDB
+# Open an existing Limdb
 menu addItem: "Open ..." onClicked: [
   path = (win openFile)
   path nil? else: [
@@ -104,7 +104,7 @@ menu addItem: "Open ..." onClicked: [
   ]
 ]
 
-# Making a new RocksDB
+# Making a new Limdb
 menu addItem: "New ..." onClicked: [
   path = (win saveFile)
   path nil? else: [

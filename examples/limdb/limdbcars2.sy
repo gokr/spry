@@ -1,11 +1,11 @@
 #!/usr/bin/env spry
 
 # Create a database and get a connection to it
-db = openRocksDB "cars.db"
+db = openLimdb "cars.db"
 
 cars = {}
-saveCars = func [db rockAt: "cars" put: cars]
-loadCars = func [cars := (db rockAt: "cars")]
+saveCars = func [db limdbAt: "cars" put: cars]
+loadCars = func [cars := (db limdbAt: "cars")]
 
 # Create two cars and stuff in map
 car1 = {id = 1 name = "Saab"}
@@ -40,4 +40,4 @@ loadCars
 echo ("Loaded cars: ", (cars print))
 
 # Close db
-db closeRocksDB
+db closeLimdb

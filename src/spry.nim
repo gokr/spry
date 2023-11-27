@@ -13,8 +13,9 @@ import spryvm/spryvm
 import spryvm/sprycore, spryvm/sprylib, spryvm/spryextend, spryvm/sprymath,
   spryvm/spryos, spryvm/spryio, spryvm/sprymemfile, spryvm/sprythread,
   spryvm/spryoo, spryvm/sprydebug, spryvm/sprycompress, spryvm/sprystring,
-  spryvm/sprymodules, spryvm/spryreflect, spryvm/spryui, spryvm/spryblock, spryvm/sprynet,
-  spryvm/sprysmtp, spryvm/spryjson, spryvm/sprysqlite, spryvm/spryrocksdb,
+  spryvm/sprymodules, spryvm/spryreflect, spryvm/spryui, spryvm/spryblock,
+      spryvm/sprynet,
+  spryvm/sprysmtp, spryvm/spryjson, spryvm/sprysqlite, spryvm/sprylimdb,
   spryvm/sprypython
 
 var spry = newInterpreter()
@@ -45,7 +46,7 @@ spry.addNet()
 spry.addSMTP()
 spry.addJSON()
 spry.addSqlite()
-spry.addRocksDB()
+spry.addLimdb()
 
 let doc = """
 

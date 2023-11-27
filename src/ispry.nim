@@ -22,7 +22,7 @@ import spryvm/sprycore, spryvm/sprylib, spryvm/spryextend, spryvm/sprymath,
   spryvm/spryoo, spryvm/sprydebug, spryvm/sprycompress, spryvm/sprystring,
   spryvm/sprymodules, spryvm/spryreflect, spryvm/spryblock, spryvm/sprynet,
   spryvm/sprysmtp, spryvm/spryjson, spryvm/sprysqlite, spryvm/sprypython,
-  spryvm/spryrocksdb
+  spryvm/sprylimdb
 
 const Prompt = ">>> "
 
@@ -73,7 +73,7 @@ proc main() =
   spry.addSMTP()
   spry.addJSON()
   spry.addSqlite()
-  spry.addRocksDB()
+  spry.addLimdb()
 
   var
     lines, stashed, fileLines = newSeq[string]()
@@ -126,20 +126,20 @@ proc main() =
     if line.strip().len() == 0:
       let code = lines.join("\n")
       lines = newSeq[string]()
-      #try:
-      # Let the interpreter eval the code. We need to eval whatever we
-      # get (ispry acting as a func). The surrounding block is just because we only
-      # want to pass one Node.
-      var result = spry.evalRoot("[" & code & "]")
-      #discard spry.setBinding(newEvalWord("@"), result)
-      var output = $result
-      # Print any result
-      if output.isNil:
-        output = if suspended: "nil" else: ""
-      stdout.write(output & "\n")
-#      except:
- #       echo "Oops, sorry about that: " & getCurrentExceptionMsg() & "\n"
-  #      echo getStackTrace()
+      try:
+        # Let the interpreter eval the code. We need to eval whatever we
+        # get (ispry acting as a func). The surrounding block is just because we only
+        # want to pass one Node.
+        var result = spry.evalRoot("[" & code & "]")
+        #discard spry.setBinding(newEvalWord("@"), result)
+        var output = $result
+        # Print any result
+        if output.isNil:
+          output = if suspended: "nil" else: ""
+        stdout.write(output & "\n")
+      except:
+        echo "Oops, sorry about that: " & getCurrentExceptionMsg() & "\n"
+        echo getStackTrace()
     else:
       lines.add(line)
 
