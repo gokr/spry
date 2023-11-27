@@ -1,3 +1,4 @@
 #!/usr/bin/env spry
-echo "Hello"
+echo "Hello, will sleep for 3000 ms"
 sleep 3000
+echo "Bye now"
